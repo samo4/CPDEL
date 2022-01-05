@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "Octopart")(type "KiCad")(uri "${KIPRJMOD}/libraries/eec.pretty")(options "")(descr ""))
+)

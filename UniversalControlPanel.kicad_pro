@@ -368,7 +368,7 @@
       "netlist": "",
       "specctra_dsn": "",
       "step": "UniversalControlPanel.step",
-      "vrml": ""
+      "vrml": "UniversalControlPanel.wrl"
     },
     "page_layout_descr_file": ""
   },

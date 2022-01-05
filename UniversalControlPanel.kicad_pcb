@@ -528,10 +528,10 @@
       (net 2 "GND") (pinfunction "Pin_40") (pintype "passive") (tstamp d04fd522-7fd2-4a18-b694-09dc0d7512b3))
     (pad "MP" smd rect locked (at 11.65 1.4 270) (size 1.8 2.2) (layers "F.Cu" "F.Paste" "F.Mask") (tstamp 0e27d7a6-7465-466f-ba93-ae7d8297a197))
     (pad "MP" smd rect locked (at -11.65 1.4 270) (size 1.8 2.2) (layers "F.Cu" "F.Paste" "F.Mask") (tstamp 85c876de-9348-4b03-bd96-e047b7402bf6))
-    (model "${KICAD6_3DMODEL_DIR}/Connector_FFC-FPC.3dshapes/Hirose_FH12-40S-0.5SH_1x40-1MP_P0.50mm_Horizontal.wrl"
-      (offset (xyz 0 0 0))
+    (model "${KIPRJMOD}/libraries/internet.models/FH12-40S-0.5SH.stp"
+      (offset (xyz 12.4 -10.5 -28))
       (scale (xyz 1 1 1))
-      (rotate (xyz 0 0 0))
+      (rotate (xyz 90 90 90))
     )
   )
 

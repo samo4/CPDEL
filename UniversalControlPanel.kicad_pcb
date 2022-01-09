@@ -1662,7 +1662,7 @@
 
   (footprint "Capacitor_SMD:C_1206_3216Metric" (layer "F.Cu")
     (tedit 5F68FEEE) (tstamp b3b6271a-5793-4bca-be58-001a1d4ca23d)
-    (at 127.6 95.15 -90)
+    (at 123.3825 95.0575 -90)
     (descr "Capacitor SMD 1206 (3216 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
     (tags "capacitor")
     (property "LCSC" "C13585")
@@ -1816,7 +1816,7 @@
 
   (footprint "Converter_DCDC:Converter_DCDC_TRACO_TSR-1_THT" (layer "F.Cu")
     (tedit 59FE1FB7) (tstamp bce25bd3-0fe5-4c8f-bd6c-39e2d62ee70a)
-    (at 131.6675 98.5425 -90)
+    (at 127.45 98.45 -90)
     (descr "DCDC-Converter, TRACO, TSR 1-xxxx")
     (tags "DCDC-Converter TRACO TSR-1")
     (property "Sheetfile" "UniversalControlPanel.kicad_sch")
@@ -1941,7 +1941,7 @@
 
   (footprint "Capacitor_SMD:C_1206_3216Metric" (layer "F.Cu")
     (tedit 5F68FEEE) (tstamp e10569ca-2487-43d7-a8dd-e670b1d7b741)
-    (at 127.675 100.85 90)
+    (at 123.4575 100.7575 90)
     (descr "Capacitor SMD 1206 (3216 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
     (tags "capacitor")
     (property "LCSC" "C13585")
@@ -2186,7 +2186,7 @@
 
   (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu")
     (tedit 5F68FEEE) (tstamp fe8d9267-7834-48d6-a191-c8724b2ee78d)
-    (at 128.7 104.8 -90)
+    (at 124.4825 104.7075 -90)
     (descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
     (tags "capacitor")
     (property "LCSC" "C1525")
@@ -2229,7 +2229,7 @@
 
   (footprint "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical" (layer "B.Cu")
     (tedit 59FED5CC) (tstamp 9c339621-8fb3-41c6-870e-7a83e5295657)
-    (at 141.7 96.65 180)
+    (at 135.75 97.525 180)
     (descr "Through hole straight pin header, 1x07, 2.54mm pitch, single row")
     (tags "Through hole pin header THT 1x07 2.54mm single row")
     (property "Sheetfile" "UniversalControlPanel.kicad_sch")
@@ -2285,6 +2285,9 @@
   )
 
   (gr_line (start 121 114.6) (end 120.9 94.1) (layer "Dwgs.User") (width 0.15) (tstamp 11eb59b4-fb16-4f8e-b153-7dbc577060b1))
+  (gr_rect (start 133.25 92.425) (end 162.55 118.625) (layer "Dwgs.User") (width 0.15) (fill none) (tstamp 2b7c4f37-42c0-4571-a44b-b808484d3d74))
+  (gr_line (start 113.025 133) (end 183 78) (layer "Dwgs.User") (width 0.15) (tstamp 356199c8-c0f7-4995-bef0-53ad752a30c5))
+  (gr_line (start 113 78) (end 183 133) (layer "Dwgs.User") (width 0.15) (tstamp 561ecb3f-ead7-4771-b6c0-d34cd21c92d3))
   (gr_line (start 121 114.6) (end 113 114.6) (layer "Dwgs.User") (width 0.15) (tstamp 72635b6d-f5d1-44fe-86b5-9bebc2da5d46))
   (gr_line (start 120.9 94.1) (end 113 94.1) (layer "Dwgs.User") (width 0.15) (tstamp 808953e6-4649-45c8-ae8d-0fce582466f0))
   (gr_line (start 121 133) (end 121 114.6) (layer "Dwgs.User") (width 0.15) (tstamp cf6465a5-cdc8-43ab-af6a-066f3abc4788))

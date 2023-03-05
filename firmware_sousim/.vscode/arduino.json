@@ -1,0 +1,10 @@
+{
+    "sketch": "SouSimControl.ino",
+    "port": "COM13",
+    "configuration": "",
+    "board": "esp32:esp32:devkitc",
+    "output": "./build",
+    "debugger": "jlink",
+    "prebuild": "echo \"pre build\"",
+    "postbuild": "echo \"post build\""
+}

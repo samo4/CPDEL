@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <ESPDash.h>
 #include <ElegantOTA.h>
+#include <HttpClient.h>
 #include <esp_task_wdt.h>
 
 SimpleWifiManager wifiManager;
@@ -34,8 +35,10 @@ constexpr int WDT_TIMEOUT_S = 3 * 60 * 60;
 #include "lwip/sockets.h"
 #include "nvs_flash.h"
 #include "ping/ping_sock.h"
-#define EXAMPLE_PING_INTERVAL 3
-#define EXAMPLE_PING_COUNT 5
+#define EXAMPLE_PING_INTERVAL 2
+#define EXAMPLE_PING_COUNT 2
+
+bool pingDone = false;
 
 static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args) {
   uint8_t ttl;
@@ -79,6 +82,7 @@ static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args) {
   // delete the ping sessions, so that we clean up all resources and can create a new ping session
   // we don't have to call delete function in the callback, instead we can call delete function from other tasks
   esp_ping_delete_session(hdl);
+  pingDone = true;
 }
 
 static int do_ping_cmd(void) {
@@ -146,6 +150,25 @@ void setup() {
 }
 
 long lastExecTime1 = 0;
+
+void testHttp() {
+  Serial.println("Testing HTTP....");
+  HTTPClient http;
+  http.begin("http://ipv6.lookup.test-ipv6.com");
+  int httpCode = http.GET();
+  if (httpCode > 0) {
+    Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+    if (httpCode == HTTP_CODE_OK) {
+      String payload = http.getString();
+      Serial.println(payload);
+    }
+  } else {
+    Serial.printf("[HTTP] GET... failed, error: %s %d\n", http.errorToString(httpCode).c_str(), httpCode);
+  }
+  http.end();
+  Serial.println("HTTP test done....");
+}
+
 bool done = false;
 
 void loop() {
@@ -154,7 +177,7 @@ void loop() {
   wifiManager.handle();
   ElegantOTA.loop();
 
-  if (currentTime - lastExecTime1 >= 20 * 1000) {
+  if (currentTime - lastExecTime1 >= 5 * 1000) {
     cardUptime.update(String(currentTime / (1000 * 60 * 60)) + "h");
     cardLastResetReason.update(resetReason);
     cardIpV6.update(SimpleWifiManager::hasIpV6() ? "Yes" : "No");
@@ -163,7 +186,14 @@ void loop() {
     if (SimpleWifiManager::hasIpV6()) {
       if (!done) {
         done = true;
-        do_ping_cmd();
+
+        // do_ping_cmd();
+        pingDone = true;
+      }
+      if (pingDone) {
+        Serial.println("Ping done....");
+        testHttp();
+        pingDone = false;
       }
     }
   }

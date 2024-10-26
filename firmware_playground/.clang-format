@@ -1,0 +1,6 @@
+{
+   "BasedOnStyle":"LLVM",
+   "UseTab":"Never",
+   "ColumnLimit":132,
+   "FixNamespaceComments":false
+}

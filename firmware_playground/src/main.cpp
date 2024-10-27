@@ -38,6 +38,9 @@ constexpr int WDT_TIMEOUT_S = 3 * 60 * 60;
 #define EXAMPLE_PING_INTERVAL 2
 #define EXAMPLE_PING_COUNT 2
 
+#include "apple_touch_icon.h"
+#include "favicon.h"
+
 bool pingDone = false;
 
 static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args) {
@@ -138,6 +141,10 @@ void setup() {
     }
   });
   ElegantOTA.begin(&server);
+  SERVE_COMPRESSED_FILE("/favicon.ico", favicon)
+  SERVE_COMPRESSED_FILE("/apple-touch-icon.png", apple_touch_icon)
+  SERVE_DEFAULT_404()
+
   server.begin();
   Serial.println("HTTP server started");
 
@@ -177,6 +184,7 @@ void loop() {
   wifiManager.handle();
   ElegantOTA.loop();
 
+  /*
   if (currentTime - lastExecTime1 >= 5 * 1000) {
     cardUptime.update(String(currentTime / (1000 * 60 * 60)) + "h");
     cardLastResetReason.update(resetReason);
@@ -197,6 +205,7 @@ void loop() {
       }
     }
   }
+  */
 
   delay(250);
 }

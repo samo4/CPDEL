@@ -24,6 +24,17 @@ Card cardUptime(&dashboard, GENERIC_CARD, "Uptime");
 Card cardLastResetReason(&dashboard, GENERIC_CARD, "Last reset reason");
 Card cardIpV6(&dashboard, GENERIC_CARD, "ipv6");
 
+Card cardTemp(&dashboard, TEMPERATURE_CARD, "Temperature");
+Card cardHumidity(&dashboard, HUMIDITY_CARD, "Humidity");
+Card cardStatus1(&dashboard, STATUS_CARD, "Status1");
+Card cardStatus2(&dashboard, STATUS_CARD, "Status2");
+Card cardSlider(&dashboard, SLIDER_CARD, "Slider", "", 0, 255, 1);
+Card cardButton(&dashboard, BUTTON_CARD, "Button");
+Card cardProgress(&dashboard, PROGRESS_CARD, "Progress", "", 0, 100);
+
+Card cardLog(&dashboard, GENERIC_CARD, "Log");
+Card cardButtonPing(&dashboard, BUTTON_CARD, "Ping");
+
 String resetReason;
 constexpr int WDT_TIMEOUT_S = 3 * 60 * 60;
 
@@ -41,7 +52,9 @@ constexpr int WDT_TIMEOUT_S = 3 * 60 * 60;
 #include "apple_touch_icon.h"
 #include "favicon.h"
 
-bool pingDone = false;
+bool pingStart = false;
+bool pingWorking = false;
+char buffer[128];
 
 static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args) {
   uint8_t ttl;
@@ -53,8 +66,12 @@ static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args) {
   esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
   esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &recv_len, sizeof(recv_len));
   esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-  Serial.printf("%ld bytes from %s icmp_seq=%d ttl=%d time=%ld ms\n", recv_len, ipaddr_ntoa((ip_addr_t *)&target_addr), seqno, ttl,
-                elapsed_time);
+
+  snprintf(buffer, sizeof(buffer), "%ld bytes from %s icmp_seq=%d ttl=%d time=%ld ms\n", recv_len,
+           ipaddr_ntoa((ip_addr_t *)&target_addr), seqno, ttl, elapsed_time);
+  Serial.print(buffer);
+  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
+  dashboard.sendUpdates();
 }
 
 static void cmd_ping_on_ping_timeout(esp_ping_handle_t hdl, void *args) {
@@ -62,7 +79,10 @@ static void cmd_ping_on_ping_timeout(esp_ping_handle_t hdl, void *args) {
   ip_addr_t target_addr;
   esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
   esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-  Serial.printf("From %s icmp_seq=%d timeout\n", ipaddr_ntoa((ip_addr_t *)&target_addr), seqno);
+  snprintf(buffer, sizeof(buffer), "From %s icmp_seq=%d timeout\n", ipaddr_ntoa((ip_addr_t *)&target_addr), seqno);
+  Serial.print(buffer);
+  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
+  dashboard.sendUpdates();
 }
 
 static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args) {
@@ -76,16 +96,22 @@ static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args) {
   esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
   uint32_t loss = (uint32_t)((1 - ((float)received) / transmitted) * 100);
   if (IP_IS_V4(&target_addr)) {
-    Serial.printf("\n--- %s ping statistics ---\n", inet_ntoa(*ip_2_ip4(&target_addr)));
+    snprintf(buffer, sizeof(buffer), "\n--- %s ping statistics ---\n", inet_ntoa(*ip_2_ip4(&target_addr)));
   } else {
-    Serial.printf("\n--- %s ping statistics ---\n", inet6_ntoa(*ip_2_ip6(&target_addr)));
+    snprintf(buffer, sizeof(buffer), "\n--- %s ping statistics ---\n", inet6_ntoa(*ip_2_ip6(&target_addr)));
   }
-  Serial.printf("%ld packets transmitted, %ld received, %ld%% packet loss, time %ldms\n", transmitted, received, loss,
-                total_time_ms);
+  Serial.print(buffer);
+  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
+  dashboard.sendUpdates();
+  snprintf(buffer, sizeof(buffer), "%ld packets transmitted, %ld received, %ld%% packet loss, time %ldms\n", transmitted, received,
+           loss, total_time_ms);
+  Serial.print(buffer);
+  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
+  dashboard.sendUpdates();
   // delete the ping sessions, so that we clean up all resources and can create a new ping session
   // we don't have to call delete function in the callback, instead we can call delete function from other tasks
   esp_ping_delete_session(hdl);
-  pingDone = true;
+  pingWorking = false;
 }
 
 static int do_ping_cmd(void) {
@@ -123,6 +149,8 @@ static int do_ping_cmd(void) {
   return 0;
 }
 
+float sliderValue = 0;
+
 void setup() {
   Serial.begin(921600);
   Serial.println("\nsetup ....  \n");
@@ -153,6 +181,27 @@ void setup() {
   esp_task_wdt_init(WDT_TIMEOUT_S, true);
   esp_task_wdt_add(NULL);
 
+  cardButton.attachCallback([&](int value) {
+    Serial.println("[cardButton] Button Callback Triggered: " + String((value == 1) ? "true" : "false"));
+    cardButton.update(value);
+    dashboard.sendUpdates();
+  });
+  cardSlider.attachCallback([&](float value) {
+    sliderValue = value;
+    Serial.println("[cardSlider] Slider Callback Triggered: " + String(value));
+    cardProgress.update(value);
+    dashboard.sendUpdates();
+  });
+  cardButtonPing.attachCallback([&](int value) {
+    if (pingStart) {
+      return;
+    }
+    pingStart = true;
+    pingWorking = false;
+    cardButtonPing.update(String((value == 1) ? "____" : "Ping"));
+    dashboard.sendUpdates();
+  });
+
   dashboard.sendUpdates();
 }
 
@@ -178,34 +227,56 @@ void testHttp() {
 
 bool done = false;
 
+int count = 0;
+
 void loop() {
   static uint16_t failCounter = 0;
   long currentTime = millis();
   wifiManager.handle();
   ElegantOTA.loop();
 
-  /*
-  if (currentTime - lastExecTime1 >= 5 * 1000) {
-    cardUptime.update(String(currentTime / (1000 * 60 * 60)) + "h");
+  if (currentTime - lastExecTime1 >= 1 * 1000) {
+    cardUptime.update(String(currentTime / (1000 * 60)) + "min");
     cardLastResetReason.update(resetReason);
     cardIpV6.update(SimpleWifiManager::hasIpV6() ? "Yes" : "No");
+
+    count++;
+    if (count > 50) {
+      count = 0;
+    }
+
+    cardHumidity.update(count + 10);
+    cardTemp.update(count - 10);
+    cardStatus1.update("Warn?", "w");
+    cardStatus2.update("Success?", "s");
     dashboard.sendUpdates();
+  }
+
+  if (pingStart && !pingWorking) {
+    Serial.println("Ping start....");
+    pingStart = false;
+    pingWorking = true; // ping end will reset this
+    do_ping_cmd();
+  }
+
+  /*
+
 
     if (SimpleWifiManager::hasIpV6()) {
       if (!done) {
         done = true;
 
         // do_ping_cmd();
-        pingDone = true;
+        pingWorking = true;
       }
-      if (pingDone) {
+      if (pingWorking) {
         Serial.println("Ping done....");
         testHttp();
-        pingDone = false;
+        pingWorking = false;
       }
     }
   }
   */
 
-  delay(250);
+  delay(5000);
 }

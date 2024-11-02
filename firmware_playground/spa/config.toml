@@ -1,0 +1,20 @@
+title = "ESP-DASH-FREE"
+googleAnalytics = ""
+disableFastRender = true
+languageCode = "en"
+defaultContentLanguage = "en"
+disableKinds = ["taxonomy"]
+
+[params]
+description = "Description"
+
+[markup]
+
+[markup.goldmark]
+
+[markup.goldmark.renderer]
+unsafe = true
+
+[security.funcs]
+getenv = ["^HUGO_", "URL", "TENANT_NAME", "SENTRY_DSN", "CONTEXT"]
+

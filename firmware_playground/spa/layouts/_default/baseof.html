@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.Language.Lang }}">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --gap: 30px;
+    }
+
+    #app { display: flex; font-family: Arial, Helvetica, sans-serif; }
+
+    aside {border-right: 2px solid gray; flex: 0 0 150px}
+    main { flex: 1; padding: var(--gap);}
+
+    @media (max-width: 768px) {
+      #app {flex-direction: column;}
+      aside { order: 2; }
+      main { order: 1; }
+    }
+
+    @media (max-width: 990px) {
+      .cards {grid-template-columns: 1fr 1fr;}
+    }
+
+    @media (max-width: 768px) {
+      .cards {grid-template-columns: 1fr;}
+    }
+
+    .cards {display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: var(--gap);}
+    .card.appendable {
+      grid-column: span 4;
+    }
+    .card.appendable textarea {
+      width: 100%;
+      resize: none;
+    }
+
+    .card { position: relative; border-radius: 9px;  border: 2px solid gray; padding: 7px; }
+    .card h5 { margin: 0; }
+    .card p { margin: 0; }
+    .card i {display: flex; align-items: center; float: left; width: 50px; height: 100%; font-size:30px; font-style: normal;}
+
+    button {
+      display: inline-block;
+      cursor: pointer;
+      font-weight: 400;
+      color: #fff;
+      text-align: center;
+      vertical-align: middle;
+      user-select: none;
+      background-color: #007bff;
+      border: 1px solid #007bff;
+      padding: 0.375rem 0.75rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      border-radius: 0.25rem;
+      transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    button:hover {
+      color: #fff;
+      background-color: #0056b3;
+      border-color: #004085;
+    }
+
+    button:focus, button.focus {
+      outline: 0;
+      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    button:disabled, button.disabled {
+      opacity: 0.65;
+    }
+
+    dl {
+      margin: 0;
+      padding: 0;
+      font-size: 0.875rem;
+    }
+
+    dt {
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+
+    dd {
+      margin: 0 0 1rem 0;
+      padding-left: 1rem;
+    }
+  </style>
+</head>
+
+
+<body class="show-loader">
+
+  {{ block "main" . }}{{ end }}
+
+  <script>
+    window.LOCALE = {{ .Site.Language.Lang }}
+  </script>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  {{ $shims := dict "vue" "scripts/shims/vue.js" }}
+
+  {{ $options := (dict
+  "sourcemap" "inline"
+  "shims" $shims
+  ) }}
+
+
+  {{ $appBundle := resources.Get "scripts/main.js" | js.Build $options }}
+
+  <script>{{ $appBundle.Content | safeJS }}</script>
+
+
+
+</body>
+
+</html>
+

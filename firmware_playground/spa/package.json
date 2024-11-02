@@ -1,0 +1,12 @@
+{
+  "name": "esp-dash-free",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "hugo server --renderToMemory=true",
+    "build": "hugo"
+  },
+  "author": "Samo 4",
+  "license": "ISC"
+}

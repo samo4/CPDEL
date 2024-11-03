@@ -48,7 +48,6 @@ export default {
       })
       ctx.stroke()
 
-      // Draw X-axis legend
       ctx.fillStyle = 'black'
       ctx.textAlign = 'center'
       ctx.font = '12px Arial'
@@ -59,7 +58,6 @@ export default {
         ctx.fillText(xLabels[index], x, canvas.height - 5)
       })
 
-      // Draw Y-axis legend
       const yLabels = [minY, maxY]
       const yPositions = [canvas.height - padding, padding]
       yLabels.forEach((label, index) => {

@@ -39,6 +39,7 @@ export default App = {
               id: card.id,
               name: card.n,
               type: t,
+              symbol: card.s,
               value: t == 'appendable' ? '' : card.v,
               ...(card.min !== undefined && { min: card.min }),
               ...(card.max !== undefined && { max: card.max }),

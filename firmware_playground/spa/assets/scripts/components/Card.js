@@ -23,9 +23,13 @@ export default Card = {
     <p>{{ card.value }} <small>{{ card.symbol }}</small></p>
   </div>
   <div class="card" v-else-if="card.type=='status'">
-    <i>📶</i>
+    <i v-if="card.symbol==='i'">💤</i>
+    <i v-else-if="card.symbol==='w'">🟡</i>
+    <i v-else-if="card.symbol==='s'">✅</i>
+    <i v-else-if="card.symbol==='d'">⚠️</i>
+    <i v-else>❓</i>
     <h5>{{ card.name }}</h5>
-    <p>{{ card.value }} <small>{{ card.symbol }}</small></p>
+    <p>{{ card.value }}</p>
   </div>
   <div class="card" v-else-if="card.type=='progress'">
     <i>📊</i>

@@ -37,15 +37,21 @@ Card cardProgress(&dashboard, PROGRESS_CARD, "Progress", "", 0, 100);
 Card cardLog(&dashboard, GENERIC_CARD, "Log");
 Card cardButtonPing(&dashboard, BUTTON_CARD, "Ping");
 
-Chart chart1(&dashboard, BAR_CHART, "Chart Name");
-String XAxis[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+Chart chart1(&dashboard, BAR_CHART, "chart1");
+Chart chart2(&dashboard, BAR_CHART, "LineChart");
 
-constexpr int sizeOfChart1 = sizeof(XAxis) / sizeof(XAxis[0]);
+String XAxis1[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+int XAxis2[] = {100, 200, 300, 600, 900, 1800, 2600, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000};
 
-int YAxis[sizeOfChart1] = {0, 0, 0, 0, 0, 0, 0};
+constexpr int sizeOfChart1 = sizeof(XAxis1) / sizeof(XAxis1[0]);
+constexpr int sizeOfChart2 = sizeof(XAxis2) / sizeof(XAxis2[0]);
+
+int YAxis1[sizeOfChart1] = {0, 0, 0, 0, 0, 0, 0};
+int YAxis2[sizeOfChart2] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
 String resetReason;
-int count = 0;
+int count1 = 0;
+int count2 = 0;
 
 void pingCallback(const char *message, const uint32_t value) {
   if (message != nullptr && message[0] != '\0') {
@@ -54,11 +60,17 @@ void pingCallback(const char *message, const uint32_t value) {
   }
 
   if (value > 1) {
-    count++;
-    YAxis[count - 1] = (int)value;
-    chart1.updateY(YAxis, sizeOfChart1);
-    if (count > sizeOfChart1) {
-      count = 0;
+    count1++;
+    count2++;
+    YAxis1[count1 - 1] = (int)value;
+    YAxis2[count2 - 1] = (int)value;
+    chart1.updateY(YAxis1, sizeOfChart1);
+    chart2.updateY(YAxis2, sizeOfChart2);
+    if (count1 + 1 > sizeOfChart1) {
+      count1 = 0;
+    }
+    if (count2 + 1 > sizeOfChart2) {
+      count2 = 0;
     }
   }
   dashboard.sendUpdates();
@@ -67,10 +79,6 @@ void pingCallback(const char *message, const uint32_t value) {
 Ping ping(pingCallback);
 
 constexpr int WDT_TIMEOUT_S = 3 * 60 * 60;
-
-// #include "argtable3/argtable3.h"
-// #include "esp_console.h"
-// #include "esp_event.h"
 
 #include "apple_touch_icon.h"
 #include "favicon.h"
@@ -129,8 +137,11 @@ void setup() {
     dashboard.sendUpdates();
   });
 
-  chart1.updateX(XAxis, sizeof(XAxis) / sizeof(XAxis[0]));
-  chart1.updateY(YAxis, sizeof(YAxis) / sizeof(YAxis[0]));
+  chart1.updateX(XAxis1, sizeOfChart1);
+  chart1.updateY(YAxis1, sizeOfChart1);
+
+  chart2.updateX(XAxis2, sizeOfChart2);
+  chart2.updateY(YAxis2, sizeOfChart2);
 
   dashboard.sendUpdates();
 }
@@ -147,8 +158,8 @@ void loop() {
     cardUptime.update(String(currentTime / (1000 * 60)) + "min");
     cardLastResetReason.update(resetReason);
     cardIpV6.update(SimpleWifiManager::hasIpV6() ? "Yes" : "No");
-    cardHumidity.update(count);
-    cardTemp.update(count);
+    cardHumidity.update(count1);
+    cardTemp.update(count2);
     cardStatus1.update("Warn?", "w");
     cardStatus2.update("Success?", "s");
     dashboard.sendUpdates();

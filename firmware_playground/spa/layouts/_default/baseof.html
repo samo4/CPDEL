@@ -14,7 +14,7 @@
     #app { display: flex; font-family: Arial, Helvetica, sans-serif; }
 
     aside {border-right: 2px solid gray; flex: 0 0 150px}
-    main { flex: 1; padding: var(--gap);}
+    main { flex: 1; padding: var(--gap); background-color: #f8f8f8;}
 
     @media (max-width: 768px) {
       #app {flex-direction: column;}
@@ -30,7 +30,7 @@
       .cards {grid-template-columns: 1fr;}
     }
 
-    .cards {display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: var(--gap);}
+    .cards {display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: var(--gap); }
     .card.appendable {
       grid-column: span 4;
     }
@@ -39,9 +39,9 @@
       resize: none;
     }
 
-    .card { position: relative; border-radius: 9px;  border: 2px solid gray; padding: 7px; }
-    .card h5 { margin: 0; }
-    .card p { margin: 0; }
+    .card { position: relative; border-radius: 9px;  border: 2px solid #f0f0f0; padding: 7px; background-color: #FFF; }
+    .card h5 { margin: 0; color: #9CADAF }
+    .card p { margin: 0; color: #666 }
     .card i {display: flex; align-items: center; float: left; width: 50px; height: 100%; font-size:30px; font-style: normal;}
 
     button {

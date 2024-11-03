@@ -1,8 +1,11 @@
 import { nextTick, ref, toRef, toRefs, computed, defineComponent, watch, reactive, onMounted, inject, onBeforeUnmount } from 'vue'
 
+import Line from './Line'
+import Bar from './Bar'
 import wsService from '../websocketService'
 
 export default Card = {
+  components: { Bar, Line },
   template: `
   <div class="card" v-if="card.type=='generic'" ref="cardEl">
     <i>📋</i>
@@ -45,7 +48,15 @@ export default Card = {
   </div>
   <div class="card appendable" v-else-if="card.type=='appendable'" ref="cardEl">
     <h5>{{ card.name }}</h5>
-    <textarea disabled rows=10>{{ card.value }}</textarea>
+    <textarea ref="textareaEl" disabled rows=10>{{ card.value }}</textarea>
+  </div>
+  <div class="card chart" v-else-if="card.type=='bar'" ref="cardEl">
+    <h5>{{ card.name }}</h5>
+    <Bar :x="card.x" :y="card.y" />
+  </div>
+  <div class="card chart" v-else-if="card.type=='line'" ref="cardEl">
+    <h5>{{ card.name }}</h5>
+    <Line :x="card.x" :y="card.y" />
   </div>
   <div class="card" v-else>
     <i>❓</i>
@@ -57,6 +68,8 @@ export default Card = {
     card: { type: Object, required: true }
   },
   setup(props) {
+    const textareaEl = ref(null)
+
     const clickButton = () => {
       wsService.sendMessage({ command: 'button:clicked', id: props.card.id, value: props.card.value ? 0 : 1 })
     }
@@ -65,7 +78,14 @@ export default Card = {
       wsService.sendMessage({ command: 'slider:changed', id: props.card.id, value: props.card.value })
     }
 
+    watch(() => props.card.value, (newValue) => {
+      if (textareaEl.value) {
+        textareaEl.value.scrollTop = textareaEl.value.scrollHeight
+      }
+    })
+
     return {
+      textareaEl,
       changeSlider,
       clickButton
     }

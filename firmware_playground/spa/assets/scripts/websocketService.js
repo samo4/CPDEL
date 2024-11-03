@@ -24,8 +24,8 @@ class WebSocketService {
     }
 
     this.socket.onmessage = message => {
-      this.eventTarget.dispatchEvent(new CustomEvent('message',
-        { detail: JSON.parse(message.data) }))
+      const e = new CustomEvent('message',{ detail: JSON.parse(message.data) })
+      this.eventTarget.dispatchEvent(e)
     }
   }
 

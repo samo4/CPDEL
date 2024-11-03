@@ -12,7 +12,7 @@ export default App = {
   </aside>
   <main>
     <div class="cards">
-      <Card v-for="card in cards" :card="card" />
+      <Card v-for="card in [...charts, ...cards]" :card="card" />
     </div>
   </main>
 
@@ -20,6 +20,7 @@ export default App = {
   setup() {
 
     const cards = ref([])
+    const charts = ref([])
     const stats = ref([])
     let pingInterval = null
 
@@ -27,12 +28,11 @@ export default App = {
       wsService.connect()
       wsService.onMessage(m => {
         if (m.detail.command === "update:layout:begin") {
-          // console.log('Begin update', m.detail)
         } else if (m.detail.command === "update:layout:next") {
           if (m.detail.cards) {
             cards.value = m.detail.cards.map(card => {
               let t = card.t
-              if (typeof card.v === 'string' && card.n.startsWith('Log')) {
+              if (card.n.startsWith('Log')) {
                 t = 'appendable'
               }
               return {
@@ -50,21 +50,46 @@ export default App = {
               name: card.k,
               value: card.v
             }})
+          } else if (m.detail.charts) {
+            charts.value = m.detail.charts.map(chart => {
+              let type = chart.t
+              if (chart.n.startsWith('Line')) {
+                type = 'line'
+              }
+              return {
+                id: chart.id,
+                name: chart.n,
+                type,
+                x: chart.x,
+                y: chart.y
+              }
+            })
           }
         } else if (m.detail.command === "update:components") {
           if (m.detail.cards) {
             m.detail.cards.forEach(card => {
               const cardToUpdate = cards.value.find(c => c.id === card.id)
-              if (cardToUpdate) {
-                console.log("card")
-                if (cardToUpdate.type === 'appendable') {
-                  cardToUpdate.value += card.v
-                } else {
-                  cardToUpdate.value = card.v
-                }
-
+              if (!cardToUpdate) {
+                return
+              }
+              if (cardToUpdate.type === 'appendable') {
+                cardToUpdate.value += card.v
               } else {
-                console.error('Card not found', card.id)
+                cardToUpdate.value = card.v
+              }
+            })
+          }
+          if (m.detail.charts) {
+            m.detail.charts.forEach(chart => {
+              const chartToUpdate = charts.value.find(c => c.id === chart.id)
+              if (!chartToUpdate) {
+                return
+              }
+              if (chart.x) {
+                chartToUpdate.x = chart.x
+              }
+              if (chart.y) {
+                chartToUpdate.y = chart.y
               }
             })
           }
@@ -93,7 +118,8 @@ export default App = {
 
     return {
       stats,
-      cards
+      cards,
+      charts
     }
   }
 }

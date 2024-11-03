@@ -1,10 +1,6 @@
 #pragma once
 
 #include "ping/ping_sock.h"
-
-#include <Arduino.h>
-// #include "lwip/inet.h"
-
 #include <cstdarg>
 #include <cstdio>
 
@@ -97,7 +93,6 @@ void Ping::onPingSuccess(esp_ping_handle_t hdl, void *args) {
                 elapsed_time);
 
   if (ping->callback) {
-    Serial.println(elapsed_time);
     ping->callback("", elapsed_time);
   }
 }

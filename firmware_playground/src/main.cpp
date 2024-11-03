@@ -6,6 +6,7 @@
 // doesn't work here.. change in ElegantOTA.h: #define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
 
 #include "main.h"
+#include "Ping.hpp"
 #include "SimpleWifiManager.hpp"
 #include "esp32_utils.h"
 #include <Arduino.h>
@@ -20,6 +21,7 @@ WiFiClient network;
 
 AsyncWebServer server(80);
 ESPDash dashboard(&server);
+
 Card cardUptime(&dashboard, GENERIC_CARD, "Uptime");
 Card cardLastResetReason(&dashboard, GENERIC_CARD, "Last reset reason");
 Card cardIpV6(&dashboard, GENERIC_CARD, "ipv6");
@@ -35,119 +37,45 @@ Card cardProgress(&dashboard, PROGRESS_CARD, "Progress", "", 0, 100);
 Card cardLog(&dashboard, GENERIC_CARD, "Log");
 Card cardButtonPing(&dashboard, BUTTON_CARD, "Ping");
 
+Chart chart1(&dashboard, BAR_CHART, "Chart Name");
+String XAxis[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+
+constexpr int sizeOfChart1 = sizeof(XAxis) / sizeof(XAxis[0]);
+
+int YAxis[sizeOfChart1] = {0, 0, 0, 0, 0, 0, 0};
+
 String resetReason;
+int count = 0;
+
+void pingCallback(const char *message, const uint32_t value) {
+  if (message != nullptr && message[0] != '\0') {
+    Serial.println(message);
+    cardLog.update(message);
+  }
+
+  if (value > 1) {
+    count++;
+    YAxis[count - 1] = (int)value;
+    chart1.updateY(YAxis, sizeOfChart1);
+    if (count > sizeOfChart1) {
+      count = 0;
+    }
+  }
+  dashboard.sendUpdates();
+}
+
+Ping ping(pingCallback);
+
 constexpr int WDT_TIMEOUT_S = 3 * 60 * 60;
 
-#include "argtable3/argtable3.h"
-#include "esp_console.h"
-#include "esp_event.h"
-#include "lwip/inet.h"
-#include "lwip/netdb.h"
-#include "lwip/sockets.h"
-#include "nvs_flash.h"
-#include "ping/ping_sock.h"
-#define EXAMPLE_PING_INTERVAL 2
-#define EXAMPLE_PING_COUNT 2
+// #include "argtable3/argtable3.h"
+// #include "esp_console.h"
+// #include "esp_event.h"
 
 #include "apple_touch_icon.h"
 #include "favicon.h"
 
 bool pingStart = false;
-bool pingWorking = false;
-char buffer[128];
-
-static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args) {
-  uint8_t ttl;
-  uint16_t seqno;
-  uint32_t elapsed_time, recv_len;
-  ip_addr_t target_addr;
-  esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_TTL, &ttl, sizeof(ttl));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &recv_len, sizeof(recv_len));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-
-  snprintf(buffer, sizeof(buffer), "%ld bytes from %s icmp_seq=%d ttl=%d time=%ld ms\n", recv_len,
-           ipaddr_ntoa((ip_addr_t *)&target_addr), seqno, ttl, elapsed_time);
-  Serial.print(buffer);
-  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
-  dashboard.sendUpdates();
-}
-
-static void cmd_ping_on_ping_timeout(esp_ping_handle_t hdl, void *args) {
-  uint16_t seqno;
-  ip_addr_t target_addr;
-  esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-  snprintf(buffer, sizeof(buffer), "From %s icmp_seq=%d timeout\n", ipaddr_ntoa((ip_addr_t *)&target_addr), seqno);
-  Serial.print(buffer);
-  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
-  dashboard.sendUpdates();
-}
-
-static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args) {
-  ip_addr_t target_addr;
-  uint32_t transmitted;
-  uint32_t received;
-  uint32_t total_time_ms;
-  esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-  uint32_t loss = (uint32_t)((1 - ((float)received) / transmitted) * 100);
-  if (IP_IS_V4(&target_addr)) {
-    snprintf(buffer, sizeof(buffer), "\n--- %s ping statistics ---\n", inet_ntoa(*ip_2_ip4(&target_addr)));
-  } else {
-    snprintf(buffer, sizeof(buffer), "\n--- %s ping statistics ---\n", inet6_ntoa(*ip_2_ip6(&target_addr)));
-  }
-  Serial.print(buffer);
-  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
-  dashboard.sendUpdates();
-  snprintf(buffer, sizeof(buffer), "%ld packets transmitted, %ld received, %ld%% packet loss, time %ldms\n", transmitted, received,
-           loss, total_time_ms);
-  Serial.print(buffer);
-  cardLog.update(buffer); // note that if the string is exactly the same, there will be no update
-  dashboard.sendUpdates();
-  // delete the ping sessions, so that we clean up all resources and can create a new ping session
-  // we don't have to call delete function in the callback, instead we can call delete function from other tasks
-  esp_ping_delete_session(hdl);
-  pingWorking = false;
-}
-
-static int do_ping_cmd(void) {
-  esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
-  static esp_ping_handle_t ping;
-
-  config.interval_ms = (uint32_t)(EXAMPLE_PING_INTERVAL * 1000);
-  config.count = (uint32_t)(EXAMPLE_PING_COUNT);
-
-  ip6_addr_t target_addr6;
-  // const char *ipv6_str = "2001:4860:4860::8888";
-  const char *ipv6_str = "2620:0:ccd::2";
-  if (!ip6addr_aton(ipv6_str, &target_addr6)) {
-    Serial.println("Invalid IPv6 address");
-    return -1;
-  }
-
-  ip_addr_t target_addr;
-  target_addr.type = IPADDR_TYPE_V6;
-  target_addr.u_addr.ip6 = target_addr6;
-
-  Serial.printf(IPV6STR "\n", IPV62STR(target_addr.u_addr.ip6));
-  Serial.printf("Type %d\n", target_addr.type);
-
-  config.target_addr = target_addr;
-
-  esp_ping_callbacks_t cbs = {.cb_args = NULL,
-                              .on_ping_success = cmd_ping_on_ping_success,
-                              .on_ping_timeout = cmd_ping_on_ping_timeout,
-                              .on_ping_end = cmd_ping_on_ping_end};
-
-  esp_ping_new_session(&config, &cbs, &ping);
-  esp_ping_start(ping);
-
-  return 0;
-}
 
 float sliderValue = 0;
 
@@ -197,15 +125,43 @@ void setup() {
       return;
     }
     pingStart = true;
-    pingWorking = false;
     cardButtonPing.update(String((value == 1) ? "____" : "Ping"));
     dashboard.sendUpdates();
   });
+
+  chart1.updateX(XAxis, sizeof(XAxis) / sizeof(XAxis[0]));
+  chart1.updateY(YAxis, sizeof(YAxis) / sizeof(YAxis[0]));
 
   dashboard.sendUpdates();
 }
 
 long lastExecTime1 = 0;
+
+void loop() {
+  static uint16_t failCounter = 0;
+  long currentTime = millis();
+  wifiManager.handle();
+  ElegantOTA.loop();
+
+  if (currentTime - lastExecTime1 >= 1 * 1000) {
+    cardUptime.update(String(currentTime / (1000 * 60)) + "min");
+    cardLastResetReason.update(resetReason);
+    cardIpV6.update(SimpleWifiManager::hasIpV6() ? "Yes" : "No");
+    cardHumidity.update(count);
+    cardTemp.update(count);
+    cardStatus1.update("Warn?", "w");
+    cardStatus2.update("Success?", "s");
+    dashboard.sendUpdates();
+  }
+
+  if (pingStart) {
+    Serial.println("Ping start....");
+    ping.ping6("2620:0:ccd::2", 20); //"2001:4860:4860::8888";
+    pingStart = false;
+  }
+
+  delay(5000);
+}
 
 void testHttp() {
   Serial.println("Testing HTTP....");
@@ -223,60 +179,4 @@ void testHttp() {
   }
   http.end();
   Serial.println("HTTP test done....");
-}
-
-bool done = false;
-
-int count = 0;
-
-void loop() {
-  static uint16_t failCounter = 0;
-  long currentTime = millis();
-  wifiManager.handle();
-  ElegantOTA.loop();
-
-  if (currentTime - lastExecTime1 >= 1 * 1000) {
-    cardUptime.update(String(currentTime / (1000 * 60)) + "min");
-    cardLastResetReason.update(resetReason);
-    cardIpV6.update(SimpleWifiManager::hasIpV6() ? "Yes" : "No");
-
-    count++;
-    if (count > 50) {
-      count = 0;
-    }
-
-    cardHumidity.update(count + 10);
-    cardTemp.update(count - 10);
-    cardStatus1.update("Warn?", "w");
-    cardStatus2.update("Success?", "s");
-    dashboard.sendUpdates();
-  }
-
-  if (pingStart && !pingWorking) {
-    Serial.println("Ping start....");
-    pingStart = false;
-    pingWorking = true; // ping end will reset this
-    do_ping_cmd();
-  }
-
-  /*
-
-
-    if (SimpleWifiManager::hasIpV6()) {
-      if (!done) {
-        done = true;
-
-        // do_ping_cmd();
-        pingWorking = true;
-      }
-      if (pingWorking) {
-        Serial.println("Ping done....");
-        testHttp();
-        pingWorking = false;
-      }
-    }
-  }
-  */
-
-  delay(5000);
 }

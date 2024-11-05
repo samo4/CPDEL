@@ -11,9 +11,14 @@
       --gap: 30px;
     }
 
-    #app { display: flex; font-family: Arial, Helvetica, sans-serif; }
+    * {box-sizing: border-box;}
 
-    aside {border-right: 2px solid gray; flex: 0 0 150px}
+    html,
+    body {height: 100%; padding: 0; margin: 0;}
+
+    #app { display: flex; height: 100%; font-family: Arial, Helvetica, sans-serif; }
+
+    aside {border-right: 2px solid gray; flex: 0 0 150px; padding: 15px;}
     main { flex: 1; padding: var(--gap); background-color: #f8f8f8;}
 
     @media (max-width: 768px) {
@@ -22,6 +27,26 @@
       main { order: 1; }
     }
 
+    .cards {display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
+    .cards > * {
+      grid-column: span 1;
+    }
+    .cards > .appendable {
+      grid-column: 1 / -1;
+    }
+    .card.appendable textarea {
+      width: 100%;
+      resize: none;
+    }
+
+    .card {display: flex; align-items: center; gap: 10px; position: relative; border-radius: 9px;  border: 2px solid #f0f0f0; padding: 7px; background-color: #FFF; }
+    .card.chart {display: block;}
+    .card h5 { margin: 0 0 5px; color: #9CADAF }
+    .card p { margin: 0; color: #666 }
+    .card i { flex-shrink: 0; display: flex; align-items: center; grid-row: 1 / span 2; height: 100%; font-size:30px; font-style: normal; }
+    .card canvas { width: 100%; }
+    .text-group {flex: 1;}
+
     @media (max-width: 990px) {
       .cards {grid-template-columns: 1fr 1fr;}
     }
@@ -29,20 +54,6 @@
     @media (max-width: 768px) {
       .cards {grid-template-columns: 1fr;}
     }
-
-    .cards {display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: var(--gap); }
-    .card.appendable {
-      grid-column: span 4;
-    }
-    .card.appendable textarea {
-      width: 100%;
-      resize: none;
-    }
-
-    .card { position: relative; border-radius: 9px;  border: 2px solid #f0f0f0; padding: 7px; background-color: #FFF; }
-    .card h5 { margin: 0; color: #9CADAF }
-    .card p { margin: 0; color: #666 }
-    .card i {display: flex; align-items: center; float: left; width: 50px; height: 100%; font-size:30px; font-style: normal;}
 
     button {
       display: inline-block;
@@ -90,6 +101,10 @@
     dd {
       margin: 0 0 1rem 0;
       padding-left: 1rem;
+    }
+
+    progress {
+        width: 100%;
     }
   </style>
 </head>

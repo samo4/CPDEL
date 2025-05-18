@@ -12,6 +12,10 @@
 #include "time.h"
 #include <Arduino.h>
 
+#include "lvgl_integration.h"
+#include <TFT_eSPI.h>
+#include <lvgl.h>
+
 #include <ESPDash.h>
 #include <ElegantOTA.h>
 #include <WiFi.h>
@@ -44,6 +48,25 @@ constexpr int WDT_TIMEOUT_S = 3 * 60 * 60;
 constexpr size_t OUTPUT_SIZE = 32;
 constexpr long DELAY_BY_MS = 90 * 60 * 1000;
 
+SemaphoreHandle_t xSemaphore = xSemaphoreCreateMutex();
+
+void xLvTickTask(void *pvParameters) {
+  const int tick_period_ms = 5;
+  while (1) {
+    lv_tick_inc(tick_period_ms);
+    vTaskDelay(tick_period_ms / portTICK_PERIOD_MS);
+  }
+}
+
+void xLvTaskHandler(void *pvParameters) {
+  while (1) {
+    xSemaphoreTake(xSemaphore, portMAX_DELAY);
+    lv_task_handler();
+    xSemaphoreGive(xSemaphore);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
+}
+
 void printLocalTime(void);
 
 void setup() {
@@ -69,6 +92,14 @@ void setup() {
   server.begin();
   Serial.println("HTTP server started");
 
+  lvgl_begin();
+  Serial.println("tasks....");
+  xTaskCreate(xLvTaskHandler, "LV handler", 4096, NULL, tskIDLE_PRIORITY + 2, NULL);
+  xTaskCreate(xLvTickTask, "LV Tick", 512, NULL, tskIDLE_PRIORITY + 5,
+              NULL); // lv_tick_inc should be called in a higher priority routine than lv_task_handler() (e.g. in an interrupt)
+  // lv_disp_load_scr(ScreenInit);
+  // Serial.println("done ScreenInit.");
+
   esp_register_shutdown_handler([]() {
     Serial.println("Shutting down...");
     // modbusClient.end();
@@ -81,6 +112,7 @@ void setup() {
   configTime(-2, 3600, "pool.ntp.org"); // zone, dst
   delay(15000);
 
+  cardVersion.update(GIT_HASH);
   dashboard.sendUpdates();
 }
 
@@ -96,9 +128,9 @@ void loop() {
     cardUptime.update(String(currentTime / (1000 * 60 * 60)) + "h ");
     cardLastResetReason.update(resetReason);
     cardIpV6.update(SimpleWifiManager::hasIpV6() ? "Yes" : "No");
-    cardVersion.update(GIT_HASH);
     dashboard.sendUpdates();
   }
+  delay(750);
 }
 
 void printLocalTime() {

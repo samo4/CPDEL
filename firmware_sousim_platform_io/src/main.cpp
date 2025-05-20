@@ -12,9 +12,9 @@
 #include "time.h"
 #include <Arduino.h>
 
+// #include "SouSim_ui.h"
 #include "lvgl_integration.h"
-#include <TFT_eSPI.h>
-#include <lvgl.h>
+// #include <lvgl.h>
 
 #include <ESPDash.h>
 #include <ElegantOTA.h>
@@ -37,6 +37,8 @@ Card cardLastResetReason(&dashboard, GENERIC_CARD, "Last reset reason");
 Card cardIpV6(&dashboard, GENERIC_CARD, "ipv6");
 Card cardVersion(&dashboard, GENERIC_CARD, "Version");
 
+char buffer[40];
+
 static struct tm timeinfo;
 const int CHART_SIZE = 24;
 float YAxis[CHART_SIZE] = {0.0};
@@ -50,6 +52,10 @@ constexpr long DELAY_BY_MS = 90 * 60 * 1000;
 
 SemaphoreHandle_t xSemaphore = xSemaphoreCreateMutex();
 
+load_state_t devices[NO_DEVICES];
+uint8_t current_device_idx = 0;
+
+/*
 void xLvTickTask(void *pvParameters) {
   const int tick_period_ms = 5;
   while (1) {
@@ -66,6 +72,39 @@ void xLvTaskHandler(void *pvParameters) {
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
+
+void xDisplayDataTaskHandler(void *pvParameters) {
+  static volatile uint32_t counter = 0;
+  while (1) {
+    struct tm timeinfo;
+    getLocalTime(&timeinfo);
+    strftime(buffer, sizeof(buffer), "%H:%M:%S", &timeinfo);
+
+    xSemaphoreTake(xSemaphore, portMAX_DELAY);
+    lv_label_set_text(LabelStatus2, buffer);
+
+    sprintf(buffer, "%.2fA", devices[0].current);
+    lv_label_set_text(LabelMeasuredCurrent1, buffer);
+    sprintf(buffer, "%.2fV", devices[0].voltage);
+    lv_label_set_text(LabelMeasuredVoltage1, buffer);
+
+    sprintf(buffer, "%.2fA", devices[1].current);
+    lv_label_set_text(LabelMeasuredCurrent2, buffer);
+    sprintf(buffer, "%.2fV", devices[1].voltage);
+    lv_label_set_text(LabelMeasuredVoltage2, buffer);
+
+    sprintf(buffer, "Iset = %.2fA", devices[0].command_current);
+    lv_label_set_text(LabelSetCurrent1, buffer);
+    sprintf(buffer, "Iset = %.2fA", devices[1].command_current);
+    lv_label_set_text(LabelSetCurrent2, buffer);
+
+    sprintf(buffer, "%s/%s", devices[0].is_enabled ? "ON" : "OFF", devices[1].is_enabled ? "ON" : "OFF");
+    lv_label_set_text(LabelDebug, buffer);
+    xSemaphoreGive(xSemaphore);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+  */
 
 void printLocalTime(void);
 
@@ -94,11 +133,11 @@ void setup() {
 
   lvgl_begin();
   Serial.println("tasks....");
-  xTaskCreate(xLvTaskHandler, "LV handler", 4096, NULL, tskIDLE_PRIORITY + 2, NULL);
+  /*xTaskCreate(xLvTaskHandler, "LV handler", 4096, NULL, tskIDLE_PRIORITY + 2, NULL);
   xTaskCreate(xLvTickTask, "LV Tick", 512, NULL, tskIDLE_PRIORITY + 5,
               NULL); // lv_tick_inc should be called in a higher priority routine than lv_task_handler() (e.g. in an interrupt)
-  // lv_disp_load_scr(ScreenInit);
-  // Serial.println("done ScreenInit.");
+  BuildPages();
+  lv_disp_load_scr(ScreenInit);*/
 
   esp_register_shutdown_handler([]() {
     Serial.println("Shutting down...");
@@ -114,6 +153,11 @@ void setup() {
 
   cardVersion.update(GIT_HASH);
   dashboard.sendUpdates();
+
+  /*
+  lv_disp_load_scr(ScreenMain);
+  xTaskCreate(xDisplayDataTaskHandler, "Display handler", 12288, NULL, tskIDLE_PRIORITY + 2, NULL);
+  lv_label_set_text(LabelStatus1, "mijav");*/
 }
 
 void loop() {
@@ -125,7 +169,7 @@ void loop() {
     printLocalTime();
     lastExecTime1 = currentTime;
 
-    cardUptime.update(String(currentTime / (1000 * 60 * 60)) + "h ");
+    cardUptime.update(String(currentTime / (1000 * 60 * 60)) + "h");
     cardLastResetReason.update(resetReason);
     cardIpV6.update(SimpleWifiManager::hasIpV6() ? "Yes" : "No");
     dashboard.sendUpdates();

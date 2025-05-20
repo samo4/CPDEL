@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
 /* ----- HARDWARE ----- */
 
 #define TX1 (14)
@@ -17,3 +20,15 @@
 
 #define SERVE_DEFAULT_404()                                                                                                        \
   server.onNotFound([](AsyncWebServerRequest *request) { request->send(404, "text/plain", "Not found"); });
+
+#define NO_DEVICES (2)
+
+typedef struct _load_state_t {
+  uint8_t address;
+  bool is_enabled;
+  bool is_valid;
+  bool is_dirty;
+  float command_current;
+  float current;
+  float voltage;
+} load_state_t;

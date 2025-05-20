@@ -13,6 +13,8 @@
         "bitset": "cpp",
         "utility": "cpp",
         "*.tcc": "cpp",
-        "limits": "cpp"
+        "limits": "cpp",
+        "*.txt": "cpp",
+        "tft_espi_esp32_s3.c": "cpp"
     }
 }

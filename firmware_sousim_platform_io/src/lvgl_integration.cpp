@@ -1,10 +1,11 @@
 #include "lvgl_integration.h"
-#include <Adafruit_FT6206.h>
+// #include <Adafruit_FT6206.h>
 #include <TFT_eSPI.h>
-#include <lvgl.h>
+// #include <lvgl.h>
 
-Adafruit_FT6206 ctp = Adafruit_FT6206();
+// Adafruit_FT6206 ctp = Adafruit_FT6206();
 TFT_eSPI tft = TFT_eSPI();
+/*
 bool volatile static ctp_attention = false;
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
@@ -20,6 +21,7 @@ void tft_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) 
 
   lv_disp_flush_ready(disp);
 }
+
 
 static bool ctp_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
   if (ctp_attention && ctp.touched()) {
@@ -41,15 +43,16 @@ void IRAM_ATTR isr_ctp() { ctp_attention = true; }
 #define CTP_INT 5
 #define CTP_SDA 3
 #define CTP_SCK 4
+*/
 
 void lvgl_begin() {
-  lv_init();
+  // lv_init();
 
-  Wire.setPins(CTP_SDA, CTP_SCK);
-
-  tft.begin();
+  tft.init();
+  // tft.begin();
   tft.setRotation(1);
 
+  /* Wire.setPins(CTP_SDA, CTP_SCK);
   if (!ctp.begin(40)) {
     Serial.println("ERROR: Touch.");
   } else {
@@ -58,8 +61,10 @@ void lvgl_begin() {
     attachInterrupt(CTP_INT, isr_ctp, FALLING);
 
     Serial.println("Touch ready.");
-  }
+  }*/
 
+  tft.fillScreen(ILI9341_YELLOW);
+  /*
   lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
 
   lv_disp_drv_t disp_drv;
@@ -70,9 +75,11 @@ void lvgl_begin() {
   disp_drv.buffer = &disp_buf;
   lv_disp_drv_register(&disp_drv);
 
+
   lv_indev_drv_t indev_drv;
   lv_indev_drv_init(&indev_drv);
   indev_drv.type = LV_INDEV_TYPE_POINTER;
   indev_drv.read_cb = ctp_read;
   lv_indev_drv_register(&indev_drv);
+  */
 }

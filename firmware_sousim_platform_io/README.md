@@ -142,3 +142,8 @@ Read command: 0x04
 00 00 - The address of the first register (40108-40108 = 0x0000 )
 00 0D - number of requrired registers (13)
 84 0F - CRC checksum
+
+## Notes
+
+https://github.com/Bodmer/TFT_eSPI/discussions/2555
+https://github.com/Bodmer/TFT_eSPI

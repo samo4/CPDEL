@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 3.16)
+project(lvgl_mockup LANGUAGES C CXX)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+
+# Fetch LVGL
+include(FetchContent)
+FetchContent_Declare(
+    lvgl
+    GIT_REPOSITORY https://github.com/lvgl/lvgl.git
+    GIT_TAG v8.3.10
+)
+FetchContent_MakeAvailable(lvgl)
+
+# Fetch LVGL Drivers (SDL2 support)
+FetchContent_Declare(
+    lv_drivers
+    GIT_REPOSITORY https://github.com/lvgl/lv_drivers.git
+    GIT_TAG v8.2.0
+)
+FetchContent_MakeAvailable(lv_drivers)
+
+# Find SDL2 (Required for PC simulation)
+find_package(SDL2 CONFIG QUIET)
+if(NOT SDL2_FOUND)
+    message(FATAL_ERROR "SDL2 not found! Please install it via vcpkg:\n  > .\\vcpkg\\vcpkg install sdl2\n  > .\\vcpkg\\vcpkg integrate install")
+endif()
+
+# List sources
+file(GLOB_RECURSE UI_SOURCES "src/ui/*.c")
+add_executable(lvgl_mockup
+    src/main.c
+    ${UI_SOURCES}
+)
+
+# Include directories
+target_include_directories(lvgl_mockup PRIVATE
+    src
+    src/ui
+    ${lvgl_SOURCE_DIR}
+    ${lv_drivers_SOURCE_DIR}
+)
+
+# Link
+target_link_libraries(lvgl_mockup PRIVATE
+    lvgl::lvgl
+    lv_drivers
+    SDL2::SDL2
+    SDL2::SDL2main
+)
+
+# Configuration definitions
+target_compile_definitions(lvgl_mockup PRIVATE
+    LV_CONF_INCLUDE_SIMPLE
+    LV_LVGL_H_INCLUDE_SIMPLE
+    USE_SDL
+)

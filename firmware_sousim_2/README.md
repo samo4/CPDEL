@@ -1,38 +1,17 @@
-# LVGL PC Mockup for 2-CH DC Load
+# Sousim 2-CH DC Load
 
-## detailed Windows Prerequisites
+## Prerequisites (Windows)
 
-**1. C++ Compiler:**
+- vcpkg
+- Visual Studio with C++ workload
+- `vcpkg install sdl2`
+- `CMakeLists.txt` wil automatically download LVGL
 
-- Since you have **Visual Studio**, you already have the compiler (MSVC).
-- Ensure you have the **"Desktop development with C++"** workload installed in the Visual Studio Installer.
-- **Note:** `vcpkg` does _not_ install a valid compiler; it strictly manages libraries.
+## Building
 
-**2. SDL2 (Graphics Library):**
-The simulator needs SDL2 to create a window on Windows. The easiest way is via `vcpkg`.
-Since your previous command failed, you likely need to install `vcpkg` first:
-
-1.  Open a terminal (PowerShell or Command Prompt).
-2.  Clone vcpkg: `git clone https://github.com/microsoft/vcpkg`
-    _(If you don't have git, download from [git-scm.com](https://git-scm.com))_
-3.  Initialize it: `.\vcpkg\bootstrap-vcpkg.bat`
-4.  Install SDL2: `.\vcpkg\vcpkg install sdl2`
-5.  **Important**: Make it visible to everything: `.\vcpkg\vcpkg integrate install`
-
-**3. LVGL:**
-
-- **You do NOT need to download LVGL manually.**
-- The `CMakeLists.txt` file in this project is configured to **automatically download** the correct version of LVGL + Drivers from GitHub when you first build the project.
-
-## Building and Running with VS Code
-
-1.  Open this folder in VS Code.
-2.  Install the **"CMake Tools"** extension by Microsoft.
-3.  Reload VS Code. It should ask to configure the project.
-4.  When asked to **"Select a Kit"**, choose **Visual Studio Community/Professional 20xx Release - amd64**.
-5.  Press **F7** (or the "Build" button in the generic status bar) to build.
-    - _The first build will take a moment to download LVGL._
-6.  Press **Shift+F5** (or the "Run" button) to launch `lvgl_mockup.exe`.
+- `cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="C:/Repos/External/vcpkg/scripts/buildsystems/vcpkg.cmake"`
+- `cmake --build build`
+- run with `build\Debug\lvgl_mockup.exe`
 
 ## Project Structure
 

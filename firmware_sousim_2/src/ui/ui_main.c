@@ -73,7 +73,7 @@ static void create_channel_panel(lv_obj_t * parent, int channel_index) {
     lv_obj_set_style_bg_color(mode_badge, lv_palette_main(LV_PALETTE_ORANGE), 0);
     lv_obj_set_style_bg_opa(mode_badge, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(mode_badge, 3, 0);
-    lv_obj_align(mode_badge, LV_ALIGN_top_mid, 0, 5); // Below title
+    lv_obj_align(mode_badge, LV_ALIGN_TOP_MID, 0, 5); // Below title
 
     // ON/OFF Switch (small)
     lv_obj_t * sw = lv_switch_create(parent);

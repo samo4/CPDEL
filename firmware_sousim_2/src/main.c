@@ -1,8 +1,8 @@
 #include <stdlib.h>
-#include <unistd.h>
+// #include <unistd.h>
 #include <SDL2/SDL.h>
-#include "lvgl/lvgl.h"
-#include "lv_drivers/sdl/sdl.h"
+#include "lvgl.h"
+#include "sdl/sdl.h"
 #include "ui/ui.h"
 
 int main(int argc, char **argv)

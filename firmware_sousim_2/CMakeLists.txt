@@ -21,11 +21,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(lv_drivers)
 
+# Configure imported targets to use our local config files
+target_include_directories(lvgl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_definitions(lvgl PUBLIC LV_CONF_INCLUDE_SIMPLE)
+
+target_include_directories(lv_drivers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_definitions(lv_drivers PUBLIC LV_CONF_INCLUDE_SIMPLE USE_SDL)
+
 # Find SDL2 (Required for PC simulation)
 find_package(SDL2 CONFIG QUIET)
 if(NOT SDL2_FOUND)
     message(FATAL_ERROR "SDL2 not found! Please install it via vcpkg:\n  > .\\vcpkg\\vcpkg install sdl2\n  > .\\vcpkg\\vcpkg integrate install")
 endif()
+
+# Link SDL2 to LVGL and Drivers so they can find headers
+target_link_libraries(lvgl PUBLIC SDL2::SDL2)
+target_link_libraries(lv_drivers PUBLIC SDL2::SDL2)
 
 # List sources
 file(GLOB_RECURSE UI_SOURCES "src/ui/*.c")

@@ -9,14 +9,11 @@ void ui_create_main_screen(void) {
     lv_obj_clear_flag(ui_MainScreen, LV_OBJ_FLAG_SCROLLABLE);
 
     // Title / Status Bar
-    lv_obj_t * title_label = lv_label_create(ui_MainScreen);
-    lv_label_set_text(title_label, "2-CH Electronic Load");
-    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 10);
 
     // Settings Button (Top Right)
     lv_obj_t * settings_btn = lv_btn_create(ui_MainScreen);
-    lv_obj_set_size(settings_btn, 40, 40);
-    lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -10, 5);
+    lv_obj_set_size(settings_btn, 30, 30);
+    lv_obj_align(settings_btn, LV_ALIGN_TOP_RIGHT, -5, 5);
     lv_obj_add_event_cb(settings_btn, ui_event_navigate_settings, LV_EVENT_CLICKED, NULL);
     lv_obj_t * settings_lbl = lv_label_create(settings_btn);
     lv_label_set_text(settings_lbl, LV_SYMBOL_SETTINGS);
@@ -39,7 +36,7 @@ void ui_create_main_screen(void) {
     create_channel_panel(ch1_btn, 0);
     lv_obj_add_event_cb(ch1_btn, ui_event_channel_select, LV_EVENT_CLICKED, (void*)(intptr_t)0);
 
-    lv_obj_t * ch2_btn = lv_btn_create(cont); 
+    lv_obj_t * ch2_btn = lv_btn_create(cont);
     lv_obj_set_size(ch2_btn, 140, 180);
     create_channel_panel(ch2_btn, 1);
     lv_obj_add_event_cb(ch2_btn, ui_event_channel_select, LV_EVENT_CLICKED, (void*)(intptr_t)1);
@@ -79,7 +76,7 @@ static void create_channel_panel(lv_obj_t * parent, int channel_index) {
     lv_obj_t * sw = lv_switch_create(parent);
     lv_obj_set_size(sw, 40, 20);
     lv_obj_align(sw, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
-    
+
     // Static text "ON" helper
     lv_obj_t * sw_label = lv_label_create(parent);
     lv_label_set_text(sw_label, "Output");

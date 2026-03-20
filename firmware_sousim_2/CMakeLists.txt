@@ -4,6 +4,12 @@ project(lvgl_mockup LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
+# Optimize build time by disabling unused components
+set(LV_BUILD_EXAMPLES OFF CACHE BOOL "Disable examples" FORCE)
+set(LV_BUILD_DEMOS OFF CACHE BOOL "Disable demos" FORCE)
+# Also commonly used
+set(LV_USE_DEMO_WIDGETS OFF CACHE BOOL "Disable demo widgets" FORCE)
+
 # Fetch LVGL
 include(FetchContent)
 FetchContent_Declare(

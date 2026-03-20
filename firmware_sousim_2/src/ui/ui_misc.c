@@ -3,10 +3,10 @@
 // --- Graph Screen ---
 void ui_create_graph_screen(void) {
     ui_GraphScreen = lv_obj_create(NULL);
-    
+
     // Back Button
     lv_obj_t * back_btn = lv_btn_create(ui_GraphScreen);
-    lv_obj_set_size(back_btn, 80, 40);
+    lv_obj_set_size(back_btn, 60, 30);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
     lv_obj_add_event_cb(back_btn, ui_event_navigate_back, LV_EVENT_CLICKED, NULL); // Go back to main for now
     lv_obj_t * back_lbl = lv_label_create(back_btn);
@@ -36,7 +36,7 @@ void ui_create_settings_screen(void) {
 
     // Back Button
     lv_obj_t * back_btn = lv_btn_create(ui_SettingsScreen);
-    lv_obj_set_size(back_btn, 80, 40);
+    lv_obj_set_size(back_btn, 60, 30);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
     lv_obj_add_event_cb(back_btn, ui_event_navigate_back, LV_EVENT_CLICKED, NULL);
 
@@ -46,7 +46,7 @@ void ui_create_settings_screen(void) {
 
     lv_obj_t * title = lv_label_create(ui_SettingsScreen);
     lv_label_set_text(title, "General Settings");
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 5);
 
     // List of settings
     lv_obj_t * list = lv_list_create(ui_SettingsScreen);

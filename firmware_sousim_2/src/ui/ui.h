@@ -29,6 +29,10 @@ extern "C"
     } channel_data_t;
 
     extern channel_data_t channels[2];
+    extern int current_channel_index;
+
+
+    extern channel_data_t channels[2];
     extern int current_channel_index; // 0 or 1
 
     // UI Initialization

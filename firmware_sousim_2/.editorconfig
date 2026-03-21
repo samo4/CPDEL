@@ -5,11 +5,13 @@ root = true
 
 # Unix-style newlines with a newline ending every file
 [*]
+guidelines = 120 dashed
+max_line_length = 132
 end_of_line = lf
 insert_final_newline = true
 charset = utf-8
 indent_style = space
-indent_size = 4
+indent_size = 2
 
 [*.{c,h,cpp,hpp,cc,hh}]
 indent_style = space

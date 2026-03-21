@@ -135,7 +135,7 @@ void ui_create_channel_detail_screen(void) {
     lv_label_set_text(l_mode, "Control Mode");
 
     mode_dd = lv_dropdown_create(r1);
-    lv_dropdown_set_options(mode_dd, "CV (Const. Voltage)\nCC (Const. Current)");
+    lv_dropdown_set_options(mode_dd, "CV\nCC");
     lv_obj_set_width(mode_dd, 160);
     lv_obj_add_event_cb(mode_dd, event_mode_change, LV_EVENT_VALUE_CHANGED, NULL);
 

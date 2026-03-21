@@ -7,21 +7,19 @@
 
 int main(int argc, char **argv)
 {
-    (void)argc; /*Unused*/
-    (void)argv; /*Unused*/
+    (void)argc;
+    (void)argv;
 
-    /*Initialize LVGL*/
     lv_init();
 
-    /*Initialize the HAL (display, input devices, tick)*/
+    // Initialize the HAL (display, input devices, tick)
     sdl_init();
 
-    /*Create a display buffer*/
     static lv_disp_draw_buf_t disp_buf1;
     static lv_color_t buf1_1[320 * 10];
     lv_disp_draw_buf_init(&disp_buf1, buf1_1, NULL, 320 * 10);
 
-    /*Create a display*/
+    // display driver
     static lv_disp_drv_t disp_drv;
     lv_disp_drv_init(&disp_drv);
     disp_drv.draw_buf = &disp_buf1;
@@ -31,17 +29,16 @@ int main(int argc, char **argv)
 
     lv_disp_t * disp = lv_disp_drv_register(&disp_drv); // Register display driver
 
-    /*Add an input device driver (Mouse)*/
+    // mouse
     static lv_indev_drv_t indev_drv;
     lv_indev_drv_init(&indev_drv);
     indev_drv.type = LV_INDEV_TYPE_POINTER;
     indev_drv.read_cb = sdl_mouse_read;
     lv_indev_drv_register(&indev_drv);
 
-    /* Initialize UI */
     ui_init();
 
-    /*Handle LitlevGL tasks (tickless mode)*/
+    // Handle LitlevGL tasks (tickless mode)
     while(1) {
         lv_timer_handler();
         SDL_Delay(5);

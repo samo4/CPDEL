@@ -1,18 +1,61 @@
-#include <stdlib.h>
-// #include <unistd.h>
 #include <SDL2/SDL.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <windows.h>
+#include "FreeRTOS.h"
 #include "lvgl.h"
 #include "sdl/sdl.h"
+#include "task.h"
 #include "ui/ui.h"
 
-int main(int argc, char **argv)
-{
+static void heartbeat_task(void *param) {
+    (void)param;
+    for (;;) {
+        printf("[heartbeat] tick, free heap: %u bytes\n", (unsigned)xPortGetFreeHeapSize());
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
+/* FreeRTOS scheduler runs in a background Windows thread so the main thread
+   keeps ownership of SDL — SDL2 requires all rendering on the thread that
+   created the window. App logic tasks go here. */
+static DWORD WINAPI freertos_scheduler_thread(LPVOID param) {
+    (void)param;
+    vTaskStartScheduler();
+    return 0;
+}
+
+/*
+how this will look in ESP32:
+
+FreeRTOS is already running when app_main is called — no vTaskStartScheduler().
+The display flush callback writes over SPI instead of SDL, but ui_init() and all task logic are identical to the
+simulator.
+
+static void lvgl_task(void *param) {
+    (void)param;
+    for (;;) {
+        lv_timer_handler();
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+
+void app_main(void) {
+    lv_init();
+    ui_init();
+    xTaskCreate(lvgl_task, "LVGL", 4096, NULL, 5, NULL);
+    xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);
+}
+*/
+
+int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
     lv_init();
 
-    // Initialize the HAL (display, input devices, tick)
+    // Initialize the HAL (display, input devices, tick) — stays on main thread
     sdl_init();
 
     static lv_disp_draw_buf_t disp_buf1;
@@ -27,7 +70,7 @@ int main(int argc, char **argv)
     disp_drv.hor_res = 320;
     disp_drv.ver_res = 240;
 
-    lv_disp_t * disp = lv_disp_drv_register(&disp_drv); // Register display driver
+    lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
 
     // mouse
     static lv_indev_drv_t indev_drv;
@@ -38,8 +81,13 @@ int main(int argc, char **argv)
 
     ui_init();
 
-    // Handle LitlevGL tasks (tickless mode)
-    while(1) {
+    xTaskCreate(heartbeat_task, "Heartbeat", 1024, NULL, 2, NULL);
+
+    // Start FreeRTOS scheduler in a background Windows thread.  Main thread retains SDL ownership.
+    CreateThread(NULL, 0, freertos_scheduler_thread, NULL, 0, NULL);
+
+    // LVGL + SDL event loop on main thread (SDL requirement)
+    while (1) {
         lv_timer_handler();
         SDL_Delay(5);
     }

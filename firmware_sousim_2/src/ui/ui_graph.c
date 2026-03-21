@@ -71,6 +71,7 @@ void ui_create_graph_screen(void) {
     lv_obj_set_size(chart, 320, 190);
     lv_obj_set_pos(chart, 0, 42);
     lv_obj_set_style_pad_all(chart, 4, 0);
+    lv_obj_set_style_radius(chart, 0, 0);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
     lv_chart_set_point_count(chart, GRAPH_BUF_SIZE);
     lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 300);    /* 0–3.00 V */

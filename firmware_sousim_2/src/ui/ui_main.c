@@ -67,11 +67,13 @@ void ui_create_main_screen(void) {
     // IL9341 is usually QVGA (320x240 or 240x320). Let's assume Landscape (usually easier for dual channel).
 
     lv_obj_t *cont = lv_obj_create(ui_MainScreen);
+    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(cont, LV_PCT(100), LV_PCT(80));
     lv_obj_align(cont, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW); // Side by side
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(cont, 5, 0);
+    lv_obj_set_style_radius(cont, 0, 0);
     lv_obj_t *ch1_btn = lv_btn_create(cont);
     lv_obj_set_size(ch1_btn, 140, 180); // Roughly half width minus padding
     create_channel_panel(ch1_btn, 0);

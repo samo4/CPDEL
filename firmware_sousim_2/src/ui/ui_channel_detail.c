@@ -130,6 +130,7 @@ void ui_create_channel_detail_screen(void) {
     lv_obj_align(col, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_all(col, 6, 0);
+    lv_obj_set_style_radius(col, 0, 0);
     lv_obj_set_style_pad_gap(col, 8, 0); // Spacing between rows
 
     // Row 1: Mode

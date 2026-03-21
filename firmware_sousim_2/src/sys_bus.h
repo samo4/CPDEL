@@ -23,7 +23,6 @@
 typedef enum {
     SYS_MSG_RSSI,        /* args[0] = signal strength in dBm (negative int)  */
     SYS_MSG_WIFI_STATUS, /* args[0]: 0=disconnected, 1=connecting, 2=connected */
-    SYS_MSG_BATTERY,     /* args[0] = battery percentage 0–100               */
 } sys_msg_type_t;
 
 typedef struct {

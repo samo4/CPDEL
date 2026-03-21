@@ -112,19 +112,8 @@ void ui_create_channel_detail_screen(void) {
     lv_obj_clear_flag(ui_ChannelDetailScreen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(ui_ChannelDetailScreen, refresh_detail_screen, LV_EVENT_SCREEN_LOADED, NULL);
 
-    // we're duplicating this on all headers
-
-    lv_obj_t *back_btn = lv_btn_create(ui_ChannelDetailScreen);
-    lv_obj_set_size(back_btn, 60, 30);
-    lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-    lv_obj_add_event_cb(back_btn, ui_event_navigate_detail_back, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *lbl_back = lv_label_create(back_btn);
-    lv_label_set_text(lbl_back, LV_SYMBOL_LEFT " Back");
-    lv_obj_center(lbl_back);
-
-    title_label = lv_label_create(ui_ChannelDetailScreen);
-    lv_label_set_text(title_label, "CH?  -.-V  -.---A");
-    lv_obj_align_to(title_label, back_btn, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
+    title_label =
+        ui_create_screen_header(ui_ChannelDetailScreen, ui_event_navigate_detail_back, LV_SYMBOL_LEFT " Back");
 
     // this part is specific:
     lv_obj_t *graph_btn = lv_btn_create(ui_ChannelDetailScreen);

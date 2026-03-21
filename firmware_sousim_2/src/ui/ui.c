@@ -143,3 +143,18 @@ void ui_event_navigate_detail_back(lv_event_t *e) {
     lv_scr_load_anim_t anim = (current_channel_index == 0) ? LV_SCR_LOAD_ANIM_MOVE_LEFT : LV_SCR_LOAD_ANIM_MOVE_RIGHT;
     lv_scr_load_anim(ui_MainScreen, anim, UI_ANIM_TIME_MS, 0, false);
 }
+
+lv_obj_t *ui_create_screen_header(lv_obj_t *screen, lv_event_cb_t back_cb, const char *back_label) {
+    lv_obj_t *back_btn = lv_btn_create(screen);
+    lv_obj_set_size(back_btn, 60, 30);
+    lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
+    lv_obj_add_event_cb(back_btn, back_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *lbl = lv_label_create(back_btn);
+    lv_label_set_text(lbl, back_label);
+    lv_obj_center(lbl);
+
+    lv_obj_t *title = lv_label_create(screen);
+    lv_label_set_text(title, "CH?  -.-V  -.---A");
+    lv_obj_align_to(title, back_btn, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
+    return title;
+}

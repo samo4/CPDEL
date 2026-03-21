@@ -11,9 +11,9 @@ static lv_obj_t *entry_label;
 static lv_obj_t *range_label;
 
 static char input_buf[NUMPAD_BUF_SIZE];
-static float numpad_min;
-static float numpad_max;
-static void (*numpad_confirm_cb)(float);
+static double numpad_min;
+static double numpad_max;
+static void (*numpad_confirm_cb)(double);
 static lv_obj_t *numpad_return_screen;
 
 // ── Forward declarations ──────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ static void btn_cancel_event(lv_event_t *e) {
 }
 
 static void btn_ok_event(lv_event_t *e) {
-    float value = (float)atof(input_buf);
+    double value = atof(input_buf);
     if (value < numpad_min) value = numpad_min;
     if (value > numpad_max) value = numpad_max;
     if (numpad_confirm_cb) numpad_confirm_cb(value);
@@ -204,7 +204,7 @@ void ui_create_numpad_screen(void) {
 }
 
 // ── Public open API ───────────────────────────────────────────────────────────
-void ui_open_numpad(const char *title, float current_value, float min, float max, void (*confirm_cb)(float),
+void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),
                     lv_obj_t *return_screen) {
     numpad_min = min;
     numpad_max = max;
@@ -212,14 +212,14 @@ void ui_open_numpad(const char *title, float current_value, float min, float max
     numpad_return_screen = return_screen;
 
     // Seed the input buffer from the current value, stripping trailing zeros
-    snprintf(input_buf, sizeof(input_buf), "%.4f", (double)current_value);
+    snprintf(input_buf, sizeof(input_buf), "%.4f", current_value);
     int len = (int)strlen(input_buf);
     while (len > 1 && input_buf[len - 1] == '0') len--;
     if (len > 1 && input_buf[len - 1] == '.') len--;
     input_buf[len] = '\0';
 
     lv_label_set_text(numpad_title_label, title);
-    lv_label_set_text_fmt(range_label, "%.2f \xe2\x80\x93 %.2f", (double)min, (double)max);
+    lv_label_set_text_fmt(range_label, "%.2f \xe2\x80\x93 %.2f", min, max);
     numpad_update_display();
 
     lv_scr_load_anim(ui_NumpadScreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 200, 0, false);

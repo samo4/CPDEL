@@ -9,13 +9,16 @@ static lv_obj_t *ch_volt_lbl[2];
 static lv_obj_t *ch_curr_lbl[2];
 static lv_obj_t *ch_pwr_lbl[2];
 static lv_obj_t *ch_mode_badge[2];
+static lv_obj_t *ch_sp_lbl[2];
 
 void ui_main_update_channel(int ch) {
     const channel_data_t *c = &channels[ch];
-    lv_label_set_text_fmt(ch_volt_lbl[ch], "%.2f V", (double)c->measured_voltage);
-    lv_label_set_text_fmt(ch_curr_lbl[ch], "%.3f A", (double)c->measured_current);
-    lv_label_set_text_fmt(ch_pwr_lbl[ch], "%.2f W", (double)c->measured_power);
+    lv_label_set_text_fmt(ch_volt_lbl[ch], "%.2f V", c->measured_voltage);
+    lv_label_set_text_fmt(ch_curr_lbl[ch], "%.3f A", c->measured_current);
+    lv_label_set_text_fmt(ch_pwr_lbl[ch], "%.2f W", c->measured_power);
     lv_label_set_text(ch_mode_badge[ch], c->is_cv_mode ? "CV" : "CC");
+    lv_label_set_text_fmt(ch_sp_lbl[ch], c->is_cv_mode ? "%.2fV" : "%.3fA",
+                          c->is_cv_mode ? c->voltage_setpoint : c->current_setpoint);
     lv_obj_set_style_bg_color(
         ch_mode_badge[ch], c->is_cv_mode ? lv_palette_main(LV_PALETTE_GREEN) : lv_palette_main(LV_PALETTE_ORANGE), 0);
 }
@@ -59,7 +62,6 @@ void ui_create_main_screen(void) {
 }
 
 static void create_channel_panel(lv_obj_t *parent, int channel_index) {
-    // Channel Title
     lv_obj_t *title = lv_label_create(parent);
     lv_label_set_text_fmt(title, "CH %d", channel_index + 1);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 5, 5);
@@ -83,14 +85,22 @@ static void create_channel_panel(lv_obj_t *parent, int channel_index) {
     lv_obj_align(pwr_val, LV_ALIGN_TOP_RIGHT, -5, 90);
     ch_pwr_lbl[channel_index] = pwr_val;
 
-    // CC/CV Mode Badge
+    // CC/CV Mode Badge — below power row
     lv_obj_t *mode_badge = lv_label_create(parent);
     lv_label_set_text(mode_badge, "CC");
+    lv_obj_set_style_text_font(mode_badge, &lv_font_montserrat_14, 0);
     lv_obj_set_style_bg_color(mode_badge, lv_palette_main(LV_PALETTE_ORANGE), 0);
     lv_obj_set_style_bg_opa(mode_badge, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(mode_badge, 3, 0);
-    lv_obj_align(mode_badge, LV_ALIGN_TOP_MID, 0, 5); // Below title
+    lv_obj_set_style_pad_all(mode_badge, 2, 0);
+    lv_obj_align(mode_badge, LV_ALIGN_TOP_LEFT, 5, 112);
     ch_mode_badge[channel_index] = mode_badge;
+
+    // Setpoint summary — same row as mode badge
+    lv_obj_t *sp_lbl = lv_label_create(parent);
+    lv_label_set_text(sp_lbl, "");
+    lv_obj_set_style_text_font(sp_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_align_to(sp_lbl, mode_badge, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
+    ch_sp_lbl[channel_index] = sp_lbl;
 
     // ON/OFF Switch (small)
     lv_obj_t *sw = lv_switch_create(parent);

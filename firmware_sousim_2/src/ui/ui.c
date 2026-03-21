@@ -4,6 +4,8 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
+#define UI_ANIM_TIME_MS 222
+
 lv_obj_t *ui_MainScreen;
 lv_obj_t *ui_ChannelDetailScreen;
 lv_obj_t *ui_GraphScreen;
@@ -23,24 +25,31 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
             case SCPI_CMD_MEAS_VOLT:
                 channels[msg.channel].measured_voltage = msg.args[0];
                 ui_main_update_channel(msg.channel);
+                ui_detail_update_channel(msg.channel);
+                ui_graph_update_channel(msg.channel);
                 break;
             case SCPI_CMD_MEAS_CURR:
                 channels[msg.channel].measured_current = msg.args[0];
                 channels[msg.channel].measured_power = channels[msg.channel].measured_voltage * msg.args[0];
                 ui_main_update_channel(msg.channel);
+                ui_detail_update_channel(msg.channel);
+                ui_graph_update_channel(msg.channel);
                 break;
             case SCPI_CMD_SOUR_VOLT:
                 channels[msg.channel].voltage_setpoint = msg.args[0];
                 ui_detail_update_channel(msg.channel);
+                ui_graph_update_channel(msg.channel);
                 break;
             case SCPI_CMD_SOUR_CURR:
                 channels[msg.channel].current_setpoint = msg.args[0];
                 ui_detail_update_channel(msg.channel);
+                ui_graph_update_channel(msg.channel);
                 break;
             case SCPI_CMD_SOUR_MODE:
                 channels[msg.channel].is_cv_mode = (msg.args[0] == 0.0f);
                 ui_main_update_channel(msg.channel);
                 ui_detail_update_channel(msg.channel);
+                ui_graph_update_channel(msg.channel);
                 break;
             default:
                 break;
@@ -65,11 +74,11 @@ static void ui_poll_source_timer_cb(lv_timer_t *t) {
 
 void ui_init(void) {
     for (int i = 0; i < 2; i++) {
-        channels[i].voltage_setpoint = 0.0f;
-        channels[i].current_setpoint = 0.0f;
-        channels[i].measured_voltage = 0.0f;
-        channels[i].measured_current = 0.0f;
-        channels[i].measured_power = 0.0f;
+        channels[i].voltage_setpoint = 0.0;
+        channels[i].current_setpoint = 0.0;
+        channels[i].measured_voltage = 0.0;
+        channels[i].measured_current = 0.0;
+        channels[i].measured_power = 0.0;
         channels[i].output_enabled = false;
         channels[i].is_cv_mode = false;
         channels[i].lv_cutoff_enabled = false;
@@ -113,25 +122,24 @@ void ui_event_channel_select(lv_event_t *e) {
     intptr_t ch_idx = (intptr_t)lv_event_get_user_data(e);
     current_channel_index = (int)ch_idx;
 
-    // Refresh detail screen values if needed (simple implementation: reload logic here or just switch)
-    // Ideally detail screen widgets would update based on `current_channel_index` in their creation/update logic
-    // For this mockup, let's assume detail screen widgets are tied to currently selected channel index via global
-
-    lv_scr_load_anim(ui_ChannelDetailScreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 300, 0, false);
+    lv_scr_load_anim_t anim = (ch_idx == 0) ? LV_SCR_LOAD_ANIM_MOVE_RIGHT : LV_SCR_LOAD_ANIM_MOVE_LEFT;
+    lv_scr_load_anim(ui_ChannelDetailScreen, anim, UI_ANIM_TIME_MS, 0, false);
 }
 
 void ui_event_navigate_settings(lv_event_t *e) {
-    lv_scr_load_anim(ui_SettingsScreen, LV_SCR_LOAD_ANIM_MOVE_TOP, 300, 0, false);
+    lv_scr_load_anim(ui_SettingsScreen, LV_SCR_LOAD_ANIM_MOVE_TOP, UI_ANIM_TIME_MS, 0, false);
 }
 
 void ui_event_navigate_graph(lv_event_t *e) {
-    lv_scr_load_anim(ui_GraphScreen, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, false);
+    lv_scr_load_anim(ui_GraphScreen, LV_SCR_LOAD_ANIM_FADE_ON, UI_ANIM_TIME_MS, 0, false);
 }
 
 void ui_event_navigate_back(lv_event_t *e) {
-    lv_scr_load_anim(ui_MainScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 300, 0, false);
+    lv_scr_load_anim(ui_MainScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, UI_ANIM_TIME_MS, 0, false);
 }
 
 void ui_event_navigate_detail_back(lv_event_t *e) {
-    lv_scr_load_anim(ui_ChannelDetailScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 300, 0, false);
+    /* Mirror the entry animation: CH1 came from left so exit to left; CH2 came from right so exit to right */
+    lv_scr_load_anim_t anim = (current_channel_index == 0) ? LV_SCR_LOAD_ANIM_MOVE_LEFT : LV_SCR_LOAD_ANIM_MOVE_RIGHT;
+    lv_scr_load_anim(ui_MainScreen, anim, UI_ANIM_TIME_MS, 0, false);
 }

@@ -12,10 +12,10 @@ static lv_obj_t *cutoff_val_lbl;
 static void update_setpoint_view(bool is_cv) {
     if (is_cv) {
         lv_label_set_text(setpoint_label, "Set Voltage (V)");
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", (double)channels[current_channel_index].voltage_setpoint);
+        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[current_channel_index].voltage_setpoint);
     } else {
         lv_label_set_text(setpoint_label, "Set Current (A)");
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", (double)channels[current_channel_index].current_setpoint);
+        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", channels[current_channel_index].current_setpoint);
     }
 }
 
@@ -40,14 +40,14 @@ static void event_cutoff_toggle(lv_event_t *e) {
     channels[current_channel_index].lv_cutoff_enabled = en;
 }
 
-static void on_setpoint_confirmed(float value) {
+static void on_setpoint_confirmed(double value) {
     bool is_cv = channels[current_channel_index].is_cv_mode;
     if (is_cv) {
         channels[current_channel_index].voltage_setpoint = value;
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", (double)value);
+        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", value);
     } else {
         channels[current_channel_index].current_setpoint = value;
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", (double)value);
+        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", value);
     }
 
     scpi_msg_t msg = {
@@ -60,32 +60,34 @@ static void on_setpoint_confirmed(float value) {
     event_bus_publish(&msg);
 }
 
-static void on_cutoff_confirmed(float value) {
+static void on_cutoff_confirmed(double value) {
     channels[current_channel_index].lv_cutoff_threshold = value;
-    lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", (double)value);
+    lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", value);
 }
 
 // ── Numpad open events ────────────────────────────────────────────────────────
 static void event_open_setpoint_numpad(lv_event_t *e) {
     bool is_cv = channels[current_channel_index].is_cv_mode;
     if (is_cv) {
-        ui_open_numpad("Set Voltage (V)", channels[current_channel_index].voltage_setpoint, 0.0f, 30.0f,
+        ui_open_numpad("Set Voltage (V)", channels[current_channel_index].voltage_setpoint, 0.0, 30.0,
                        on_setpoint_confirmed, ui_ChannelDetailScreen);
     } else {
-        ui_open_numpad("Set Current (A)", channels[current_channel_index].current_setpoint, 0.0f, 5.0f,
+        ui_open_numpad("Set Current (A)", channels[current_channel_index].current_setpoint, 0.0, 5.0,
                        on_setpoint_confirmed, ui_ChannelDetailScreen);
     }
 }
 
 static void event_open_cutoff_numpad(lv_event_t *e) {
-    ui_open_numpad("UV Cutoff Voltage (V)", channels[current_channel_index].lv_cutoff_threshold, 0.0f, 30.0f,
+    ui_open_numpad("UV Cutoff Voltage (V)", channels[current_channel_index].lv_cutoff_threshold, 0.0, 30.0,
                    on_cutoff_confirmed, ui_ChannelDetailScreen);
 }
 
 // Refresh whole screen data when entering (call this from event)
 static void refresh_detail_screen(lv_event_t *e) {
     (void)e;
-    lv_label_set_text_fmt(title_label, "CH %d", current_channel_index + 1);
+    lv_label_set_text_fmt(title_label, "CH%d  %.2fV  %.3fA", current_channel_index + 1,
+                          channels[current_channel_index].measured_voltage,
+                          channels[current_channel_index].measured_current);
 
     bool is_cv = channels[current_channel_index].is_cv_mode;
     lv_dropdown_set_selected(mode_dd, is_cv ? 0 : 1);
@@ -96,7 +98,7 @@ static void refresh_detail_screen(lv_event_t *e) {
     else
         lv_obj_clear_state(cutoff_sw, LV_STATE_CHECKED);
 
-    lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", (double)channels[current_channel_index].lv_cutoff_threshold);
+    lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", channels[current_channel_index].lv_cutoff_threshold);
 }
 
 void ui_detail_update_channel(int ch) {
@@ -108,24 +110,23 @@ void ui_detail_update_channel(int ch) {
 void ui_create_channel_detail_screen(void) {
     ui_ChannelDetailScreen = lv_obj_create(NULL);
     lv_obj_clear_flag(ui_ChannelDetailScreen, LV_OBJ_FLAG_SCROLLABLE);
-    // Add event to refresh data when screen is shown
     lv_obj_add_event_cb(ui_ChannelDetailScreen, refresh_detail_screen, LV_EVENT_SCREEN_LOADED, NULL);
 
-    // -- Header --
-    // Use the optimized size from requests (Small buttons)
+    // we're duplicating this on all headers
 
     lv_obj_t *back_btn = lv_btn_create(ui_ChannelDetailScreen);
     lv_obj_set_size(back_btn, 60, 30);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-    lv_obj_add_event_cb(back_btn, ui_event_navigate_back, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(back_btn, ui_event_navigate_detail_back, LV_EVENT_CLICKED, NULL);
     lv_obj_t *lbl_back = lv_label_create(back_btn);
     lv_label_set_text(lbl_back, LV_SYMBOL_LEFT " Back");
     lv_obj_center(lbl_back);
 
     title_label = lv_label_create(ui_ChannelDetailScreen);
-    lv_label_set_text(title_label, "Channel ?"); // Updated safely in refresh
-    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 8);
+    lv_label_set_text(title_label, "CH?  -.-V  -.---A");
+    lv_obj_align_to(title_label, back_btn, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
 
+    // this part is specific:
     lv_obj_t *graph_btn = lv_btn_create(ui_ChannelDetailScreen);
     lv_obj_set_size(graph_btn, 60, 30);
     lv_obj_align(graph_btn, LV_ALIGN_TOP_RIGHT, -5, 5);
@@ -212,7 +213,7 @@ void ui_create_channel_detail_screen(void) {
 
     // Right side: Value button
     lv_obj_t *cutoff_btn = lv_obj_create(r3);
-    lv_obj_set_size(cutoff_btn, 90, 30);
+    lv_obj_set_size(cutoff_btn, 100, 30);
     lv_obj_set_style_radius(cutoff_btn, 4, 0);
     lv_obj_set_style_pad_all(cutoff_btn, 4, 0);
     lv_obj_add_flag(cutoff_btn, LV_OBJ_FLAG_CLICKABLE);

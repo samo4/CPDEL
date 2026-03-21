@@ -43,6 +43,10 @@ void ui_create_graph_screen(void);
 void ui_create_settings_screen(void);
 void ui_create_numpad_screen(void);
 
+// Live update helpers (safe to call from LVGL timer context)
+void ui_main_update_channel(int ch);
+void ui_detail_update_channel(int ch);
+
 // Open the numpad screen to enter a numeric value.
 // confirm_cb receives the entered float on OK.
 // return_screen is loaded on both Cancel and OK.

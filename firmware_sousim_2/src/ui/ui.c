@@ -1,43 +1,108 @@
 #include "ui.h"
 #include <stdio.h>
+#include "../scpi.h"
+#include "FreeRTOS.h"
+#include "queue.h"
 
-// Global definitions
 lv_obj_t *ui_MainScreen;
 lv_obj_t *ui_ChannelDetailScreen;
 lv_obj_t *ui_GraphScreen;
 lv_obj_t *ui_SettingsScreen;
 lv_obj_t *ui_NumpadScreen;
 
-// Shared state for 2 channels
 channel_data_t channels[2];
 int current_channel_index = 0;
 
-void ui_init(void) {
-    // Initialize data
+/* Drain queue_gui from the LVGL tick — safe to call LVGL APIs here since
+   this runs inside lv_timer_handler() on the same thread as LVGL. */
+static void gui_queue_timer_cb(lv_timer_t *t) {
+    (void)t;
+    scpi_msg_t msg;
+    while (xQueueReceive(queue_gui, &msg, 0) == pdTRUE) {
+        switch (msg.cmd) {
+            case SCPI_CMD_MEAS_VOLT:
+                channels[msg.channel].measured_voltage = msg.args[0];
+                ui_main_update_channel(msg.channel);
+                break;
+            case SCPI_CMD_MEAS_CURR:
+                channels[msg.channel].measured_current = msg.args[0];
+                channels[msg.channel].measured_power = channels[msg.channel].measured_voltage * msg.args[0];
+                ui_main_update_channel(msg.channel);
+                break;
+            case SCPI_CMD_SOUR_VOLT:
+                channels[msg.channel].voltage_setpoint = msg.args[0];
+                ui_detail_update_channel(msg.channel);
+                break;
+            case SCPI_CMD_SOUR_CURR:
+                channels[msg.channel].current_setpoint = msg.args[0];
+                ui_detail_update_channel(msg.channel);
+                break;
+            case SCPI_CMD_SOUR_MODE:
+                channels[msg.channel].is_cv_mode = (msg.args[0] == 0.0f);
+                ui_main_update_channel(msg.channel);
+                ui_detail_update_channel(msg.channel);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+/* Poll the controller for current setpoint and mode (called every 5 s). */
+static void ui_poll_source_timer_cb(lv_timer_t *t) {
+    (void)t;
+    scpi_msg_t msg = {.argc = 0, .source = SRC_GUI};
     for (int i = 0; i < 2; i++) {
-        channels[i].voltage_setpoint = 12.0f;
-        channels[i].current_setpoint = 1.5f;
+        msg.channel = (uint8_t)i;
+        msg.cmd = SCPI_CMD_SOUR_VOLT;
+        event_bus_publish(&msg);
+        msg.cmd = SCPI_CMD_SOUR_CURR;
+        event_bus_publish(&msg);
+        msg.cmd = SCPI_CMD_SOUR_MODE;
+        event_bus_publish(&msg);
+    }
+}
+
+void ui_init(void) {
+    for (int i = 0; i < 2; i++) {
+        channels[i].voltage_setpoint = 0.0f;
+        channels[i].current_setpoint = 0.0f;
         channels[i].measured_voltage = 0.0f;
         channels[i].measured_current = 0.0f;
         channels[i].measured_power = 0.0f;
         channels[i].output_enabled = false;
         channels[i].is_cv_mode = false;
         channels[i].lv_cutoff_enabled = false;
-        channels[i].lv_cutoff_threshold = 3.0f;
+        channels[i].lv_cutoff_threshold = 0.0f;
     }
 
     lv_disp_t *dispp = lv_disp_get_default();
     lv_theme_t *theme = lv_theme_default_init(dispp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
                                               true, LV_FONT_DEFAULT);
     lv_disp_set_theme(dispp, theme);
-
     ui_create_main_screen();
     ui_create_channel_detail_screen();
     ui_create_graph_screen();
     ui_create_settings_screen();
     ui_create_numpad_screen();
-
     lv_disp_load_scr(ui_MainScreen);
+
+    /* LVGL timer: drain queue_gui every 100 ms (runs on LVGL thread, no mutex needed) */
+    lv_timer_create(gui_queue_timer_cb, 100, NULL);
+    /* Periodic poll for setpoints / mode (rarely change — every 5 s is enough) */
+    lv_timer_create(ui_poll_source_timer_cb, 5000, NULL);
+
+    for (int i = 0; i < 2; i++) {
+        scpi_msg_t msg = {.channel = (uint8_t)i, .args = {1.0f}, .argc = 1, .source = SRC_GUI};
+        msg.cmd = SCPI_CMD_MEAS_VOLT_CONT;
+        event_bus_publish(&msg);
+        msg.cmd = SCPI_CMD_MEAS_CURR_CONT;
+        event_bus_publish(&msg);
+    }
+
+    /* Initial one-shot poll so we have data before the first 5 s tick */
+    lv_timer_t *t = lv_timer_create(ui_poll_source_timer_cb, 0, NULL);
+    lv_timer_set_repeat_count(t, 1);
 }
 
 // Event Handlers for Navigation

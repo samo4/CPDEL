@@ -62,8 +62,6 @@ target_link_libraries(lv_drivers PUBLIC SDL2::SDL2)
 file(GLOB_RECURSE UI_SOURCES "src/ui/*.c")
 add_executable(lvgl_mockup
     src/main.c
-    src/scpi.c
-    src/task_test.c
     ${UI_SOURCES}
 )
 

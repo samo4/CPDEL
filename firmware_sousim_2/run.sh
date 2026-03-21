@@ -1,4 +1,25 @@
 #!/bin/bash
+
+VCPKG_TOOLCHAIN="C:/Repos/External/vcpkg/scripts/buildsystems/vcpkg.cmake"
+
+# Handle clean flag
+if [[ "$1" == "--clean" || "$1" == "-c" ]]; then
+    echo "Cleaning build directory..."
+    cmake --build build --target clean --config Debug 2>/dev/null || rm -rf build
+    echo "Clean complete."
+    exit 0
+fi
+
+# Configure if no cache exists
+if [ ! -f "build/CMakeCache.txt" ]; then
+    echo "Configuring project..."
+    cmake -B build -S . "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_TOOLCHAIN}"
+    if [ $? -ne 0 ]; then
+        echo "CMake configuration failed."
+        exit 1
+    fi
+fi
+
 # Rebuild the project
 cmake --build build --config Debug
 

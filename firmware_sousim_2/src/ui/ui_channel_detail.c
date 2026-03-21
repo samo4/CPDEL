@@ -8,9 +8,7 @@ static lv_obj_t *setpoint_label;
 static lv_obj_t *setpoint_val_lbl;
 static lv_obj_t *cutoff_sw;
 static lv_obj_t *cutoff_val_lbl;
-static lv_obj_t *out_btn;
 
-// Helper to update the setpoint view based on mode
 static void update_setpoint_view(bool is_cv) {
     if (is_cv) {
         lv_label_set_text(setpoint_label, "Set Voltage (V)");
@@ -24,17 +22,15 @@ static void update_setpoint_view(bool is_cv) {
 static void event_mode_change(lv_event_t *e) {
     uint16_t idx = lv_dropdown_get_selected(mode_dd);
     bool is_cv = (idx == 0);
-    // Update model
     channels[current_channel_index].is_cv_mode = is_cv;
-    // Update UI
     update_setpoint_view(is_cv);
 
     scpi_msg_t msg = {
-        .cmd     = SCPI_CMD_SET_MODE,
+        .cmd = SCPI_CMD_SET_MODE,
         .channel = (uint8_t)current_channel_index,
-        .args    = { is_cv ? 0.0f : 1.0f, 0.0f },
-        .argc    = 1,
-        .source  = SRC_GUI,
+        .args = {is_cv ? 0.0f : 1.0f, 0.0f},
+        .argc = 1,
+        .source = SRC_GUI,
     };
     event_bus_publish(&msg);
 }
@@ -44,7 +40,6 @@ static void event_cutoff_toggle(lv_event_t *e) {
     channels[current_channel_index].lv_cutoff_enabled = en;
 }
 
-// ── Numpad confirm callbacks ──────────────────────────────────────────────────
 static void on_setpoint_confirmed(float value) {
     bool is_cv = channels[current_channel_index].is_cv_mode;
     if (is_cv) {
@@ -56,11 +51,11 @@ static void on_setpoint_confirmed(float value) {
     }
 
     scpi_msg_t msg = {
-        .cmd     = is_cv ? SCPI_CMD_SET_VOLTAGE : SCPI_CMD_SET_CURRENT,
+        .cmd = is_cv ? SCPI_CMD_SET_VOLTAGE : SCPI_CMD_SET_CURRENT,
         .channel = (uint8_t)current_channel_index,
-        .args    = { value, 0.0f },
-        .argc    = 1,
-        .source  = SRC_GUI,
+        .args = {value, 0.0f},
+        .argc = 1,
+        .source = SRC_GUI,
     };
     event_bus_publish(&msg);
 }
@@ -87,14 +82,9 @@ static void event_open_cutoff_numpad(lv_event_t *e) {
                    on_cutoff_confirmed, ui_ChannelDetailScreen);
 }
 
-static void event_output_toggle(lv_event_t *e) {
-    bool en = lv_obj_has_state(out_btn, LV_STATE_CHECKED);
-    channels[current_channel_index].output_enabled = en;
-    // Color handled by style on CHECKED state
-}
-
 // Refresh whole screen data when entering (call this from event)
 static void refresh_detail_screen(lv_event_t *e) {
+    (void)e;
     lv_label_set_text_fmt(title_label, "CH %d", current_channel_index + 1);
 
     bool is_cv = channels[current_channel_index].is_cv_mode;
@@ -107,11 +97,12 @@ static void refresh_detail_screen(lv_event_t *e) {
         lv_obj_clear_state(cutoff_sw, LV_STATE_CHECKED);
 
     lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", (double)channels[current_channel_index].lv_cutoff_threshold);
+}
 
-    if (channels[current_channel_index].output_enabled)
-        lv_obj_add_state(out_btn, LV_STATE_CHECKED);
-    else
-        lv_obj_clear_state(out_btn, LV_STATE_CHECKED);
+void ui_detail_update_channel(int ch) {
+    /* Only update if this channel is currently shown */
+    if (ch != current_channel_index) return;
+    refresh_detail_screen(NULL);
 }
 
 void ui_create_channel_detail_screen(void) {
@@ -232,28 +223,4 @@ void ui_create_channel_detail_screen(void) {
     lv_obj_set_style_text_align(cutoff_val_lbl, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_width(cutoff_val_lbl, LV_PCT(100));
     lv_obj_align(cutoff_val_lbl, LV_ALIGN_RIGHT_MID, -4, 0);
-
-    // Row 4: Output — label left, Apply toggle right
-    lv_obj_t *r4 = lv_obj_create(col);
-    lv_obj_set_size(r4, LV_PCT(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_opa(r4, 0, 0);
-    lv_obj_set_style_border_width(r4, 0, 0);
-    lv_obj_set_style_pad_all(r4, 0, 0);
-    lv_obj_set_flex_flow(r4, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(r4, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-    // just a placeholder to align the button to the right
-    lv_obj_t *l_out_lbl = lv_label_create(r4);
-    lv_label_set_text(l_out_lbl, "");
-
-    out_btn = lv_btn_create(r4);
-    lv_obj_set_size(out_btn, 90, 30);
-    lv_obj_add_flag(out_btn, LV_OBJ_FLAG_CHECKABLE);
-    lv_obj_set_style_bg_color(out_btn, lv_palette_main(LV_PALETTE_ORANGE), LV_STATE_CHECKED);
-    lv_obj_set_style_bg_color(out_btn, lv_palette_main(LV_PALETTE_GREY), 0);
-    lv_obj_add_event_cb(out_btn, event_output_toggle, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t *l_out = lv_label_create(out_btn);
-    lv_label_set_text(l_out, LV_SYMBOL_OK " Apply");
-    lv_obj_center(l_out);
 }

@@ -20,6 +20,12 @@
 #define LV_USE_LOG 1
 #define LV_LOG_LEVEL LV_LOG_LEVEL_INFO
 
+/* Use standard C library snprintf so that %f is supported */
+#define LV_SPRINTF_CUSTOM 1
+#define LV_SPRINTF_INCLUDE <stdio.h>
+#define lv_snprintf snprintf
+#define lv_vsnprintf vsnprintf
+
 /* Font settings */
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_20 1

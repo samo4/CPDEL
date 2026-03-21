@@ -4,6 +4,7 @@
 #include <windows.h>
 #include "FreeRTOS.h"
 #include "lvgl.h"
+#include "scpi.h"
 #include "sdl/sdl.h"
 #include "task.h"
 #include "ui/ui.h"
@@ -81,6 +82,8 @@ int main(int argc, char **argv) {
 
     ui_init();
 
+    event_bus_init();
+    task_test_create();
     xTaskCreate(heartbeat_task, "Heartbeat", 1024, NULL, 2, NULL);
 
     // Start FreeRTOS scheduler in a background Windows thread.  Main thread retains SDL ownership.

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "scpi.h"
 #include "ui.h"
 
 static lv_obj_t *title_label;
@@ -27,6 +28,15 @@ static void event_mode_change(lv_event_t *e) {
     channels[current_channel_index].is_cv_mode = is_cv;
     // Update UI
     update_setpoint_view(is_cv);
+
+    scpi_msg_t msg = {
+        .cmd     = SCPI_CMD_SET_MODE,
+        .channel = (uint8_t)current_channel_index,
+        .args    = { is_cv ? 0.0f : 1.0f, 0.0f },
+        .argc    = 1,
+        .source  = SRC_GUI,
+    };
+    event_bus_publish(&msg);
 }
 
 static void event_cutoff_toggle(lv_event_t *e) {
@@ -44,6 +54,15 @@ static void on_setpoint_confirmed(float value) {
         channels[current_channel_index].current_setpoint = value;
         lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", (double)value);
     }
+
+    scpi_msg_t msg = {
+        .cmd     = is_cv ? SCPI_CMD_SET_VOLTAGE : SCPI_CMD_SET_CURRENT,
+        .channel = (uint8_t)current_channel_index,
+        .args    = { value, 0.0f },
+        .argc    = 1,
+        .source  = SRC_GUI,
+    };
+    event_bus_publish(&msg);
 }
 
 static void on_cutoff_confirmed(float value) {

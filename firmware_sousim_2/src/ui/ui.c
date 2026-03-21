@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <stdio.h>
 #include "../scpi.h"
+#include "../sys_bus.h"
 #include "FreeRTOS.h"
 #include "queue.h"
 
@@ -50,6 +51,18 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
                 ui_main_update_channel(msg.channel);
                 ui_detail_update_channel(msg.channel);
                 ui_graph_update_channel(msg.channel);
+                break;
+            default:
+                break;
+        }
+    }
+
+    /* Drain system-status bus (RSSI, connection state, battery, ...) */
+    sys_msg_t smsg;
+    while (xQueueReceive(queue_ui_status, &smsg, 0) == pdTRUE) {
+        switch (smsg.type) {
+            case SYS_MSG_RSSI:
+                ui_main_update_rssi((int)smsg.args[0]);
                 break;
             default:
                 break;

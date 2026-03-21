@@ -5,11 +5,27 @@
 static void create_channel_panel(lv_obj_t *parent, int channel_index);
 
 /* Per-channel widget references populated by create_channel_panel() */
+static lv_obj_t *rssi_lbl;
 static lv_obj_t *ch_volt_lbl[2];
 static lv_obj_t *ch_curr_lbl[2];
 static lv_obj_t *ch_pwr_lbl[2];
 static lv_obj_t *ch_mode_badge[2];
 static lv_obj_t *ch_sp_lbl[2];
+
+void ui_main_update_rssi(int rssi_dbm) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI " %d", rssi_dbm);
+    lv_label_set_text(rssi_lbl, buf);
+
+    lv_color_t col;
+    if (rssi_dbm >= -65)
+        col = lv_palette_main(LV_PALETTE_GREEN);
+    else if (rssi_dbm >= -80)
+        col = lv_palette_main(LV_PALETTE_YELLOW);
+    else
+        col = lv_palette_main(LV_PALETTE_RED);
+    lv_obj_set_style_text_color(rssi_lbl, col, 0);
+}
 
 void ui_main_update_channel(int ch) {
     const channel_data_t *c = &channels[ch];
@@ -37,6 +53,12 @@ void ui_create_main_screen(void) {
     lv_obj_t *settings_lbl = lv_label_create(settings_btn);
     lv_label_set_text(settings_lbl, LV_SYMBOL_SETTINGS);
     lv_obj_center(settings_lbl);
+
+    // RSSI indicator — left of settings button
+    rssi_lbl = lv_label_create(ui_MainScreen);
+    lv_label_set_text(rssi_lbl, LV_SYMBOL_WIFI " --");
+    lv_obj_align_to(rssi_lbl, settings_btn, LV_ALIGN_OUT_LEFT_MID, -20, 0);
+    lv_obj_set_style_text_color(rssi_lbl, lv_palette_main(LV_PALETTE_GREY), 0);
 
     // Channel Panels (Using Grid or Flex layout)
     // For 240x320 portrait: Stack them vertically.

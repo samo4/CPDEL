@@ -6,6 +6,7 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "scpi.h"
+#include "sys_bus.h"
 #include "task.h"
 #include "ui/ui.h"
 
@@ -136,13 +137,23 @@ void sim_controller_task(void *param) {
 
         /* Measurement streaming tick — 1-minute sine wave: offset 1, peak-to-peak 2, clamped to setpoint */
         {
-            float t_s = (float)xTaskGetTickCount() / 1000.0f;
+            static TickType_t last_rssi_tick = 0;
+            TickType_t now = xTaskGetTickCount();
+            float t_s = (float)now / 1000.0f;
             float sim_val = 1.0f + sinf(2.0f * 3.14f * t_s / 60.0f);
             for (int ch = 0; ch < 2; ch++) {
                 if (stream_volt[ch])
                     respond_measurement(SRC_GUI, (uint8_t)ch, fminf(sim_val, ctrl_volt_sp[ch]), "VOLT");
                 if (stream_curr[ch])
                     respond_measurement(SRC_GUI, (uint8_t)ch, fminf(sim_val, ctrl_curr_sp[ch]), "CURR");
+            }
+
+            /* Publish simulated RSSI every 2 s — slow sine between -85 and -55 dBm */
+            if (now - last_rssi_tick >= pdMS_TO_TICKS(2000)) {
+                last_rssi_tick = now;
+                int rssi = (int)(-70 + 15 * sinf(2.0f * 3.14f * t_s / 30.0f));
+                sys_msg_t smsg = {.type = SYS_MSG_RSSI, .args = {rssi, 0}};
+                sys_bus_publish(&smsg);
             }
         }
     }

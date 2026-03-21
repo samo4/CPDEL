@@ -37,6 +37,7 @@ void ui_create_settings_screen(void);
 void ui_create_numpad_screen(void);
 
 void ui_main_update_channel(int ch);
+void ui_main_update_rssi(int rssi_dbm);
 void ui_detail_update_channel(int ch);
 
 void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),

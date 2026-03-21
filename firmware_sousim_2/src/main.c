@@ -8,6 +8,9 @@
 #define SCPI_IMPLEMENTATION
 #include "scpi.h"
 
+#define SYS_BUS_IMPLEMENTATION
+#include "sys_bus.h"
+
 #define SIM_CONTROLLER_IMPLEMENTATION
 #include "sim_controller.h"
 
@@ -87,6 +90,7 @@ int main(int argc, char **argv) {
     lv_indev_drv_register(&indev_drv);
 
     event_bus_init();
+    sys_bus_init();
     xTaskCreate(heartbeat_task, "Heartbeat", 1024, NULL, 2, NULL);
     xTaskCreate(sim_controller_task, "Controller", 2048, NULL, 3, NULL);
 

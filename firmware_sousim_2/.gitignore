@@ -60,3 +60,12 @@ _deps/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# ESP-IDF
+esp/build/
+esp/sdkconfig
+esp/sdkconfig.old
+esp/dependencies.lock
+esp/managed_components/
+esp/main/idf_component.yml.lock

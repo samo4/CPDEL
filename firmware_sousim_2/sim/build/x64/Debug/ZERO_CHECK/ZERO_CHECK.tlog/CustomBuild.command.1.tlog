@@ -1,0 +1,10 @@
+^C:\REPOS\HARDWARE\UNIVERSALCONTROLPANEL\FIRMWARE_SOUSIM_2\SIM\BUILD\CMAKEFILES\E8888C2BEC139847FEB2C19395F38036\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -SC:/Repos/Hardware/UniversalControlPanel/firmware_sousim_2/sim -BC:/Repos/Hardware/UniversalControlPanel/firmware_sousim_2/sim/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Repos/Hardware/UniversalControlPanel/firmware_sousim_2/sim/build/lvgl_mockup.slnx
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

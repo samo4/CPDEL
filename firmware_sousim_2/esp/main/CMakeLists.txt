@@ -1,0 +1,15 @@
+idf_component_register(
+    SRCS
+        "../../src/main_esp.c"
+        "../../src/ui/ui.c"
+        "../../src/ui/ui_channel_detail.c"
+        "../../src/ui/ui_graph.c"
+        "../../src/ui/ui_main.c"
+        "../../src/ui/ui_numpad.c"
+        "../../src/ui/ui_settings.c"
+        "../../src/ui/ui_wireless.c"
+    INCLUDE_DIRS
+        "."
+        "../../src"
+        "../../src/ui"
+)

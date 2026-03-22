@@ -1,0 +1,6 @@
+## Example idf_component.yml for LVGL 8.3.x via IDF Component Manager
+## Place this file in esp/main/ and run: idf.py update-dependencies
+
+dependencies:
+  lvgl/lvgl: "~8.3.0"
+  idf: ">=5.0.0"

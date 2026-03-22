@@ -30,7 +30,7 @@ FetchContent_MakeAvailable(lv_drivers)
 # Fetch FreeRTOS-Kernel (Windows MSVC simulation port)
 # freertos_config interface library must be created BEFORE FetchContent_MakeAvailable
 add_library(freertos_config INTERFACE)
-target_include_directories(freertos_config SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(freertos_config SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 
 FetchContent_Declare(
     freertos_kernel
@@ -42,10 +42,10 @@ set(FREERTOS_HEAP "4" CACHE STRING "FreeRTOS heap" FORCE)
 FetchContent_MakeAvailable(freertos_kernel)
 
 # Configure imported targets to use our local config files
-target_include_directories(lvgl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(lvgl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(lvgl PUBLIC LV_CONF_INCLUDE_SIMPLE)
 
-target_include_directories(lv_drivers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(lv_drivers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(lv_drivers PUBLIC LV_CONF_INCLUDE_SIMPLE USE_SDL)
 
 # Find SDL2 (Required for PC simulation)
@@ -60,20 +60,21 @@ target_link_libraries(lv_drivers PUBLIC SDL2::SDL2)
 
 # List sources
 add_executable(lvgl_mockup
-    src/main.c
-    src/ui/ui.c
-    src/ui/ui_channel_detail.c
-    src/ui/ui_graph.c
-    src/ui/ui_main.c
-    src/ui/ui_numpad.c
-    src/ui/ui_settings.c
-    src/ui/ui_wireless.c
+    ../src/main_sim.c
+    ../src/ui/ui.c
+    ../src/ui/ui_channel_detail.c
+    ../src/ui/ui_graph.c
+    ../src/ui/ui_main.c
+    ../src/ui/ui_numpad.c
+    ../src/ui/ui_settings.c
+    ../src/ui/ui_wireless.c
 )
 
 # Include directories
 target_include_directories(lvgl_mockup PRIVATE
-    src
-    src/ui
+    .
+    ../src
+    ../src/ui
     ${lvgl_SOURCE_DIR}
     ${lv_drivers_SOURCE_DIR}
 )

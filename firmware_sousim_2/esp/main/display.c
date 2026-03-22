@@ -4,6 +4,7 @@
 
 #include "display.h"
 #include "driver/spi_master.h"
+#include "esp_lcd_ili9341.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
@@ -70,7 +71,8 @@ void display_init(void) {
     esp_lcd_panel_handle_t panel_handle;
     esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = TFT_RST,
-        .rgb_endian = LCD_RGB_DATA_ENDIAN_BIG,
+        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
+        .data_endian = LCD_RGB_DATA_ENDIAN_BIG,
         .bits_per_pixel = 16,
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(io_handle, &panel_config, &panel_handle));

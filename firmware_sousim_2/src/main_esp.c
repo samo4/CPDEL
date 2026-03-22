@@ -14,7 +14,6 @@
 #define SYS_BUS_IMPLEMENTATION
 #include "sys_bus.h"
 
-#define DISPLAY_IMPLEMENTATION
 #include "display.h"
 
 #include "ui/ui.h"

@@ -8,7 +8,5 @@
     "editor.formatOnSave": true
   },
   "C_Cpp.clang_format_style": "file",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.clang-tidy": "explicit"
-  }
+  "editor.codeActionsOnSave": {}
 }

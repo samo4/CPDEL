@@ -27,9 +27,17 @@ static void heartbeat_task(void *param) {
     (void)param;
     for (;;) {
         printf("[heartbeat] tick, free heap: %u bytes\n", (unsigned)xPortGetFreeHeapSize());
+        printf("[stack] free stack: %u bytes\n", (unsigned)uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
         fflush(stdout);
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+    (void)xTask;
+    (void)pcTaskName;
+    printf("Stack overflow in task %s\n", pcTaskName);
+    configASSERT(0);
 }
 
 #ifndef ESP_PLATFORM

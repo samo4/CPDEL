@@ -24,7 +24,6 @@ static void btn_backspace_event(lv_event_t *e);
 static void btn_cancel_event(lv_event_t *e);
 static void btn_ok_event(lv_event_t *e);
 
-// ── Key layout table ──────────────────────────────────────────────────────────
 typedef struct {
     const char *txt;
     lv_event_cb_t cb;
@@ -167,7 +166,6 @@ void ui_create_numpad_screen(void) {
     lv_obj_set_style_text_color(range_label, lv_palette_lighten(LV_PALETTE_GREY, 2), 0);
     lv_label_set_text(range_label, "0.00 – 30.00");
 
-    // ── Digit rows [7-9], [4-6], [1-3], [. / 0 / ⌫] ─────────────────────────
     for (int row_i = 0; row_i < 4; row_i++) {
         lv_obj_t *row = make_key_row(col);
         for (int col_i = 0; col_i < 3; col_i++) {
@@ -203,9 +201,12 @@ void ui_create_numpad_screen(void) {
     lv_obj_center(ok_lbl);
 }
 
-// ── Public open API ───────────────────────────────────────────────────────────
 void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),
                     lv_obj_t *return_screen) {
+    if (!lv_obj_is_valid(return_screen)) {
+        printf("Error: invalid return screen passed to ui_open_numpad\n");
+        return;
+    }
     numpad_min = min;
     numpad_max = max;
     numpad_confirm_cb = confirm_cb;

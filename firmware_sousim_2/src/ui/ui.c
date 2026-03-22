@@ -130,7 +130,7 @@ void ui_init(void) {
 // Event Handlers for Navigation
 
 void ui_event_channel_select(lv_event_t *e) {
-    lv_obj_t *target = lv_event_get_target(e);
+    // lv_obj_t *target = lv_event_get_target(e);
     // Assuming user data contains channel index (intptr_t)
     intptr_t ch_idx = (intptr_t)lv_event_get_user_data(e);
     current_channel_index = (int)ch_idx;

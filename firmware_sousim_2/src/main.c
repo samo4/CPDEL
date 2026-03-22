@@ -1,7 +1,11 @@
+#ifndef ESP_PLATFORM
 #include <SDL2/SDL.h>
+#include <windows.h>
+#include "sdl/sdl.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <windows.h>
 #include "FreeRTOS.h"
 #include "lvgl.h"
 
@@ -11,10 +15,11 @@
 #define SYS_BUS_IMPLEMENTATION
 #include "sys_bus.h"
 
+#ifndef ESP_PLATFORM
 #define SIM_CONTROLLER_IMPLEMENTATION
 #include "sim_controller.h"
+#endif
 
-#include "sdl/sdl.h"
 #include "task.h"
 #include "ui/ui.h"
 
@@ -27,6 +32,8 @@ static void heartbeat_task(void *param) {
     }
 }
 
+#ifndef ESP_PLATFORM
+
 /* FreeRTOS scheduler runs in a background Windows thread so the main thread
    keeps ownership of SDL — SDL2 requires all rendering on the thread that
    created the window. App logic tasks go here. */
@@ -35,29 +42,6 @@ static DWORD WINAPI freertos_scheduler_thread(LPVOID param) {
     vTaskStartScheduler();
     return 0;
 }
-
-/*
-how this will look in ESP32:
-
-FreeRTOS is already running when app_main is called — no vTaskStartScheduler().
-The display flush callback writes over SPI instead of SDL, but ui_init() and all task logic are identical to the
-simulator.
-
-static void lvgl_task(void *param) {
-    (void)param;
-    for (;;) {
-        lv_timer_handler();
-        vTaskDelay(pdMS_TO_TICKS(5));
-    }
-}
-
-void app_main(void) {
-    lv_init();
-    ui_init();
-    xTaskCreate(lvgl_task, "LVGL", 4096, NULL, 5, NULL);
-    xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);
-}
-*/
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -107,3 +91,35 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
+#else /* ESP_PLATFORM */
+
+/* FreeRTOS is already running when app_main is called — no vTaskStartScheduler().
+   The display flush callback writes over SPI instead of SDL, but ui_init() and
+   all task logic are identical to the simulator. */
+
+static void lvgl_task(void *param) {
+    (void)param;
+    for (;;) {
+        lv_timer_handler();
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+
+void app_main(void) {
+    lv_init();
+
+    // TODO: register SPI/parallel display flush callback and touch input driver
+    //       then call lv_disp_drv_register / lv_indev_drv_register here
+
+    event_bus_init();
+    sys_bus_init();
+
+    ui_init(); // run after bus init!
+
+    xTaskCreate(lvgl_task, "LVGL", 4096, NULL, 5, NULL);
+    xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);
+    xTaskCreate(sim_controller_task, "Controller", 2048, NULL, 3, NULL);
+}
+
+#endif /* ESP_PLATFORM */

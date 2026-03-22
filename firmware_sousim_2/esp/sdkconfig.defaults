@@ -13,3 +13,9 @@ CONFIG_LV_MEM_SIZE_KILOBYTES=64
 
 # FreeRTOS diagnostics: canary-based stack overflow detection
 CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+
+# ILI9341 via SPI: use 16-bit RGB565 to match display hardware (sim uses 32-bit SDL)
+CONFIG_LV_COLOR_DEPTH_16=y
+
+# Byte-swap each RGB565 pixel so SPI sends the high byte first (ILI9341 is big-endian)
+CONFIG_LV_COLOR_16_SWAP=y

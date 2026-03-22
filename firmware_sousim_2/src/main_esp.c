@@ -14,6 +14,9 @@
 #define SYS_BUS_IMPLEMENTATION
 #include "sys_bus.h"
 
+#define DISPLAY_IMPLEMENTATION
+#include "display.h"
+
 #include "ui/ui.h"
 
 static const char *TAG = __FILE_NAME__;
@@ -58,8 +61,7 @@ void app_main(void) {
 
     heap_caps_register_failed_alloc_callback(malloc_failed_cb);
 
-    // TODO: register SPI/parallel display flush callback and touch input driver
-    //       then call lv_disp_drv_register / lv_indev_drv_register here
+    display_init(); // SPI + ILI9341 + LVGL disp_drv + tick timer
 
     event_bus_init();
     sys_bus_init();

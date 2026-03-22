@@ -8,8 +8,12 @@ idf_component_register(
         "../../src/ui/ui_numpad.c"
         "../../src/ui/ui_settings.c"
         "../../src/ui/ui_wireless.c"
+        "display.c"
     INCLUDE_DIRS
         "."
         "../../src"
         "../../src/ui"
+    REQUIRES
+        esp_lcd
+        driver
 )

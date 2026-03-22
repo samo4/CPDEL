@@ -12,6 +12,7 @@ lv_obj_t *ui_ChannelDetailScreen;
 lv_obj_t *ui_GraphScreen;
 lv_obj_t *ui_SettingsScreen;
 lv_obj_t *ui_NumpadScreen;
+lv_obj_t *ui_WirelessScreen;
 
 channel_data_t channels[2];
 int current_channel_index = 0;
@@ -107,6 +108,7 @@ void ui_init(void) {
     ui_create_graph_screen();
     ui_create_settings_screen();
     ui_create_numpad_screen();
+    ui_create_wireless_screen();
     lv_disp_load_scr(ui_MainScreen);
 
     /* LVGL timer: drain queue_gui every 100 ms (runs on LVGL thread, no mutex needed) */
@@ -145,6 +147,10 @@ void ui_event_navigate_settings(lv_event_t *e) {
 
 void ui_event_navigate_graph(lv_event_t *e) {
     lv_scr_load_anim(ui_GraphScreen, LV_SCR_LOAD_ANIM_FADE_ON, UI_ANIM_TIME_MS, 0, false);
+}
+
+void ui_event_navigate_wireless(lv_event_t *e) {
+    lv_scr_load_anim(ui_WirelessScreen, LV_SCR_LOAD_ANIM_MOVE_BOTTOM, UI_ANIM_TIME_MS, 0, false);
 }
 
 void ui_event_navigate_back(lv_event_t *e) {

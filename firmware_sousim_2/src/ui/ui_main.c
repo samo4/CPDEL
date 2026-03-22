@@ -59,6 +59,8 @@ void ui_create_main_screen(void) {
     lv_label_set_text(rssi_lbl, LV_SYMBOL_WIFI " --");
     lv_obj_align_to(rssi_lbl, settings_btn, LV_ALIGN_OUT_LEFT_MID, -20, 0);
     lv_obj_set_style_text_color(rssi_lbl, lv_palette_main(LV_PALETTE_GREY), 0);
+    lv_obj_add_flag(rssi_lbl, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(rssi_lbl, ui_event_navigate_wireless, LV_EVENT_CLICKED, NULL);
 
     // Channel Panels (Using Grid or Flex layout)
     // For 240x320 portrait: Stack them vertically.

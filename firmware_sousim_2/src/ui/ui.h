@@ -12,6 +12,7 @@ extern lv_obj_t *ui_ChannelDetailScreen;
 extern lv_obj_t *ui_GraphScreen;
 extern lv_obj_t *ui_SettingsScreen;
 extern lv_obj_t *ui_NumpadScreen;
+extern lv_obj_t *ui_WirelessScreen;
 
 typedef struct {
     double voltage_setpoint;
@@ -35,6 +36,7 @@ void ui_create_channel_detail_screen(void);
 void ui_create_graph_screen(void);
 void ui_create_settings_screen(void);
 void ui_create_numpad_screen(void);
+void ui_create_wireless_screen(void);
 
 void ui_main_update_channel(int ch);
 void ui_main_update_rssi(int rssi_dbm);
@@ -47,6 +49,7 @@ void ui_open_numpad(const char *title, double current_value, double min, double 
 void ui_event_channel_select(lv_event_t *e);
 void ui_event_navigate_settings(lv_event_t *e);
 void ui_event_navigate_graph(lv_event_t *e);
+void ui_event_navigate_wireless(lv_event_t *e);
 void ui_event_navigate_back(lv_event_t *e);
 void ui_event_navigate_detail_back(lv_event_t *e);
 

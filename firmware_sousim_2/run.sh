@@ -5,6 +5,7 @@ VCPKG_TOOLCHAIN="C:/Repos/External/vcpkg/scripts/buildsystems/vcpkg.cmake"
 # Handle clean flag
 if [[ "$1" == "--clean" || "$1" == "-c" ]]; then
     echo "Cleaning build directory..."
+    rm -f build/CMakeCache.txt
     cmake --build build --target clean --config Debug 2>/dev/null || rm -rf build
     echo "Clean complete."
     exit 0

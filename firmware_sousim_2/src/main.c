@@ -40,6 +40,11 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
     configASSERT(0);
 }
 
+void vApplicationMallocFailedHook(void) {
+    printf("Malloc failed!\n");
+    configASSERT(0);
+}
+
 #ifndef ESP_PLATFORM
 
 /* FreeRTOS scheduler runs in a background Windows thread so the main thread

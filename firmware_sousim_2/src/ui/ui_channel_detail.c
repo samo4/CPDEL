@@ -10,6 +10,7 @@ static lv_obj_t *cutoff_sw;
 static lv_obj_t *cutoff_val_lbl;
 
 static void update_setpoint_view(bool is_cv) {
+    if (!lv_obj_is_valid(setpoint_label) || !lv_obj_is_valid(setpoint_val_lbl)) return;
     if (is_cv) {
         lv_label_set_text(setpoint_label, "Set Voltage (V)");
         lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[current_channel_index].voltage_setpoint);

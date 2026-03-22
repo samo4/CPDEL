@@ -14,8 +14,9 @@
 #define SYS_BUS_IMPLEMENTATION
 #include "sys_bus.h"
 
-#include "freertos_hooks.h"
 #include "ui/ui.h"
+
+static const char *TAG = __FILE_NAME__;
 
 /* FreeRTOS is already running when app_main is called — no vTaskStartScheduler().
    The display flush callback writes over SPI instead of SDL, but ui_init() and
@@ -29,9 +30,17 @@ static void lvgl_task(void *param) {
     }
 }
 
+static void heartbeat_task(void *param) {
+    (void)param;
+    for (;;) {
+        ESP_LOGV(TAG, "[heartbeat] tick, free heap: %u bytes", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
     (void)xTask;
-    printf("Stack overflow in task %s\n", pcTaskName);
+    ESP_LOGE(TAG, "Stack overflow in task %s", pcTaskName);
     configASSERT(0);
 }
 
@@ -39,8 +48,6 @@ void vApplicationMallocFailedHook(void) {
     printf("Malloc failed!\n");
     configASSERT(0);
 }
-
-static const char *TAG = "heap";
 
 static void malloc_failed_cb(size_t size, uint32_t caps, const char *function_name) {
     ESP_LOGE(TAG, "Failed to allocate %zu bytes (caps: 0x%08" PRIx32 ") in %s", size, caps, function_name);

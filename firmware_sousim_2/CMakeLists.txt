@@ -59,10 +59,15 @@ target_link_libraries(lvgl PUBLIC SDL2::SDL2)
 target_link_libraries(lv_drivers PUBLIC SDL2::SDL2)
 
 # List sources
-file(GLOB_RECURSE UI_SOURCES "src/ui/*.c")
 add_executable(lvgl_mockup
     src/main.c
-    ${UI_SOURCES}
+    src/ui/ui.c
+    src/ui/ui_channel_detail.c
+    src/ui/ui_graph.c
+    src/ui/ui_main.c
+    src/ui/ui_numpad.c
+    src/ui/ui_settings.c
+    src/ui/ui_wireless.c
 )
 
 # Include directories

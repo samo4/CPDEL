@@ -19,7 +19,7 @@
 
 - ESP-IDF
   - `winget install Espressif.EIM-CLI`
-  - `eim install`
+  - `eim install` (in elevated cmd.exe, not bash)
 
 ```
 ./esp.sh COMx      # build, flash, monitor (default port: COM3)

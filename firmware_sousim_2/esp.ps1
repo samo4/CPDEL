@@ -10,6 +10,42 @@ param(
 $EspDir = "esp"
 $EimProfile = "C:\Espressif\tools\Microsoft.v6.0.PowerShell_profile.ps1"
 
+function Write-IdfLine {
+    param([string]$Line)
+
+    if ($Line -match '(?i)(^|\s)(error:|fatal error:|FAILED:|ninja: build stopped)') {
+        Write-Host $Line -ForegroundColor Red
+        return
+    }
+    if ($Line -match '(?i)(^|\s)(warning:)') {
+        Write-Host $Line -ForegroundColor Yellow
+        return
+    }
+    if ($Line -match '(?i)(Building|Compiling|Linking|Generating|Invoking|Scanning dependencies)') {
+        Write-Host $Line -ForegroundColor Cyan
+        return
+    }
+    if ($Line -match '(?i)(Done|Succeeded|ready|Project build complete)') {
+        Write-Host $Line -ForegroundColor Green
+        return
+    }
+
+    Write-Host $Line
+}
+
+function Invoke-Idf {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+
+    # Keep ANSI color support enabled for tools that emit it.
+    $env:CLICOLOR_FORCE = "1"
+
+    & idf.py @Args 2>&1 | ForEach-Object {
+        Write-IdfLine $_.ToString()
+    }
+
+    return $LASTEXITCODE
+}
+
 # Strip MSYS/MinGW environment variables inherited from Git Bash so idf.py
 # doesn't reject the environment as unsupported.
 foreach ($var in @('MSYSTEM', 'MSYS', 'MSYS2_PATH_TYPE', 'MINGW_PREFIX',
@@ -34,21 +70,21 @@ Set-Location $EspDir
 $NeedsBootstrap = $Command -in @('build', 'flash', 'monitor', 'flash-monitor', 'menuconfig')
 if ($NeedsBootstrap -and -not (Test-Path "sdkconfig")) {
     Write-Host "Setting target to esp32s3..."
-    idf.py set-target esp32s3
+    Invoke-Idf set-target esp32s3
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Write-Host "Fetching dependencies..."
-    idf.py update-dependencies
+    Invoke-Idf update-dependencies
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 switch ($Command) {
     'build' {
         Write-Host "Building..."
-        idf.py build
+        Invoke-Idf build
     }
     'flash' {
         Write-Host "Building and flashing to $Port..."
-        idf.py -p $Port flash
+        Invoke-Idf -p $Port flash
     }
     'monitor' {
         Write-Host "Opening monitor on $Port..."
@@ -56,23 +92,23 @@ switch ($Command) {
     }
     'flash-monitor' {
         Write-Host "Flashing to $Port and opening monitor..."
-        idf.py -p $Port flash monitor
+        Invoke-Idf -p $Port flash monitor
     }
     'menuconfig' {
         Write-Host "Opening menuconfig..."
-        idf.py menuconfig
+        Invoke-Idf menuconfig
     }
     'clean' {
         Write-Host "Cleaning build directory..."
-        idf.py fullclean
+        Invoke-Idf fullclean
     }
     'update-deps' {
         Write-Host "Updating managed components..."
-        idf.py update-dependencies
+        Invoke-Idf update-dependencies
     }
     'set-target' {
         Write-Host "Setting target to esp32s3..."
-        idf.py set-target esp32s3
+        Invoke-Idf set-target esp32s3
     }
     default {
         Write-Error "Unknown command '$Command'. Valid: build, flash, monitor, flash-monitor, menuconfig, clean, update-deps, set-target"

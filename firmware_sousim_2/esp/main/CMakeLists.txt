@@ -1,6 +1,5 @@
 idf_component_register(
     SRCS
-        "../../src/main_esp.c"
         "../../src/ui/ui.c"
         "../../src/ui/ui_channel_detail.c"
         "../../src/ui/ui_graph.c"
@@ -9,6 +8,7 @@ idf_component_register(
         "../../src/ui/ui_settings.c"
         "../../src/ui/ui_wireless.c"
         "display.c"
+        "main.c"
     INCLUDE_DIRS
         "."
         "../../src"

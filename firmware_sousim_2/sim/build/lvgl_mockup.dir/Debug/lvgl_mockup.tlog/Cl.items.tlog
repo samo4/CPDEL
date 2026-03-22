@@ -1,8 +1,0 @@
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\main_sim.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\main_sim.obj
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\ui\ui.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\ui.obj
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\ui\ui_channel_detail.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\ui_channel_detail.obj
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\ui\ui_graph.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\ui_graph.obj
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\ui\ui_main.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\ui_main.obj
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\ui\ui_numpad.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\ui_numpad.obj
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\ui\ui_settings.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\ui_settings.obj
-C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\src\ui\ui_wireless.c;C:\Repos\Hardware\UniversalControlPanel\firmware_sousim_2\sim\build\lvgl_mockup.dir\Debug\ui_wireless.obj

@@ -60,7 +60,7 @@ target_link_libraries(lv_drivers PUBLIC SDL2::SDL2)
 
 # List sources
 add_executable(lvgl_mockup
-    ../src/main_sim.c
+    main.c
     ../src/ui/ui.c
     ../src/ui/ui_channel_detail.c
     ../src/ui/ui_graph.c

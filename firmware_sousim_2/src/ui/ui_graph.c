@@ -57,7 +57,7 @@ void ui_graph_update_channel(int ch) {
 
     if (lv_scr_act() != ui_GraphScreen) return;
     if (ch != current_channel_index) return;
-    if (!lv_obj_is_valid(ser_volt) || !lv_obj_is_valid(ser_curr)) return;
+    if (!lv_obj_is_valid(chart)) return;
     refresh_detail_screen(NULL);
 }
 

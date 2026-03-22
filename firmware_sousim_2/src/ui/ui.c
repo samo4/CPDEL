@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include "../scpi.h"
 #include "../sys_bus.h"
-#include "FreeRTOS.h"
-#include "queue.h"
 
 #define UI_ANIM_TIME_MS 222
 

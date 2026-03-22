@@ -17,8 +17,7 @@
  */
 
 #include <stdint.h>
-#include "FreeRTOS.h"
-#include "queue.h"
+#include "freertos_includes.h"
 
 typedef enum {
     SYS_MSG_RSSI,        /* args[0] = signal strength in dBm (negative int)  */

@@ -7,9 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "FreeRTOS.h"
+#include "freertos_includes.h"
 #include "lvgl.h"
-#include "task.h"
 
 #define SCPI_IMPLEMENTATION
 #include "scpi.h"

@@ -69,3 +69,6 @@ esp/sdkconfig.old
 esp/dependencies.lock
 esp/managed_components/
 esp/main/idf_component.yml.lock
+
+# EIM (ESP-IDF Installation Manager) local config
+eim_config.toml

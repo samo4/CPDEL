@@ -2,9 +2,8 @@
  * Compiled only for the ESP target; excluded from the PC simulator build. */
 
 #include <stdio.h>
-#include "FreeRTOS.h"
+#include "freertos_includes.h"
 #include "lvgl.h"
-#include "task.h"
 
 #define SCPI_IMPLEMENTATION
 #include "scpi.h"

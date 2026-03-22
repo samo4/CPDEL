@@ -1,35 +1,22 @@
 #!/bin/bash
-# ESP-IDF build, flash, and monitor helper.
-PORT="${1:-COM3}"
-ESP_DIR="esp"
+# ESP-IDF helper — delegates to esp.ps1 (ESP-IDF v6 requires PowerShell on Windows).
+#
+# Usage:
+#   ./esp.sh                  — build
+#   ./esp.sh flash [PORT]     — build + flash  (default COM3)
+#   ./esp.sh monitor [PORT]   — open serial monitor
+#   ./esp.sh flash-monitor [PORT] — flash then monitor
+#   ./esp.sh menuconfig       — open interactive config menu
+#   ./esp.sh clean            — clean build artefacts
+#   ./esp.sh update-deps      — update managed components
+#   ./esp.sh set-target       — re-run set-target esp32s3
 
-if [ -z "${IDF_PATH}" ]; then
-    echo "Error: IDF_PATH is not set"
-    echo "  https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/"
-    exit 1
-fi
+CMD="${1:-build}"
+PORT="${2:-COM3}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PS1_WIN="$(cygpath -w "${SCRIPT_DIR}/esp.ps1" 2>/dev/null || echo "${SCRIPT_DIR}/esp.ps1")"
 
-# Source ESP-IDF environment if idf.py is not already on PATH
-if ! command -v idf.py &>/dev/null; then
-    echo "idf.py not on PATH — sourcing ${IDF_PATH}/export.sh ..."
-    # shellcheck disable=SC1091
-    . "${IDF_PATH}/export.sh" || { echo "Error: failed to source ${IDF_PATH}/export.sh"; exit 1; }
-fi
-
-set -e
-
-cd "${ESP_DIR}"
-
-# Set target on first run (creates sdkconfig)
-if [ ! -f "sdkconfig" ]; then
-    echo "Setting target to esp32s3..."
-    idf.py set-target esp32s3
-    echo "Fetching dependencies (LVGL)..."
-    idf.py update-dependencies
-fi
-
-echo "Building..."
-idf.py build
-
-echo "Flashing to ${PORT} and opening monitor..."
-idf.py -p "${PORT}" flash monitor
+exec powershell.exe -NoProfile -ExecutionPolicy Bypass \
+    -File "${PS1_WIN}" \
+    -Command "${CMD}" \
+    -Port "${PORT}"

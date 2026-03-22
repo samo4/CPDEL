@@ -3,11 +3,9 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "FreeRTOS.h"
-#include "queue.h"
+#include "freertos_includes.h"
 #include "scpi.h"
 #include "sys_bus.h"
-#include "task.h"
 #include "ui/ui.h"
 
 #define STREAM_TICK_MS 200

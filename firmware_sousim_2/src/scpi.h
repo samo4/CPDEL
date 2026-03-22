@@ -2,8 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "FreeRTOS.h"
-#include "queue.h"
+#include "freertos_includes.h"
 
 typedef enum {
     SCPI_CMD_SET_MODE,
@@ -14,9 +13,9 @@ typedef enum {
     SCPI_CMD_MEAS_VOLT_CONT,
     SCPI_CMD_MEAS_CURR_CONT,
     /* Source (setpoint / mode) — one-shot query; response reuses the same cmd with source=SRC_CTRL */
-    SCPI_CMD_SOUR_VOLT,  /* request: argc=0; response: argc=1, args[0]=voltage setpoint */
-    SCPI_CMD_SOUR_CURR,  /* request: argc=0; response: argc=1, args[0]=current setpoint */
-    SCPI_CMD_SOUR_MODE,  /* request: argc=0; response: argc=1, args[0] 0=CV 1=CC */
+    SCPI_CMD_SOUR_VOLT, /* request: argc=0; response: argc=1, args[0]=voltage setpoint */
+    SCPI_CMD_SOUR_CURR, /* request: argc=0; response: argc=1, args[0]=current setpoint */
+    SCPI_CMD_SOUR_MODE, /* request: argc=0; response: argc=1, args[0] 0=CV 1=CC */
     SCPI_CMD_SELECT_CHANNEL,
     SCPI_CMD_IDN,
     SCPI_CMD_ERROR,
@@ -121,13 +120,11 @@ int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size) {
             return snprintf(buf, buf_size, "MEAS:CURR:CONT %s (@%u)", (msg->args[0] != 0.0f) ? "ON" : "OFF", ch);
 
         case SCPI_CMD_SOUR_VOLT:
-            if (msg->argc > 0)
-                return snprintf(buf, buf_size, "SOUR%u:VOLT? = %.3f", ch, (double)msg->args[0]);
+            if (msg->argc > 0) return snprintf(buf, buf_size, "SOUR%u:VOLT? = %.3f", ch, (double)msg->args[0]);
             return snprintf(buf, buf_size, "SOUR%u:VOLT?", ch);
 
         case SCPI_CMD_SOUR_CURR:
-            if (msg->argc > 0)
-                return snprintf(buf, buf_size, "SOUR%u:CURR? = %.3f", ch, (double)msg->args[0]);
+            if (msg->argc > 0) return snprintf(buf, buf_size, "SOUR%u:CURR? = %.3f", ch, (double)msg->args[0]);
             return snprintf(buf, buf_size, "SOUR%u:CURR?", ch);
 
         case SCPI_CMD_SOUR_MODE:

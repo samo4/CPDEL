@@ -30,7 +30,7 @@ FetchContent_MakeAvailable(lv_drivers)
 # Fetch FreeRTOS-Kernel (Windows MSVC simulation port)
 # freertos_config interface library must be created BEFORE FetchContent_MakeAvailable
 add_library(freertos_config INTERFACE)
-target_include_directories(freertos_config SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+target_include_directories(freertos_config SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 FetchContent_Declare(
     freertos_kernel

@@ -1,0 +1,6 @@
+# Persisted sdkconfig overrides.
+# Generated from sdkconfig by selecting non-default values.
+# idf.py merges this into a fresh sdkconfig on first build after checkout.
+
+# LVGL fonts
+CONFIG_LV_FONT_MONTSERRAT_20=y

@@ -10,6 +10,10 @@
 #   ./esp.sh clean            — clean build artefacts
 #   ./esp.sh update-deps      — update managed components
 #   ./esp.sh set-target       — re-run set-target esp32s3
+#   ./esp.sh size             — image size summary
+#   ./esp.sh size-components  — size by component
+#   ./esp.sh size-files       — size by object/source file
+#   ./esp.sh build-size       — build then print all size reports
 
 CMD="${1:-build}"
 PORT="${2:-COM3}"

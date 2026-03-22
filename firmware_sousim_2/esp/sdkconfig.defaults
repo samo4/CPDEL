@@ -19,3 +19,13 @@ CONFIG_LV_COLOR_DEPTH_16=y
 
 # Byte-swap each RGB565 pixel so SPI sends the high byte first (ILI9341 is big-endian)
 CONFIG_LV_COLOR_16_SWAP=y
+
+# Custom partition layout: dual OTA slots plus SPIFFS
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_OFFSET=0x8000
+
+# Board flash size must match hardware
+CONFIG_ESPTOOLPY_FLASHSIZE_2MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="2MB"

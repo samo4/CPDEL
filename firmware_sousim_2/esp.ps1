@@ -2,6 +2,7 @@
 #
 # Commands:  build | flash [PORT] | monitor [PORT] | flash-monitor [PORT]
 #            menuconfig | clean | update-deps | set-target
+#            size | size-components | size-files | build-size
 param(
     [string]$Command = "build",
     [string]$Port = "COM3"
@@ -67,7 +68,10 @@ if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
 Set-Location $EspDir
 
 # First-run bootstrap (only for commands that need a configured project)
-$NeedsBootstrap = $Command -in @('build', 'flash', 'monitor', 'flash-monitor', 'menuconfig')
+$NeedsBootstrap = $Command -in @(
+    'build', 'flash', 'monitor', 'flash-monitor', 'menuconfig',
+    'size', 'size-components', 'size-files', 'build-size'
+)
 if ($NeedsBootstrap -and -not (Test-Path "sdkconfig")) {
     Write-Host "Setting target to esp32s3..."
     Invoke-Idf set-target esp32s3
@@ -110,8 +114,36 @@ switch ($Command) {
         Write-Host "Setting target to esp32s3..."
         Invoke-Idf set-target esp32s3
     }
+    'size' {
+        Write-Host "Showing image size summary..."
+        Invoke-Idf size
+    }
+    'size-components' {
+        Write-Host "Showing size by component..."
+        Invoke-Idf size-components
+    }
+    'size-files' {
+        Write-Host "Showing size by object/source file..."
+        Invoke-Idf size-files
+    }
+    'build-size' {
+        Write-Host "Building..."
+        Invoke-Idf build
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        Write-Host "Image size summary:"
+        Invoke-Idf size
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        Write-Host "Size by component:"
+        Invoke-Idf size-components
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        Write-Host "Size by file:"
+        Invoke-Idf size-files
+    }
     default {
-        Write-Error "Unknown command '$Command'. Valid: build, flash, monitor, flash-monitor, menuconfig, clean, update-deps, set-target"
+        Write-Error "Unknown command '$Command'. Valid: build, flash, monitor, flash-monitor, menuconfig, clean, update-deps, set-target, size, size-components, size-files, build-size"
         exit 1
     }
 }

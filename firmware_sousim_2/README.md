@@ -1,5 +1,7 @@
 # Sousim 2-CH DC Load
 
+## vscode
+
 ## PC Simulator
 
 ### Prerequisites (Windows)
@@ -20,6 +22,7 @@
 - ESP-IDF
   - `winget install Espressif.EIM-CLI`
   - `eim install` (in elevated cmd.exe, not bash)
+- `+` on terminal to add ESP-IDF PowerShell terminal
 
 ```
 ./esp.sh COMx      # build, flash, monitor (default port: COM3)

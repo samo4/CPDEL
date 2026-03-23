@@ -1,25 +1,17 @@
 #!/bin/bash
-# ESP-IDF helper — delegates to esp.ps1 (ESP-IDF v6 requires PowerShell on Windows).
-#
-# Usage:
-#   ./esp.sh                  — build
-#   ./esp.sh flash [PORT]     — build + flash  (default COM3)
-#   ./esp.sh monitor [PORT]   — open serial monitor
-#   ./esp.sh flash-monitor [PORT] — flash then monitor
-#   ./esp.sh menuconfig       — open interactive config menu
-#   ./esp.sh clean            — clean build artefacts
-#   ./esp.sh update-deps      — update managed components
-#   ./esp.sh size             — image size summary
-#   ./esp.sh size-components  — size by component
-#   ./esp.sh size-files       — size by object/source file
-#   ./esp.sh build-size       — build then print all size reports
 
-CMD="${1:-build}"
-PORT="${2:-COM14}"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PS1_WIN="$(cygpath -w "${SCRIPT_DIR}/esp.ps1" 2>/dev/null || echo "${SCRIPT_DIR}/esp.ps1")"
-
-exec powershell.exe -NoProfile -ExecutionPolicy Bypass \
-    -File "${PS1_WIN}" \
-    -Command "${CMD}" \
-    -Port "${PORT}"
+# Check if we are in a Bash shell (Git Bash/MinGW)
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    echo -e "\033[1;31m❌ ERROR: ESP-IDF commands clash with Git Bash (MinGW).\033[0m"
+    echo -e "\033[1;33m👉 Please use the dedicated ESP-IDF PowerShell terminal.\033[0m"
+    echo ""
+    echo -e "\033[1;32mHOW TO OPEN IT:\033[0m"
+    echo -e "  1. Click the \033[1;36m[+]\033[0m dropdown in the VS Code terminal panel."
+    echo -e "  2. Select \033[1;36m'ESP-IDF PowerShell'\033[0m."
+    echo ""
+    echo "Usage once inside PowerShell:"
+    echo "  esp                  — build"
+    echo "  esp flash [PORT]     — build + flash"
+    echo "  esp monitor          — serial monitor"
+    exit 1
+fi

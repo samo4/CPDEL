@@ -5,6 +5,7 @@
 #include "display.h"
 #include "driver/spi_master.h"
 #include "esp_lcd_ili9341.h"
+#include "esp_lcd_panel_commands.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
@@ -14,11 +15,14 @@
 
 static const char *TAG = __FILE_NAME__;
 
-#define TFT_MOSI 23
-#define TFT_SCLK 18
-#define TFT_CS 0
-#define TFT_DC 2
-#define TFT_RST 13
+static lv_disp_drv_t disp_drv;
+
+#define TFT_MOSI GPIO_NUM_35
+#define TFT_MISO GPIO_NUM_37
+#define TFT_SCLK GPIO_NUM_36
+#define TFT_CS GPIO_NUM_34
+#define TFT_DC GPIO_NUM_33
+#define TFT_RST GPIO_NUM_38
 
 #define DISP_HOR_RES 320
 #define DISP_VER_RES 240
@@ -36,17 +40,57 @@ static void lv_tick_timer_cb(void *arg) {
     lv_tick_inc(LV_TICK_PERIOD_MS);
 }
 
+static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t io_handle, esp_lcd_panel_io_event_data_t *edata,
+                                    void *user_ctx) {
+    (void)io_handle;
+    (void)edata;
+    lv_disp_flush_ready((lv_disp_drv_t *)user_ctx);
+    return false;
+}
+
 static void disp_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p) {
     esp_lcd_panel_handle_t panel = (esp_lcd_panel_handle_t)drv->user_data;
     esp_lcd_panel_draw_bitmap(panel, area->x1, area->y1, area->x2 + 1, area->y2 + 1, color_p);
-    lv_disp_flush_ready(drv);
+}
+
+static void log_panel_read_cmd(esp_lcd_panel_io_handle_t io_handle, int cmd, const char *name, size_t size) {
+    uint8_t data[4] = {0};
+    esp_err_t err = esp_lcd_panel_io_rx_param(io_handle, cmd, data, size);
+    if (err == ESP_OK) {
+        switch (size) {
+            case 1:
+                ESP_LOGI(TAG, "ILI9341 %s: %02X", name, data[0]);
+                break;
+            case 2:
+                ESP_LOGI(TAG, "ILI9341 %s: %02X %02X", name, data[0], data[1]);
+                break;
+            case 3:
+                ESP_LOGI(TAG, "ILI9341 %s: %02X %02X %02X", name, data[0], data[1], data[2]);
+                break;
+            default:
+                ESP_LOGI(TAG, "ILI9341 %s: %02X %02X %02X %02X", name, data[0], data[1], data[2], data[3]);
+                break;
+        }
+    } else {
+        ESP_LOGW(TAG, "ILI9341 %s read failed: %s", name, esp_err_to_name(err));
+    }
+}
+
+static void log_panel_readback(esp_lcd_panel_io_handle_t io_handle) {
+    log_panel_read_cmd(io_handle, LCD_CMD_RDDID, "RDDID(3)", 3);
+    log_panel_read_cmd(io_handle, LCD_CMD_RDDID, "RDDID(4)", 4);
+    log_panel_read_cmd(io_handle, LCD_CMD_RDDST, "RDDST", 4);
+    log_panel_read_cmd(io_handle, LCD_CMD_RDDPM, "RDDPM", 1);
+    log_panel_read_cmd(io_handle, LCD_CMD_RDD_MADCTL, "RDD_MADCTL", 1);
+    log_panel_read_cmd(io_handle, LCD_CMD_RDD_COLMOD, "RDD_COLMOD", 1);
+    log_panel_read_cmd(io_handle, LCD_CMD_RDDSR, "RDDSR", 1);
 }
 
 void display_init(void) {
-    /* SPI bus — no MISO: the IL9341 on this board is write-only */
+    /* SPI bus — MOSI/MISO/SCLK on FSPI native pins */
     spi_bus_config_t buscfg = {
         .mosi_io_num = TFT_MOSI,
-        .miso_io_num = -1,
+        .miso_io_num = TFT_MISO,
         .sclk_io_num = TFT_SCLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
@@ -60,6 +104,8 @@ void display_init(void) {
         .dc_gpio_num = TFT_DC,
         .cs_gpio_num = TFT_CS,
         .pclk_hz = DISP_SPI_CLK_HZ,
+        .on_color_trans_done = notify_lvgl_flush_ready,
+        .user_ctx = &disp_drv,
         .lcd_cmd_bits = 8,
         .lcd_param_bits = 8,
         .spi_mode = 0,
@@ -80,6 +126,7 @@ void display_init(void) {
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
+    log_panel_readback(io_handle);
 
     ESP_LOGI(TAG, "ILI9341 panel ready (%dx%d)", DISP_HOR_RES, DISP_VER_RES);
 
@@ -98,7 +145,6 @@ void display_init(void) {
     lv_disp_draw_buf_init(&disp_buf, buf, NULL, DISP_HOR_RES * DISP_DRAW_BUF_LINES);
 
     /* LVGL display driver */
-    static lv_disp_drv_t disp_drv;
     lv_disp_drv_init(&disp_drv);
     disp_drv.draw_buf = &disp_buf;
     disp_drv.flush_cb = disp_flush_cb;

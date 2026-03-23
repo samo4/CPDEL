@@ -5,6 +5,7 @@
 #include "freertos_includes.h"
 #include "lvgl.h"
 
+#include "driver/gpio.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 
@@ -20,6 +21,8 @@
 
 static const char *TAG = __FILE_NAME__;
 
+#define HEARTBEAT_GPIO GPIO_NUM_40
+
 /* FreeRTOS is already running when app_main is called — no vTaskStartScheduler().
    The display flush callback writes over SPI instead of SDL, but ui_init() and
    all task logic are identical to the simulator. */
@@ -34,9 +37,13 @@ static void lvgl_task(void *param) {
 
 static void heartbeat_task(void *param) {
     (void)param;
+    int level = 0;
     for (;;) {
-        ESP_LOGV(TAG, "[heartbeat] tick, free heap: %u bytes", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        level = !level;
+        ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, level));
+        ESP_LOGV(TAG, "[heartbeat] gpio=%d, free heap: %u bytes", level,
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -59,6 +66,10 @@ void app_main(void) {
     lv_init();
 
     heap_caps_register_failed_alloc_callback(malloc_failed_cb);
+
+    ESP_ERROR_CHECK(gpio_reset_pin(HEARTBEAT_GPIO));
+    ESP_ERROR_CHECK(gpio_set_direction(HEARTBEAT_GPIO, GPIO_MODE_OUTPUT));
+    ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, 0));
 
     display_init(); // SPI + ILI9341 + LVGL disp_drv + tick timer
 

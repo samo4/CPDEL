@@ -5,8 +5,11 @@
 #            size | size-components | size-files | build-size
 param(
     [string]$Command = "build",
-    [string]$Port = "COM3"
+    [string]$Port = "COM14"
 )
+
+$Target = "esp32s2"
+$Port = "COM14"
 
 $EspDir = "esp"
 $EimProfile = "C:\Espressif\tools\Microsoft.v6.0.PowerShell_profile.ps1"
@@ -36,14 +39,19 @@ function Write-IdfLine {
 
 function Invoke-Idf {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
-
-    # Keep ANSI color support enabled for tools that emit it.
     $env:CLICOLOR_FORCE = "1"
-
     & idf.py @Args 2>&1 | ForEach-Object {
         Write-IdfLine $_.ToString()
     }
+    return $LASTEXITCODE
+}
 
+# Run idf.py without piping so interactive tools (monitor) handle their own I/O.
+# PYTHONUTF8=1 prevents cp1252 codec errors on Windows when serial spits bad bytes.
+function Invoke-IdfDirect {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+    $env:PYTHONUTF8 = "1"
+    & idf.py @Args
     return $LASTEXITCODE
 }
 
@@ -67,18 +75,43 @@ if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
 
 Set-Location $EspDir
 
+# Hardcode serial transport to one port so flashing never scans other ports.
+$env:ESPPORT = $Port
+
+function Get-ConfiguredTarget {
+    if (-not (Test-Path "sdkconfig")) {
+        return $null
+    }
+
+    $line = Select-String -Path "sdkconfig" -Pattern '^CONFIG_IDF_TARGET="([^"]+)"' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $line) {
+        return $null
+    }
+
+    return $line.Matches[0].Groups[1].Value
+}
+
 # First-run bootstrap (only for commands that need a configured project)
 $NeedsBootstrap = $Command -in @(
     'build', 'flash', 'monitor', 'flash-monitor', 'menuconfig',
     'size', 'size-components', 'size-files', 'build-size'
 )
 if ($NeedsBootstrap -and -not (Test-Path "sdkconfig")) {
-    Write-Host "Setting target to esp32s3..."
-    Invoke-Idf set-target esp32s3
+    Write-Host "Setting target to $Target..."
+    Invoke-Idf set-target $Target
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Write-Host "Fetching dependencies..."
     Invoke-Idf update-dependencies
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+if ($NeedsBootstrap) {
+    $configuredTarget = Get-ConfiguredTarget
+    if ($configuredTarget -and $configuredTarget -ne $Target) {
+        Write-Host "Current sdkconfig target is $configuredTarget; switching to $Target..."
+        Invoke-Idf set-target $Target
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
 }
 
 switch ($Command) {
@@ -87,16 +120,20 @@ switch ($Command) {
         Invoke-Idf build
     }
     'flash' {
+        
         Write-Host "Building and flashing to $Port..."
-        Invoke-Idf -p $Port flash
+        Invoke-Idf --port $Port flash
     }
     'monitor' {
         Write-Host "Opening monitor on $Port..."
-        idf.py -p $Port monitor
+        Invoke-IdfDirect --port $Port monitor
     }
     'flash-monitor' {
-        Write-Host "Flashing to $Port and opening monitor..."
-        Invoke-Idf -p $Port flash monitor
+        Write-Host "Flashing to $Port..."
+        Invoke-Idf --port $Port flash
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Write-Host "Opening monitor on $Port..."
+        Invoke-IdfDirect --port $Port monitor
     }
     'menuconfig' {
         Write-Host "Opening menuconfig..."
@@ -111,8 +148,8 @@ switch ($Command) {
         Invoke-Idf update-dependencies
     }
     'set-target' {
-        Write-Host "Setting target to esp32s3..."
-        Invoke-Idf set-target esp32s3
+        Write-Host "Setting target to $Target..."
+        Invoke-Idf set-target $Target
     }
     'size' {
         Write-Host "Showing image size summary..."

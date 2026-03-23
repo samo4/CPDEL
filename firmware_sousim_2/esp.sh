@@ -9,14 +9,13 @@
 #   ./esp.sh menuconfig       — open interactive config menu
 #   ./esp.sh clean            — clean build artefacts
 #   ./esp.sh update-deps      — update managed components
-#   ./esp.sh set-target       — re-run set-target esp32s3
 #   ./esp.sh size             — image size summary
 #   ./esp.sh size-components  — size by component
 #   ./esp.sh size-files       — size by object/source file
 #   ./esp.sh build-size       — build then print all size reports
 
 CMD="${1:-build}"
-PORT="${2:-COM3}"
+PORT="${2:-COM14}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PS1_WIN="$(cygpath -w "${SCRIPT_DIR}/esp.ps1" 2>/dev/null || echo "${SCRIPT_DIR}/esp.ps1")"
 

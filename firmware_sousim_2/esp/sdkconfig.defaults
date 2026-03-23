@@ -11,6 +11,11 @@ CONFIG_LV_USE_LOG=y
 # LVGL memory: default is 32 KB which is too small; use 64 KB
 CONFIG_LV_MEM_SIZE_KILOBYTES=64
 
+# FreeRTOS tick rate: 1000 Hz = 1 ms per tick so pdMS_TO_TICKS() has 1 ms resolution
+# Without this, the default 100 Hz (10 ms/tick) makes pdMS_TO_TICKS(5)=0 which turns
+# vTaskDelay() into a bare yield, starving the IDLE task and triggering the TWDT.
+CONFIG_FREERTOS_HZ=1000
+
 # FreeRTOS diagnostics: canary-based stack overflow detection
 CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
 

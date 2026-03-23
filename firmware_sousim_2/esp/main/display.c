@@ -3,6 +3,7 @@
 // ILI9341 (4DLCD-24320240) display initialisation for LVGL 8.3.x
 
 #include "display.h"
+#include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_lcd_ili9341.h"
 #include "esp_lcd_panel_commands.h"
@@ -11,6 +12,8 @@
 #include "esp_lcd_panel_vendor.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "lvgl.h"
 
 static const char *TAG = __FILE_NAME__;
@@ -86,7 +89,115 @@ static void log_panel_readback(esp_lcd_panel_io_handle_t io_handle) {
     log_panel_read_cmd(io_handle, LCD_CMD_RDDSR, "RDDSR", 1);
 }
 
+/**
+ * Datasheet-compliant ILI9341 initialization sequence
+ * Used for diagnosing initialization issues when auto-init doesn't work
+ */
+static void ili9341_init_from_datasheet(esp_lcd_panel_io_handle_t io_handle, int rst_gpio) {
+    ESP_LOGI(TAG, "Starting datasheet-compliant ILI9341 initialization");
+
+    // RST sequence from datasheet
+    ESP_LOGI(TAG, "RST sequence: RST=1, Delay(200ms)");
+    gpio_set_level(rst_gpio, 1);
+    vTaskDelay(pdMS_TO_TICKS(200));
+
+    ESP_LOGI(TAG, "RST sequence: RST=0, Delay(800ms)");
+    gpio_set_level(rst_gpio, 0);
+    vTaskDelay(pdMS_TO_TICKS(800));
+
+    ESP_LOGI(TAG, "RST sequence: RST=1, Delay(800ms)");
+    gpio_set_level(rst_gpio, 1);
+    vTaskDelay(pdMS_TO_TICKS(800));
+
+    // Start Initial Sequence
+    ESP_LOGI(TAG, "0xCF: Power control");
+    esp_lcd_panel_io_tx_param(io_handle, 0xCF, (uint8_t[]){0x00, 0xAA, 0xE0}, 3);
+
+    ESP_LOGI(TAG, "0xED: Power control");
+    esp_lcd_panel_io_tx_param(io_handle, 0xED, (uint8_t[]){0x67, 0x03, 0x12, 0x81}, 4);
+
+    ESP_LOGI(TAG, "0xE8: Power control");
+    esp_lcd_panel_io_tx_param(io_handle, 0xE8, (uint8_t[]){0x8A, 0x01, 0x78}, 3);
+
+    ESP_LOGI(TAG, "0xCB: Power control");
+    esp_lcd_panel_io_tx_param(io_handle, 0xCB, (uint8_t[]){0x39, 0x2C, 0x00, 0x34, 0x02}, 5);
+
+    ESP_LOGI(TAG, "0xF7: Pump Ratio Control");
+    esp_lcd_panel_io_tx_param(io_handle, 0xF7, (uint8_t[]){0x20}, 1);
+
+    ESP_LOGI(TAG, "0xEA: Power Control");
+    esp_lcd_panel_io_tx_param(io_handle, 0xEA, (uint8_t[]){0x00, 0x00}, 2);
+
+    // Power supply settings
+    ESP_LOGI(TAG, "0xC0: Power Control (VRH)");
+    esp_lcd_panel_io_tx_param(io_handle, 0xC0, (uint8_t[]){0x23}, 1);
+
+    ESP_LOGI(TAG, "0xC1: Power Control (SAP)");
+    esp_lcd_panel_io_tx_param(io_handle, 0xC1, (uint8_t[]){0x11}, 1);
+
+    // VCM settings
+    ESP_LOGI(TAG, "0xC5: VCM Control");
+    esp_lcd_panel_io_tx_param(io_handle, 0xC5, (uint8_t[]){0x43, 0x4C}, 2);
+
+    ESP_LOGI(TAG, "0xC7: VCM Control 2");
+    esp_lcd_panel_io_tx_param(io_handle, 0xC7, (uint8_t[]){0xA0}, 1);
+
+    // Display settings
+    ESP_LOGI(TAG, "0x36: Memory Access Control");
+    esp_lcd_panel_io_tx_param(io_handle, 0x36, (uint8_t[]){0x48}, 1);
+
+    ESP_LOGI(TAG, "0x3A: Pixel Format Set (16-bit)");
+    esp_lcd_panel_io_tx_param(io_handle, 0x3A, (uint8_t[]){0x05}, 1);
+
+    // Gamma settings
+    ESP_LOGI(TAG, "0xB6: Display Function Control (Gamma)");
+    esp_lcd_panel_io_tx_param(io_handle, 0xB6, (uint8_t[]){0x0A, 0x02}, 2);
+
+    ESP_LOGI(TAG, "0xF2: 3Gamma Function Disable");
+    esp_lcd_panel_io_tx_param(io_handle, 0xF2, (uint8_t[]){0x00}, 1);
+
+    ESP_LOGI(TAG, "0x26: Gamma Curve Selected");
+    esp_lcd_panel_io_tx_param(io_handle, 0x26, (uint8_t[]){0x01}, 1);
+
+    // Positive Gamma Correction (0xE0)
+    ESP_LOGI(TAG, "0xE0: Positive Gamma Correction Curve");
+    esp_lcd_panel_io_tx_param(
+        io_handle, 0xE0,
+        (uint8_t[]){0x1F, 0x36, 0x36, 0x3A, 0x0C, 0x05, 0x4F, 0x87, 0x3C, 0x08, 0x11, 0x35, 0x19, 0x13, 0x00}, 15);
+
+    // Negative Gamma Correction (0xE1)
+    ESP_LOGI(TAG, "0xE1: Negative Gamma Correction Curve");
+    esp_lcd_panel_io_tx_param(
+        io_handle, 0xE1,
+        (uint8_t[]){0x00, 0x09, 0x09, 0x05, 0x13, 0x0A, 0x30, 0x78, 0x43, 0x07, 0x0E, 0x0A, 0x26, 0x2C, 0x1F}, 15);
+
+    // Exit Sleep Mode
+    ESP_LOGI(TAG, "0x11: Exit Sleep Mode, Delay(120ms)");
+    esp_lcd_panel_io_tx_param(io_handle, 0x11, NULL, 0);
+    vTaskDelay(pdMS_TO_TICKS(120));
+
+    // Display Function Test
+    ESP_LOGI(TAG, "0x21: Display Function Test");
+    esp_lcd_panel_io_tx_param(io_handle, 0x21, NULL, 0);
+
+    // Display ON
+    ESP_LOGI(TAG, "0x29: Display ON");
+    esp_lcd_panel_io_tx_param(io_handle, 0x29, NULL, 0);
+
+    ESP_LOGI(TAG, "Datasheet initialization sequence complete");
+}
+
 void display_init(void) {
+    // Use for datasheet-compliant initialization sequence RST
+    gpio_config_t gpio_cfg = {
+        .pin_bit_mask = 1ULL << TFT_RST,
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&gpio_cfg));
+
     /* SPI bus — MOSI/MISO/SCLK on FSPI native pins */
     spi_bus_config_t buscfg = {
         .mosi_io_num = TFT_MOSI,
@@ -122,8 +233,14 @@ void display_init(void) {
         .bits_per_pixel = 16,
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(io_handle, &panel_config, &panel_handle));
-    ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
-    ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
+
+    // Original esp-idf init (commented out - using datasheet sequence instead)
+    // ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
+    // ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
+
+    // Use datasheet-compliant initialization sequence
+    ili9341_init_from_datasheet(io_handle, TFT_RST);
+
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
     log_panel_readback(io_handle);

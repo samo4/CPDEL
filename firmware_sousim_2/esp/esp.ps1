@@ -6,7 +6,7 @@ switch ($action) {
     "monitor"       { idf.py -p $port monitor }
     "flash-monitor" { idf.py -p $port flash monitor }
     "menuconfig"    { idf.py menuconfig }
-    "clean"         { idf.py fullclean }
+    "clean"         { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build, sdkconfig }
     "update-deps"   { idf.py reconfigure }
     "size"          { idf.py size }
     "size-components" { idf.py size-components }

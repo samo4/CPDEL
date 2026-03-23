@@ -25,6 +25,10 @@ CONFIG_LV_COLOR_DEPTH_16=y
 # Byte-swap each RGB565 pixel so SPI sends the high byte first (ILI9341 is big-endian)
 CONFIG_LV_COLOR_16_SWAP=y
 
+# LVGL text formatting: use libc snprintf/vsnprintf and allow float specifiers (%f)
+CONFIG_LV_SPRINTF_CUSTOM=y
+CONFIG_LV_SPRINTF_USE_FLOAT=y
+
 # Custom partition layout: dual OTA slots plus SPIFFS
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"

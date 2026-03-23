@@ -132,6 +132,8 @@ static void create_channel_panel(lv_obj_t *parent, int channel_index) {
     lv_obj_t *sw = lv_switch_create(parent);
     lv_obj_set_size(sw, 40, 20);
     lv_obj_align(sw, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
+    lv_obj_set_style_bg_color(sw, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(sw, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_PART_INDICATOR | LV_STATE_CHECKED);
 
     // Static text "ON" helper
     lv_obj_t *sw_label = lv_label_create(parent);

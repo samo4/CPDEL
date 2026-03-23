@@ -26,13 +26,15 @@ static lv_disp_drv_t disp_drv;
 #define TFT_CS GPIO_NUM_34
 #define TFT_DC GPIO_NUM_33
 #define TFT_RST GPIO_NUM_38
+#define TFT_BK_LIGHT GPIO_NUM_1
+#define TFT_BK_LIGHT_ON_LEVEL 1
 
 #define DISP_HOR_RES 320
 #define DISP_VER_RES 240
 
 /* ---------- SPI / DMA ---------- */
 #define DISP_SPI_HOST SPI2_HOST
-#define DISP_SPI_CLK_HZ (40 * 1000 * 1000)
+#define DISP_SPI_CLK_HZ (26 * 1000 * 1000)
 #define DISP_DRAW_BUF_LINES 10 /* lines in the intermediate LVGL draw buffer */
 
 /* ---------- Tick ---------- */
@@ -78,7 +80,7 @@ static void log_panel_read_cmd(esp_lcd_panel_io_handle_t io_handle, int cmd, con
         ESP_LOGW(TAG, "ILI9341 %s read failed: %s", name, esp_err_to_name(err));
     }
 }
-
+/**
 static void log_panel_readback(esp_lcd_panel_io_handle_t io_handle) {
     log_panel_read_cmd(io_handle, LCD_CMD_RDDID, "RDDID(3)", 3);
     log_panel_read_cmd(io_handle, LCD_CMD_RDDID, "RDDID(4)", 4);
@@ -89,10 +91,8 @@ static void log_panel_readback(esp_lcd_panel_io_handle_t io_handle) {
     log_panel_read_cmd(io_handle, LCD_CMD_RDDSR, "RDDSR", 1);
 }
 
-/**
+
  * Datasheet-compliant ILI9341 initialization sequence
- * Used for diagnosing initialization issues when auto-init doesn't work
- */
 static void ili9341_init_from_datasheet(esp_lcd_panel_io_handle_t io_handle, int rst_gpio) {
     ESP_LOGI(TAG, "Starting datasheet-compliant ILI9341 initialization");
 
@@ -186,9 +186,10 @@ static void ili9341_init_from_datasheet(esp_lcd_panel_io_handle_t io_handle, int
 
     ESP_LOGI(TAG, "Datasheet initialization sequence complete");
 }
+*/
 
 void display_init(void) {
-    // Use for datasheet-compliant initialization sequence RST
+    /* Use for datasheet-compliant initialization sequence RST
     gpio_config_t gpio_cfg = {
         .pin_bit_mask = 1ULL << TFT_RST,
         .mode = GPIO_MODE_OUTPUT,
@@ -197,6 +198,18 @@ void display_init(void) {
         .intr_type = GPIO_INTR_DISABLE,
     };
     ESP_ERROR_CHECK(gpio_config(&gpio_cfg));
+    */
+
+    gpio_config_t bl_cfg = {
+        .pin_bit_mask = 1ULL << TFT_BK_LIGHT,
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&bl_cfg));
+    ESP_ERROR_CHECK(gpio_set_level(TFT_BK_LIGHT, TFT_BK_LIGHT_ON_LEVEL));
+    ESP_LOGI(TAG, "Backlight enabled on GPIO %d", TFT_BK_LIGHT);
 
     /* SPI bus — MOSI/MISO/SCLK on FSPI native pins */
     spi_bus_config_t buscfg = {
@@ -224,26 +237,22 @@ void display_init(void) {
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)DISP_SPI_HOST, &io_config, &io_handle));
 
-    /* Panel device — ILI9341 uses BGR colour order */
+    /* Panel device */
     esp_lcd_panel_handle_t panel_handle;
     esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = TFT_RST,
         .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
-        .data_endian = LCD_RGB_DATA_ENDIAN_BIG,
+        .data_endian = LCD_RGB_DATA_ENDIAN_LITTLE,
         .bits_per_pixel = 16,
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(io_handle, &panel_config, &panel_handle));
 
-    // Original esp-idf init (commented out - using datasheet sequence instead)
-    // ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
-    // ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
 
-    // Use datasheet-compliant initialization sequence
-    ili9341_init_from_datasheet(io_handle, TFT_RST);
-
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
-    log_panel_readback(io_handle);
 
     ESP_LOGI(TAG, "ILI9341 panel ready (%dx%d)", DISP_HOR_RES, DISP_VER_RES);
 

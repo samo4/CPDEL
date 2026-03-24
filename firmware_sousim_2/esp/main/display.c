@@ -32,12 +32,10 @@ static lv_disp_drv_t disp_drv;
 #define DISP_HOR_RES 320
 #define DISP_VER_RES 240
 
-/* ---------- SPI / DMA ---------- */
 #define DISP_SPI_HOST SPI2_HOST
 #define DISP_SPI_CLK_HZ (26 * 1000 * 1000)
 #define DISP_DRAW_BUF_LINES 10 /* lines in the intermediate LVGL draw buffer */
 
-/* ---------- Tick ---------- */
 #define LV_TICK_PERIOD_MS 1
 
 static void lv_tick_timer_cb(void *arg) {
@@ -57,7 +55,7 @@ static void disp_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t 
     esp_lcd_panel_handle_t panel = (esp_lcd_panel_handle_t)drv->user_data;
     esp_lcd_panel_draw_bitmap(panel, area->x1, area->y1, area->x2 + 1, area->y2 + 1, color_p);
 }
-
+/**
 static void log_panel_read_cmd(esp_lcd_panel_io_handle_t io_handle, int cmd, const char *name, size_t size) {
     uint8_t data[4] = {0};
     esp_err_t err = esp_lcd_panel_io_rx_param(io_handle, cmd, data, size);
@@ -80,7 +78,7 @@ static void log_panel_read_cmd(esp_lcd_panel_io_handle_t io_handle, int cmd, con
         ESP_LOGW(TAG, "ILI9341 %s read failed: %s", name, esp_err_to_name(err));
     }
 }
-/**
+
 static void log_panel_readback(esp_lcd_panel_io_handle_t io_handle) {
     log_panel_read_cmd(io_handle, LCD_CMD_RDDID, "RDDID(3)", 3);
     log_panel_read_cmd(io_handle, LCD_CMD_RDDID, "RDDID(4)", 4);

@@ -15,7 +15,9 @@
 #define SYS_BUS_IMPLEMENTATION
 #include "sys_bus.h"
 
+
 #include "display.h"
+#include "touch.h"
 
 #include "ui/ui.h"
 
@@ -71,7 +73,9 @@ void app_main(void) {
     ESP_ERROR_CHECK(gpio_set_direction(HEARTBEAT_GPIO, GPIO_MODE_OUTPUT));
     ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, 0));
 
+
     display_init(); // SPI + ILI9341 + LVGL disp_drv + tick timer
+    touch_init();   // FT6206/FT5x06 touch input
 
     event_bus_init();
     sys_bus_init();

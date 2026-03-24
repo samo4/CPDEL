@@ -8,6 +8,7 @@ idf_component_register(
         "../../src/ui/ui_settings.c"
         "../../src/ui/ui_wireless.c"
         "display.c"
+        "touch.c"
         "main.c"
     INCLUDE_DIRS
         "."

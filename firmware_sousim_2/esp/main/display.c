@@ -31,9 +31,11 @@ static lv_disp_drv_t disp_drv;
 
 #define DISP_HOR_RES 320
 #define DISP_VER_RES 240
+#define DISP_DRAW_BUF_SIZE (320 * 24)
 
 #define DISP_SPI_HOST SPI2_HOST
-#define DISP_SPI_CLK_HZ (26 * 1000 * 1000)
+// orignal SPI: 26MHz
+#define DISP_SPI_CLK_HZ (80 * 1000 * 1000)
 #define DISP_DRAW_BUF_LINES 10 /* lines in the intermediate LVGL draw buffer */
 
 #define LV_TICK_PERIOD_MS 1
@@ -263,14 +265,23 @@ void display_init(void) {
     ESP_ERROR_CHECK(esp_timer_create(&timer_args, &lv_tick_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(lv_tick_timer, LV_TICK_PERIOD_MS * 1000));
 
-    /* LVGL draw buffer (partial: DISP_DRAW_BUF_LINES rows) */
-    static lv_disp_draw_buf_t disp_buf;
-    static lv_color_t buf[DISP_HOR_RES * DISP_DRAW_BUF_LINES];
-    lv_disp_draw_buf_init(&disp_buf, buf, NULL, DISP_HOR_RES * DISP_DRAW_BUF_LINES);
+    // static lv_disp_draw_buf_t disp_buf;
+    // static lv_color_t buf[DISP_DRAW_BUF_SIZE];
+    // lv_disp_draw_buf_init(&disp_buf, buf, NULL, DISP_DRAW_BUF_SIZE);
+
+    lv_disp_draw_buf_t *disp_buf = malloc(sizeof(lv_disp_draw_buf_t));
+    lv_color_t *buf = heap_caps_malloc(DISP_DRAW_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+
+    if (disp_buf == NULL || buf == NULL) {
+        ESP_LOGE("LCD", "Out of memory for display buffers!");
+        return;
+    }
+
+    lv_disp_draw_buf_init(disp_buf, buf, NULL, DISP_DRAW_BUF_SIZE);
 
     /* LVGL display driver */
     lv_disp_drv_init(&disp_drv);
-    disp_drv.draw_buf = &disp_buf;
+    disp_drv.draw_buf = disp_buf;
     disp_drv.flush_cb = disp_flush_cb;
     disp_drv.hor_res = DISP_HOR_RES;
     disp_drv.ver_res = DISP_VER_RES;

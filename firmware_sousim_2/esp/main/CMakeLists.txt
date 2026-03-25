@@ -9,6 +9,7 @@ idf_component_register(
         "../../src/ui/ui_wireless.c"
         "display.c"
         "touch.c"
+        "wireless_controller.c"
         "main.c"
     INCLUDE_DIRS
         "."
@@ -17,4 +18,8 @@ idf_component_register(
     REQUIRES
         esp_lcd
         driver
+        nvs_flash 
+        esp_wifi 
+        esp_event 
+        esp_netif
 )

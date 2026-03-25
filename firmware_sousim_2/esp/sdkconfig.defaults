@@ -8,8 +8,10 @@ CONFIG_LV_FONT_MONTSERRAT_20=y
 # LVGL logging (disabled by default in ESP component, enabled in sim)
 CONFIG_LV_USE_LOG=y
 
+
+CONFIG_LV_MEM_CUSTOM=1 
 # LVGL memory: default is 32 KB which is too small; use 64 KB
-CONFIG_LV_MEM_SIZE_KILOBYTES=64
+# CONFIG_LV_MEM_SIZE_KILOBYTES=64
 
 # FreeRTOS tick rate: 1000 Hz = 1 ms per tick so pdMS_TO_TICKS() has 1 ms resolution
 # Without this, the default 100 Hz (10 ms/tick) makes pdMS_TO_TICKS(5)=0 which turns
@@ -36,8 +38,8 @@ CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
 CONFIG_PARTITION_TABLE_OFFSET=0x8000
 
 # Board flash size must match hardware
-CONFIG_ESPTOOLPY_FLASHSIZE_2MB=y
-CONFIG_ESPTOOLPY_FLASHSIZE="2MB"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
 
 CONFIG_ESP_CONSOLE_UART_CUSTOM=y
 CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600

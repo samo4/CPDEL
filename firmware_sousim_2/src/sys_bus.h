@@ -26,10 +26,16 @@ typedef enum {
 
 typedef struct {
     sys_msg_type_t type;
-    int32_t args[2];
+    union {
+        int32_t args[2];
+        struct {
+            int32_t rssi;
+            uint32_t ip; // ESP-IDF style
+        } wifi;
+    } data;
 } sys_msg_t;
 
-/* Only the UI task subscribes to this queue (not broadcast like event_bus). */
+// Only the UI task subscribes to this queue.
 extern QueueHandle_t queue_ui_status;
 
 void sys_bus_init(void);

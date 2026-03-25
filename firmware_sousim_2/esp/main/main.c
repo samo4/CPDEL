@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "freertos_includes.h"
 #include "lvgl.h"
+#include "nvs_flash.h"
 
 #include "driver/gpio.h"
 #include "esp_heap_caps.h"
@@ -15,9 +16,9 @@
 #define SYS_BUS_IMPLEMENTATION
 #include "sys_bus.h"
 
-
 #include "display.h"
 #include "touch.h"
+#include "wireless_controller.h"
 
 #include "ui/ui.h"
 
@@ -46,6 +47,10 @@ static void heartbeat_task(void *param) {
         ESP_LOGV(TAG, "[heartbeat] gpio=%d, free heap: %u bytes", level,
                  (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
         vTaskDelay(pdMS_TO_TICKS(1000));
+
+        // lv_mem_monitor_t mon;
+        // lv_mem_monitor(&mon);
+        // ESP_LOGW(TAG, "Used: %zu bytes, Frag: %d%%", mon.total_size - mon.free_size, mon.frag_pct);
     }
 }
 
@@ -65,6 +70,22 @@ static void malloc_failed_cb(size_t size, uint32_t caps, const char *function_na
 }
 
 void app_main(void) {
+    esp_reset_reason_t reason = esp_reset_reason();
+    if (reason == ESP_RST_PANIC) {
+        // you can test this e.g. by requesting impossible SPI clock in display:
+        // #define DISP_SPI_CLK_HZ (100 * 1000 * 1000)
+        ESP_LOGW("SYSTEM", "Detected crash loop! Will just delay a bit.");
+        // ultimately we went to enable minimum system that is able to do OTA
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
     lv_init();
 
     heap_caps_register_failed_alloc_callback(malloc_failed_cb);
@@ -73,9 +94,9 @@ void app_main(void) {
     ESP_ERROR_CHECK(gpio_set_direction(HEARTBEAT_GPIO, GPIO_MODE_OUTPUT));
     ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, 0));
 
-
     display_init(); // SPI + ILI9341 + LVGL disp_drv + tick timer
     touch_init();   // FT6206/FT5x06 touch input
+    wireless_init();
 
     event_bus_init();
     sys_bus_init();

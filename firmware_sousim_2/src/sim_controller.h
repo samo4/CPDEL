@@ -150,7 +150,9 @@ void sim_controller_task(void *param) {
             if (now - last_rssi_tick >= pdMS_TO_TICKS(2000)) {
                 last_rssi_tick = now;
                 int rssi = (int)(-70 + 15 * sinf(2.0f * 3.14f * t_s / 30.0f));
-                sys_msg_t smsg = {.type = SYS_MSG_RSSI, .args = {rssi, 0}};
+                sys_msg_t smsg = {.type = SYS_MSG_RSSI};
+                smsg.data.wifi.rssi = rssi;
+                smsg.data.wifi.ip = 0xC0A80164; // 192.168.1.100 as example
                 sys_bus_publish(&smsg);
             }
         }

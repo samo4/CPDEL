@@ -60,9 +60,15 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
     sys_msg_t smsg;
     while (xQueueReceive(queue_ui_status, &smsg, 0) == pdTRUE) {
         switch (smsg.type) {
-            case SYS_MSG_RSSI:
-                ui_main_update_rssi((int)smsg.args[0]);
+            case SYS_MSG_RSSI: {
+                char ip_str[16] = "";
+                uint32_t ip = smsg.data.wifi.ip;
+                snprintf(ip_str, sizeof(ip_str), "%lu.%lu.%lu.%lu", ip & 0xFF, (ip >> 8) & 0xFF, (ip >> 16) & 0xFF,
+                         (ip >> 24) & 0xFF);
+                if (ip == 0) ip_str[0] = '\0';
+                ui_main_update_wifi((int)smsg.data.wifi.rssi, ip_str);
                 break;
+            }
             default:
                 break;
         }

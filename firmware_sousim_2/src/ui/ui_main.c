@@ -5,17 +5,23 @@
 static void create_channel_panel(lv_obj_t *parent, int channel_index);
 
 /* Per-channel widget references populated by create_channel_panel() */
-static lv_obj_t *rssi_lbl;
+static lv_obj_t *wifi_lbl;
 static lv_obj_t *ch_volt_lbl[2];
 static lv_obj_t *ch_curr_lbl[2];
 static lv_obj_t *ch_pwr_lbl[2];
 static lv_obj_t *ch_mode_badge[2];
 static lv_obj_t *ch_sp_lbl[2];
 
-void ui_main_update_rssi(int rssi_dbm) {
-    char buf[16];
-    snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI " %d", rssi_dbm);
-    lv_label_set_text(rssi_lbl, buf);
+void ui_main_update_wifi(int rssi_dbm, const char *ip_str) {
+    char buf[48];
+    if (!lv_obj_is_valid(wifi_lbl)) return;
+
+    if (ip_str && ip_str[0]) {
+        snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI " %ddBm  %s", rssi_dbm, ip_str);
+    } else {
+        snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI " %ddBm", rssi_dbm);
+    }
+    lv_label_set_text(wifi_lbl, buf);
 
     lv_color_t col;
     if (rssi_dbm >= -65)
@@ -24,7 +30,7 @@ void ui_main_update_rssi(int rssi_dbm) {
         col = lv_palette_main(LV_PALETTE_YELLOW);
     else
         col = lv_palette_main(LV_PALETTE_RED);
-    lv_obj_set_style_text_color(rssi_lbl, col, 0);
+    lv_obj_set_style_text_color(wifi_lbl, col, 0);
 }
 
 void ui_main_update_channel(int ch) {
@@ -54,13 +60,15 @@ void ui_create_main_screen(void) {
     lv_label_set_text(settings_lbl, LV_SYMBOL_SETTINGS);
     lv_obj_center(settings_lbl);
 
-    // RSSI indicator — left of settings button
-    rssi_lbl = lv_label_create(ui_MainScreen);
-    lv_label_set_text(rssi_lbl, LV_SYMBOL_WIFI " --");
-    lv_obj_align_to(rssi_lbl, settings_btn, LV_ALIGN_OUT_LEFT_MID, -20, 0);
-    lv_obj_set_style_text_color(rssi_lbl, lv_palette_main(LV_PALETTE_GREY), 0);
-    lv_obj_add_flag(rssi_lbl, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(rssi_lbl, ui_event_navigate_wireless, LV_EVENT_CLICKED, NULL);
+    // Wifi indicator — left of settings button
+    // WiFi label: right-aligned to settings button, extends left to fill header
+    wifi_lbl = lv_label_create(ui_MainScreen);
+    lv_label_set_text(wifi_lbl, LV_SYMBOL_WIFI " --");
+    lv_obj_set_style_text_align(wifi_lbl, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_align(wifi_lbl, LV_ALIGN_TOP_RIGHT, -40, 12);
+    lv_obj_set_style_text_color(wifi_lbl, lv_palette_main(LV_PALETTE_GREY), 0);
+    lv_obj_add_flag(wifi_lbl, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(wifi_lbl, ui_event_navigate_wireless, LV_EVENT_CLICKED, NULL);
 
     // Channel Panels (Using Grid or Flex layout)
     // For 240x320 portrait: Stack them vertically.
@@ -87,7 +95,6 @@ void ui_create_main_screen(void) {
     lv_obj_add_event_cb(ch2_btn, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)1);
 
     /*
-    // --- Corner markers for touch panel adjustment (absolute positioning) ---
     // Top-left (0,0)
     lv_obj_t *corner_tl = lv_label_create(ui_MainScreen);
     lv_label_set_text(corner_tl, "0,0");

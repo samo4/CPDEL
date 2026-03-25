@@ -39,7 +39,7 @@ void ui_create_numpad_screen(void);
 void ui_create_wireless_screen(void);
 
 void ui_main_update_channel(int ch);
-void ui_main_update_rssi(int rssi_dbm);
+void ui_main_update_wifi(int rssi_dbm, const char *ip_str);
 void ui_detail_update_channel(int ch);
 void ui_graph_update_channel(int ch);
 

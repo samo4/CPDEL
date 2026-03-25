@@ -24,8 +24,8 @@
 static void heartbeat_task(void *param) {
     (void)param;
     for (;;) {
-        printf("[heartbeat] tick, free heap: %u bytes\n", (unsigned)xPortGetFreeHeapSize());
-        printf("[stack] free stack: %u bytes\n", (unsigned)uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+        printf("[heartbeat] tick, free heap: %zu bytes\n", (size_t)xPortGetFreeHeapSize());
+        printf("[stack] free stack: %zu bytes\n", (size_t)(uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t)));
         fflush(stdout);
         vTaskDelay(pdMS_TO_TICKS(5000));
     }

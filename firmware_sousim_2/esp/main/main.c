@@ -18,6 +18,7 @@
 
 #include "display.h"
 #include "touch.h"
+#include "web_server.h"
 #include "wireless_controller.h"
 
 #include "ui/ui.h"
@@ -101,7 +102,9 @@ void app_main(void) {
     event_bus_init();
     sys_bus_init();
 
-    ui_init(); // run after bus init!
+    // run after bus init!
+    ui_init();
+    web_server_init();
 
     xTaskCreate(lvgl_task, "LVGL", 4096, NULL, 5, NULL);
     xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);

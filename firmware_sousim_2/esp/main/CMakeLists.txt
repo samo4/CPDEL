@@ -10,6 +10,7 @@ idf_component_register(
         "display.c"
         "touch.c"
         "wireless_controller.c"
+        "web_server.c"
         "main.c"
     INCLUDE_DIRS
         "."
@@ -22,4 +23,8 @@ idf_component_register(
         esp_wifi 
         esp_event 
         esp_netif
+        esp_http_server 
+        spiffs 
 )
+
+spiffs_create_partition_image(spiffs www FLASH_IN_PROJECT)

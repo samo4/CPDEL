@@ -1,5 +1,11 @@
 # Sousim 2-CH DC Load
 
+## TODO
+
+- [ ] wireless edit ssid and password (store in nvme)
+- [ ] connect to modbus
+- [ ] rethink queues
+
 ## vscode
 
 ## PC Simulator

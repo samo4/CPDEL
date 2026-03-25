@@ -85,6 +85,30 @@ void ui_create_main_screen(void) {
     lv_obj_set_size(ch2_btn, 140, 180);
     create_channel_panel(ch2_btn, 1);
     lv_obj_add_event_cb(ch2_btn, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)1);
+
+    /*
+    // --- Corner markers for touch panel adjustment (absolute positioning) ---
+    // Top-left (0,0)
+    lv_obj_t *corner_tl = lv_label_create(ui_MainScreen);
+    lv_label_set_text(corner_tl, "0,0");
+    lv_obj_set_pos(corner_tl, 0, 0);
+
+    // Top-right (319,0)
+    lv_obj_t *corner_tr = lv_label_create(ui_MainScreen);
+    lv_label_set_text(corner_tr, "319,0");
+    lv_obj_set_pos(corner_tr, 280, 0);
+
+    // Bottom-left (0,239)
+    lv_obj_t *corner_bl = lv_label_create(ui_MainScreen);
+    lv_label_set_text(corner_bl, "0,239");
+    lv_obj_set_pos(corner_bl, 0, 200);
+
+    // Bottom-right (319,239)
+    lv_obj_t *corner_br = lv_label_create(ui_MainScreen);
+    lv_label_set_text(corner_br, "319,239");
+    lv_obj_set_pos(corner_br, 280, 200);
+    // --- End corner markers ---
+    */
 }
 
 static void create_channel_panel(lv_obj_t *parent, int channel_index) {

@@ -16,19 +16,29 @@ static const char *TAG = "touch";
 static esp_lcd_touch_handle_t touch_handle = NULL;
 static lv_indev_drv_t indev_drv;
 
+#define Y_OFFSET (-80)
+#define X_OFFSET (0)
+
 static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     (void)drv;
     esp_lcd_touch_read_data(touch_handle);
     esp_lcd_touch_point_data_t point;
     uint8_t points = 0;
     if (esp_lcd_touch_get_data(touch_handle, &point, &points, 1) == ESP_OK && points > 0) {
-        data->point.x = point.x;
-        data->point.y = point.y;
+        int16_t x_cal = point.x + X_OFFSET;
+        int16_t y_cal = point.y + Y_OFFSET;
+
+        if (x_cal < 0) x_cal = 0;
+        if (x_cal > DISP_HOR_RES - 1) x_cal = DISP_HOR_RES - 1;
+        if (y_cal < 0) y_cal = 0;
+        if (y_cal > DISP_VER_RES - 1) y_cal = DISP_VER_RES - 1;
+        data->point.x = x_cal;
+        data->point.y = y_cal;
         data->state = LV_INDEV_STATE_PR;
+        // ESP_LOGI(TAG, "Touch: x=%d y=%d (raw y=%d) state=%d", data->point.x, data->point.y, point.y, data->state);
     } else {
         data->state = LV_INDEV_STATE_REL;
     }
-    ESP_LOGI(TAG, "Touch: x=%d y=%d state=%d", data->point.x, data->point.y, data->state);
 }
 
 void touch_init(void) {
@@ -58,7 +68,7 @@ void touch_init(void) {
         .flags =
             {
                 .swap_xy = 1,
-                .mirror_x = 0,
+                .mirror_x = 1,
                 .mirror_y = 0,
             },
     };

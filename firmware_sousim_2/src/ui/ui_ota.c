@@ -54,7 +54,8 @@ void ui_create_ota_screen(void) {
     lv_label_set_text(update_lbl, "Start Update");
     lv_obj_center(update_lbl);
 
-#ifndef ESP_PLATFORM
+    // #ifndef ESP_PLATFORM
+    // not implemented yet.. anywhere
     lv_obj_add_state(update_btn, LV_STATE_DISABLED);
-#endif
+    // #endif
 }

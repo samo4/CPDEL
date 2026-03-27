@@ -93,16 +93,14 @@ static void btn_backspace_event(lv_event_t *e) {
     numpad_update_display();
 }
 
-static void btn_cancel_event(lv_event_t *e) {
-    lv_scr_load_anim(numpad_return_screen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 200, 0, false);
-}
+static void btn_cancel_event(lv_event_t *e) { lv_scr_load(numpad_return_screen); }
 
 static void btn_ok_event(lv_event_t *e) {
     double value = atof(input_buf);
     if (value < numpad_min) value = numpad_min;
     if (value > numpad_max) value = numpad_max;
     if (numpad_confirm_cb) numpad_confirm_cb(value);
-    lv_scr_load_anim(numpad_return_screen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 200, 0, false);
+    lv_scr_load(numpad_return_screen);
 }
 
 // ── Helper: create a single numpad row ───────────────────────────────────────
@@ -223,5 +221,5 @@ void ui_open_numpad(const char *title, double current_value, double min, double 
     lv_label_set_text_fmt(range_label, "%.2f \xe2\x80\x93 %.2f", min, max);
     numpad_update_display();
 
-    lv_scr_load_anim(ui_NumpadScreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 200, 0, false);
+    lv_scr_load(ui_NumpadScreen);
 }

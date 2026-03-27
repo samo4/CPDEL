@@ -150,7 +150,6 @@ void ui_init(void) {
     ui_create_graph_screen();
     ui_create_settings_screen();
     ui_create_numpad_screen();
-    ui_create_keyboard_screen();
     ui_create_wireless_screen();
     ui_create_ota_screen();
     lv_disp_load_scr(ui_MainScreen);

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "ui.h"
 
 #ifdef ESP_PLATFORM
@@ -6,6 +7,7 @@
 
 void ui_create_ota_screen(void) {
     ui_OtaScreen = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_OtaScreen, LV_OBJ_FLAG_SCROLLABLE);
 
     // Back Button
     lv_obj_t *back_btn = lv_btn_create(ui_OtaScreen);

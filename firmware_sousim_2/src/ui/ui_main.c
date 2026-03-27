@@ -1,20 +1,18 @@
 #include <stdio.h>
 #include "ui.h"
 
-// Forward declarations of local helper functions
-static void create_channel_panel(lv_obj_t *parent, int channel_index);
+static void create_channel_panel(lv_obj_t *parent, int ch);
 
-/* Per-channel widget references populated by create_channel_panel() */
 static lv_obj_t *wifi_lbl;
-static lv_obj_t *ch_volt_lbl[2];
-static lv_obj_t *ch_curr_lbl[2];
-static lv_obj_t *ch_pwr_lbl[2];
-static lv_obj_t *ch_mode_badge[2];
-static lv_obj_t *ch_sp_lbl[2];
+static lv_obj_t *ch_volt_lbl[UI_CHANNEL_COUNT];
+static lv_obj_t *ch_curr_lbl[UI_CHANNEL_COUNT];
+static lv_obj_t *ch_pwr_lbl[UI_CHANNEL_COUNT];
+static lv_obj_t *ch_mode_badge[UI_CHANNEL_COUNT];
+static lv_obj_t *ch_sp_lbl[UI_CHANNEL_COUNT];
 
 void ui_main_update_wifi(int rssi_dbm, const char *ip_str) {
     char buf[48];
-    if (!lv_obj_is_valid(wifi_lbl)) return;
+    if (wifi_lbl == NULL) return;
 
     if (ip_str && ip_str[0]) {
         snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI " %ddBm  %s", rssi_dbm, ip_str);
@@ -34,7 +32,11 @@ void ui_main_update_wifi(int rssi_dbm, const char *ip_str) {
 }
 
 void ui_main_update_channel(int ch) {
+    if (ch < 0 || ch >= UI_CHANNEL_COUNT) return;
     const channel_data_t *c = &channels[ch];
+    if (ch_volt_lbl[ch] == NULL || ch_curr_lbl[ch] == NULL || ch_pwr_lbl[ch] == NULL || ch_mode_badge[ch] == NULL ||
+        ch_sp_lbl[ch] == NULL)
+        return;
     lv_label_set_text_fmt(ch_volt_lbl[ch], "%.2f V", c->measured_voltage);
     lv_label_set_text_fmt(ch_curr_lbl[ch], "%.3f A", c->measured_current);
     lv_label_set_text_fmt(ch_pwr_lbl[ch], "%.2f W", c->measured_power);
@@ -118,9 +120,11 @@ void ui_create_main_screen(void) {
     */
 }
 
-static void create_channel_panel(lv_obj_t *parent, int channel_index) {
+static void create_channel_panel(lv_obj_t *parent, int ch) {
+    if (ch < 0 || ch >= UI_CHANNEL_COUNT) return;
+
     lv_obj_t *title = lv_label_create(parent);
-    lv_label_set_text_fmt(title, "CH %d", channel_index + 1);
+    lv_label_set_text_fmt(title, "CH %d", ch + 1);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 5, 5);
 
     // Initial dummy values
@@ -128,19 +132,19 @@ static void create_channel_panel(lv_obj_t *parent, int channel_index) {
     lv_label_set_text(volt_val, "0.00 V");
     lv_obj_set_style_text_font(volt_val, &lv_font_montserrat_20, 0);
     lv_obj_align(volt_val, LV_ALIGN_TOP_RIGHT, -5, 30);
-    ch_volt_lbl[channel_index] = volt_val;
+    ch_volt_lbl[ch] = volt_val;
 
     lv_obj_t *curr_val = lv_label_create(parent);
     lv_label_set_text(curr_val, "0.000 A");
     lv_obj_set_style_text_font(curr_val, &lv_font_montserrat_20, 0);
     lv_obj_align(curr_val, LV_ALIGN_TOP_RIGHT, -5, 60);
-    ch_curr_lbl[channel_index] = curr_val;
+    ch_curr_lbl[ch] = curr_val;
 
     lv_obj_t *pwr_val = lv_label_create(parent);
     lv_label_set_text(pwr_val, "0.00 W");
     lv_obj_set_style_text_font(pwr_val, &lv_font_montserrat_14, 0);
     lv_obj_align(pwr_val, LV_ALIGN_TOP_RIGHT, -5, 90);
-    ch_pwr_lbl[channel_index] = pwr_val;
+    ch_pwr_lbl[ch] = pwr_val;
 
     // CC/CV Mode Badge — below power row
     lv_obj_t *mode_badge = lv_label_create(parent);
@@ -150,14 +154,14 @@ static void create_channel_panel(lv_obj_t *parent, int channel_index) {
     lv_obj_set_style_bg_opa(mode_badge, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(mode_badge, 2, 0);
     lv_obj_align(mode_badge, LV_ALIGN_TOP_LEFT, 5, 112);
-    ch_mode_badge[channel_index] = mode_badge;
+    ch_mode_badge[ch] = mode_badge;
 
     // Setpoint summary — same row as mode badge
     lv_obj_t *sp_lbl = lv_label_create(parent);
     lv_label_set_text(sp_lbl, "");
     lv_obj_set_style_text_font(sp_lbl, &lv_font_montserrat_14, 0);
     lv_obj_align_to(sp_lbl, mode_badge, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
-    ch_sp_lbl[channel_index] = sp_lbl;
+    ch_sp_lbl[ch] = sp_lbl;
 
     // ON/OFF Switch (small)
     lv_obj_t *sw = lv_switch_create(parent);

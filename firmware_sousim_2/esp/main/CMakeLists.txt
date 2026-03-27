@@ -5,8 +5,10 @@ idf_component_register(
         "../../src/ui/ui_graph.c"
         "../../src/ui/ui_main.c"
         "../../src/ui/ui_numpad.c"
+        "../../src/ui/ui_keyboard.c"
         "../../src/ui/ui_settings.c"
         "../../src/ui/ui_wireless.c"
+        "../../src/ui/ui_ota.c"
         "display.c"
         "touch.c"
         "wireless_controller.c"
@@ -24,6 +26,7 @@ idf_component_register(
         esp_event 
         esp_netif
         esp_http_server 
+        app_update
         spiffs 
 )
 

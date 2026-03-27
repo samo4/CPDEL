@@ -8,7 +8,9 @@ lv_obj_t *ui_ChannelDetailScreen;
 lv_obj_t *ui_GraphScreen;
 lv_obj_t *ui_SettingsScreen;
 lv_obj_t *ui_NumpadScreen;
+lv_obj_t *ui_KeyboardScreen;
 lv_obj_t *ui_WirelessScreen;
+lv_obj_t *ui_OtaScreen;
 static lv_obj_t *ui_StatusScreen;
 static lv_obj_t *ui_status_msg_label;
 static lv_obj_t *ui_status_close_btn;
@@ -148,7 +150,9 @@ void ui_init(void) {
     ui_create_graph_screen();
     ui_create_settings_screen();
     ui_create_numpad_screen();
+    ui_create_keyboard_screen();
     ui_create_wireless_screen();
+    ui_create_ota_screen();
     lv_disp_load_scr(ui_MainScreen);
 
     /* LVGL timer: drain queue_gui every 100 ms (runs on LVGL thread, no mutex needed) */
@@ -185,6 +189,8 @@ void ui_event_navigate_settings(lv_event_t *e) { lv_scr_load(ui_SettingsScreen);
 void ui_event_navigate_graph(lv_event_t *e) { lv_scr_load(ui_GraphScreen); }
 
 void ui_event_navigate_wireless(lv_event_t *e) { lv_scr_load(ui_WirelessScreen); }
+
+void ui_event_navigate_ota(lv_event_t *e) { lv_scr_load(ui_OtaScreen); }
 
 void ui_event_navigate_back(lv_event_t *e) { lv_scr_load(ui_MainScreen); }
 

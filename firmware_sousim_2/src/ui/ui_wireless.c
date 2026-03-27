@@ -1,37 +1,76 @@
 #include "ui.h"
 
-static lv_obj_t *kb;
+#ifdef ESP_PLATFORM
+#include "wireless_controller.h"
+#endif
 
-static void ta_event_cb(lv_event_t *e) {
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *ta = lv_event_get_target(e);
-    if (code == LV_EVENT_CLICKED || code == LV_EVENT_FOCUSED) {
-        if (kb != NULL) {
-            lv_keyboard_set_textarea(kb, ta);
-            lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
-        }
-    } else if (code == LV_EVENT_DEFOCUSED) {
-        if (kb != NULL) {
-            lv_keyboard_set_textarea(kb, NULL);
-            lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
-        }
+static lv_obj_t *ssid_ta;
+static lv_obj_t *pwd_ta;
+static lv_obj_t *save_btn;
+
+static void update_save_button_state(void) {
+    if (save_btn == NULL || ssid_ta == NULL || pwd_ta == NULL) {
+        return;
+    }
+    const char *ssid = lv_textarea_get_text(ssid_ta);
+    const char *password = lv_textarea_get_text(pwd_ta);
+    bool enable = (ssid != NULL && ssid[0] != '\0' && password != NULL && password[0] != '\0');
+    if (enable) {
+        lv_obj_clear_state(save_btn, LV_STATE_DISABLED);
+    } else {
+        lv_obj_add_state(save_btn, LV_STATE_DISABLED);
     }
 }
 
-static void kb_event_cb(lv_event_t *e) {
-    lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
-        lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_t *ta = lv_keyboard_get_textarea(kb);
-        if (ta) {
-            lv_obj_clear_state(ta, LV_STATE_FOCUSED); // Remove focus to trigger DEFOCUSED if needed, or just hide KB
-        }
+static void wireless_set_ssid(const char *text) {
+    if (ssid_ta == NULL) {
+        return;
     }
+    lv_textarea_set_text(ssid_ta, text != NULL ? text : "");
+    update_save_button_state();
+}
+
+static void wireless_set_password(const char *text) {
+    if (pwd_ta == NULL) {
+        return;
+    }
+    lv_textarea_set_text(pwd_ta, text != NULL ? text : "");
+    update_save_button_state();
+}
+
+static void save_reboot_event_cb(lv_event_t *e) {
+    (void)e;
+
+#ifdef ESP_PLATFORM
+    if (ssid_ta != NULL && pwd_ta != NULL) {
+        const char *ssid = lv_textarea_get_text(ssid_ta);
+        const char *password = lv_textarea_get_text(pwd_ta);
+        (void)wireless_save_credentials(ssid, password, true);
+    }
+#endif
+
+    ui_event_navigate_back(e);
+}
+
+static void ssid_edit_event_cb(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_CLICKED) {
+        return;
+    }
+    ui_open_keyboard("SSID", lv_textarea_get_text(ssid_ta), false, wireless_set_ssid, ui_WirelessScreen);
+}
+
+static void password_edit_event_cb(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_CLICKED) {
+        return;
+    }
+    ui_open_keyboard("Password", lv_textarea_get_text(pwd_ta), true, wireless_set_password, ui_WirelessScreen);
 }
 
 void ui_create_wireless_screen(void) {
     ui_WirelessScreen = lv_obj_create(NULL);
-    // Keep scrollable in case keyboard covers inputs
+    lv_obj_clear_flag(ui_WirelessScreen, LV_OBJ_FLAG_SCROLLABLE);
 
     // Back Button
     lv_obj_t *back_btn = lv_btn_create(ui_WirelessScreen);
@@ -47,33 +86,46 @@ void ui_create_wireless_screen(void) {
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
 
     // Container for inputs
-    lv_obj_t *cont = lv_obj_create(ui_WirelessScreen);
-    lv_obj_set_size(cont, LV_PCT(90), LV_SIZE_CONTENT);
-    lv_obj_align(cont, LV_ALIGN_TOP_MID, 0, 50);
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_all(cont, 5, 0);
+    lv_obj_t *form_cont = lv_obj_create(ui_WirelessScreen);
+    lv_obj_set_size(form_cont, LV_PCT(90), LV_SIZE_CONTENT);
+    lv_obj_align(form_cont, LV_ALIGN_TOP_MID, 0, 50);
+    lv_obj_set_flex_flow(form_cont, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(form_cont, 5, 0);
 
     // SSID
-    lv_obj_t *ssid_label = lv_label_create(cont);
+    lv_obj_t *ssid_label = lv_label_create(form_cont);
     lv_label_set_text(ssid_label, "SSID:");
-    lv_obj_t *ssid_ta = lv_textarea_create(cont);
-    lv_textarea_set_placeholder_text(ssid_ta, "Enter SSID");
+    ssid_ta = lv_textarea_create(form_cont);
     lv_textarea_set_one_line(ssid_ta, true);
+    lv_textarea_set_password_mode(ssid_ta, false);
     lv_obj_set_width(ssid_ta, LV_PCT(100));
-    lv_obj_add_event_cb(ssid_ta, ta_event_cb, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ssid_ta, ssid_edit_event_cb, LV_EVENT_CLICKED, NULL);
+
+#ifdef ESP_PLATFORM
+    {
+        char configured_ssid[33] = {0};
+        if (wireless_get_configured_ssid(configured_ssid, sizeof(configured_ssid)) == ESP_OK) {
+            lv_textarea_set_text(ssid_ta, configured_ssid);
+        }
+    }
+#endif
 
     // Password
-    lv_obj_t *pwd_label = lv_label_create(cont);
+    lv_obj_t *pwd_label = lv_label_create(form_cont);
     lv_label_set_text(pwd_label, "Password:");
-    lv_obj_t *pwd_ta = lv_textarea_create(cont);
+    pwd_ta = lv_textarea_create(form_cont);
     lv_textarea_set_placeholder_text(pwd_ta, "Enter Password");
     lv_textarea_set_password_mode(pwd_ta, true);
     lv_textarea_set_one_line(pwd_ta, true);
     lv_obj_set_width(pwd_ta, LV_PCT(100));
-    lv_obj_add_event_cb(pwd_ta, ta_event_cb, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(pwd_ta, password_edit_event_cb, LV_EVENT_CLICKED, NULL);
 
-    // Keyboard
-    kb = lv_keyboard_create(ui_WirelessScreen);
-    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_event_cb(kb, kb_event_cb, LV_EVENT_ALL, NULL);
+    save_btn = lv_btn_create(form_cont);
+    lv_obj_set_width(save_btn, LV_SIZE_CONTENT);
+    lv_obj_add_event_cb(save_btn, save_reboot_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *save_lbl = lv_label_create(save_btn);
+    lv_label_set_text(save_lbl, "Save & Reboot");
+    lv_obj_center(save_lbl);
+
+    update_save_button_state();
 }

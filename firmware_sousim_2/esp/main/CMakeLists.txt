@@ -12,6 +12,7 @@ idf_component_register(
         "display.c"
         "touch.c"
         "wireless_controller.c"
+        "dc_load_controller.c"
         "web_server.c"
         "main.c"
     INCLUDE_DIRS
@@ -21,13 +22,13 @@ idf_component_register(
     REQUIRES
         esp_lcd
         driver
-        nvs_flash 
-        esp_wifi 
-        esp_event 
+        nvs_flash
+        esp_wifi
+        esp_event
         esp_netif
-        esp_http_server 
+        esp_http_server
         app_update
-        spiffs 
+        spiffs
 )
 
 spiffs_create_partition_image(spiffs www FLASH_IN_PROJECT)

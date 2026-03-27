@@ -5,4 +5,5 @@ dependencies:
   lvgl/lvgl: "~8.3.0"
   espressif/esp_lcd_ili9341: "*"
   espressif/esp_lcd_touch_ft5x06: "*"
+  espressif/esp-modbus: "*"
   idf: ">=5.0.0"

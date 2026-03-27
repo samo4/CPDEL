@@ -16,6 +16,7 @@
 #define SYS_BUS_IMPLEMENTATION
 #include "sys_bus.h"
 
+#include "dc_load_controller.h"
 #include "display.h"
 #include "touch.h"
 #include "web_server.h"
@@ -98,6 +99,7 @@ void app_main(void) {
     display_init(); // SPI + ILI9341 + LVGL disp_drv + tick timer
     touch_init();   // FT6206/FT5x06 touch input
     wireless_init();
+    dc_load_controller_init();
 
     event_bus_init();
     sys_bus_init();

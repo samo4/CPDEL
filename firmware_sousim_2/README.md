@@ -2,7 +2,7 @@
 
 ## TODO
 
-- [ ] wireless edit ssid and password (store in nvme)
+- [x] wireless edit ssid and password (store in nvme)
 - [ ] connect to modbus
 - [ ] rethink queues
 

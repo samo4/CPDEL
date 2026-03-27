@@ -1,5 +1,6 @@
 #include "wireless_controller.h"
 
+#include <string.h>
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -8,6 +9,54 @@
 #include "sys_bus.h"
 
 static const char *TAG = "WIRELESS";
+
+esp_err_t wireless_get_configured_ssid(char *ssid, size_t ssid_size) {
+    if (ssid == NULL || ssid_size == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    wifi_config_t wifi_config = {0};
+    if (ssid_size < sizeof(wifi_config.sta.ssid)) {
+        ssid[0] = '\0';
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    esp_err_t ret = esp_wifi_get_config(WIFI_IF_STA, &wifi_config);
+    if (ret != ESP_OK) {
+        ssid[0] = '\0';
+        return ret;
+    }
+
+    strlcpy(ssid, (const char *)wifi_config.sta.ssid, ssid_size);
+    return ESP_OK;
+}
+
+esp_err_t wireless_save_credentials(const char *ssid, const char *password, bool reboot) {
+    if (ssid == NULL || ssid[0] == '\0' || password == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    wifi_config_t wifi_config = {0};
+    if (strlen(ssid) >= sizeof(wifi_config.sta.ssid) || strlen(password) >= sizeof(wifi_config.sta.password)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    strlcpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+    strlcpy((char *)wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
+
+    esp_err_t ret = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    if (reboot) {
+        ESP_LOGI(TAG, "Credentials saved. Rebooting...");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        esp_restart();
+    }
+
+    return ESP_OK;
+}
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     sys_msg_t msg = {0};
@@ -67,12 +116,7 @@ void wireless_init(void) {
         ESP_LOGI(TAG, "Found saved credentials for SSID: %s", wifi_config.sta.ssid);
     } else {
         ESP_LOGW(TAG, "No credentials found in NVS. Storing defaults and rebooting.");
-        strlcpy((char *)wifi_config.sta.ssid, "default_ssid ", sizeof(wifi_config.sta.ssid));
-        strlcpy((char *)wifi_config.sta.password, "********", sizeof(wifi_config.sta.password));
-        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-        ESP_LOGI(TAG, "Default credentials saved. Rebooting...");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        esp_restart();
+        ESP_ERROR_CHECK(wireless_save_credentials("default_ssid ", "********", true));
     }
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));

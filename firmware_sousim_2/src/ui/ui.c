@@ -3,16 +3,52 @@
 #include "../scpi.h"
 #include "../sys_bus.h"
 
-#define UI_ANIM_TIME_MS 222
-
 lv_obj_t *ui_MainScreen;
 lv_obj_t *ui_ChannelDetailScreen;
 lv_obj_t *ui_GraphScreen;
 lv_obj_t *ui_SettingsScreen;
 lv_obj_t *ui_NumpadScreen;
 lv_obj_t *ui_WirelessScreen;
+static lv_obj_t *ui_StatusScreen;
+static lv_obj_t *ui_status_msg_label;
+static lv_obj_t *ui_status_close_btn;
+static lv_obj_t *ui_status_return_screen;
 
-channel_data_t channels[2];
+static void ui_status_close_event_cb(lv_event_t *e) {
+    (void)e;
+    if (lv_obj_is_valid(ui_status_return_screen)) {
+        lv_scr_load(ui_status_return_screen);
+        return;
+    }
+    lv_scr_load(ui_MainScreen);
+}
+
+// IDEA: create this at the same time as everything else and just hide/show it
+static void ui_create_status_screen(void) {
+    ui_StatusScreen = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_StatusScreen, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(ui_StatusScreen, 12, 0);
+
+    lv_obj_t *spinner = lv_spinner_create(ui_StatusScreen, 1000, 60);
+    lv_obj_align(spinner, LV_ALIGN_CENTER, 0, -36);
+
+    ui_status_msg_label = lv_label_create(ui_StatusScreen);
+    lv_obj_set_width(ui_status_msg_label, LV_PCT(92));
+    lv_label_set_long_mode(ui_status_msg_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(ui_status_msg_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(ui_status_msg_label, "Working...");
+    lv_obj_align(ui_status_msg_label, LV_ALIGN_CENTER, 0, 26);
+
+    ui_status_close_btn = lv_btn_create(ui_StatusScreen);
+    lv_obj_set_size(ui_status_close_btn, 120, 38);
+    lv_obj_align(ui_status_close_btn, LV_ALIGN_BOTTOM_MID, 0, -12);
+    lv_obj_add_event_cb(ui_status_close_btn, ui_status_close_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *close_lbl = lv_label_create(ui_status_close_btn);
+    lv_label_set_text(close_lbl, "Dismiss");
+    lv_obj_center(close_lbl);
+}
+
+channel_data_t channels[UI_CHANNEL_COUNT];
 int current_channel_index = 0;
 
 /* Drain queue_gui from the LVGL tick — safe to call LVGL APIs here since
@@ -79,7 +115,7 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
 static void ui_poll_source_timer_cb(lv_timer_t *t) {
     (void)t;
     scpi_msg_t msg = {.argc = 0, .source = SRC_GUI};
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
         msg.channel = (uint8_t)i;
         msg.cmd = SCPI_CMD_SOUR_VOLT;
         event_bus_publish(&msg);
@@ -91,7 +127,7 @@ static void ui_poll_source_timer_cb(lv_timer_t *t) {
 }
 
 void ui_init(void) {
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
         channels[i].voltage_setpoint = 0.0;
         channels[i].current_setpoint = 0.0;
         channels[i].measured_voltage = 0.0;
@@ -120,7 +156,7 @@ void ui_init(void) {
     /* Periodic poll for setpoints / mode (rarely change — every 5 s is enough) */
     lv_timer_create(ui_poll_source_timer_cb, 5000, NULL);
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
         scpi_msg_t msg = {.channel = (uint8_t)i, .args = {1.0f}, .argc = 1, .source = SRC_GUI};
         msg.cmd = SCPI_CMD_MEAS_VOLT_CONT;
         event_bus_publish(&msg);
@@ -141,30 +177,32 @@ void ui_event_channel_select(lv_event_t *e) {
     intptr_t ch_idx = (intptr_t)lv_event_get_user_data(e);
     current_channel_index = (int)ch_idx;
 
-    lv_scr_load_anim_t anim = (ch_idx == 0) ? LV_SCR_LOAD_ANIM_MOVE_RIGHT : LV_SCR_LOAD_ANIM_MOVE_LEFT;
-    lv_scr_load_anim(ui_ChannelDetailScreen, anim, UI_ANIM_TIME_MS, 0, false);
+    lv_scr_load(ui_ChannelDetailScreen);
 }
 
-void ui_event_navigate_settings(lv_event_t *e) {
-    lv_scr_load_anim(ui_SettingsScreen, LV_SCR_LOAD_ANIM_MOVE_TOP, UI_ANIM_TIME_MS, 0, false);
-}
+void ui_event_navigate_settings(lv_event_t *e) { lv_scr_load(ui_SettingsScreen); }
 
-void ui_event_navigate_graph(lv_event_t *e) {
-    lv_scr_load_anim(ui_GraphScreen, LV_SCR_LOAD_ANIM_FADE_ON, UI_ANIM_TIME_MS, 0, false);
-}
+void ui_event_navigate_graph(lv_event_t *e) { lv_scr_load(ui_GraphScreen); }
 
-void ui_event_navigate_wireless(lv_event_t *e) {
-    lv_scr_load_anim(ui_WirelessScreen, LV_SCR_LOAD_ANIM_MOVE_BOTTOM, UI_ANIM_TIME_MS, 0, false);
-}
+void ui_event_navigate_wireless(lv_event_t *e) { lv_scr_load(ui_WirelessScreen); }
 
-void ui_event_navigate_back(lv_event_t *e) {
-    lv_scr_load_anim(ui_MainScreen, LV_SCR_LOAD_ANIM_MOVE_RIGHT, UI_ANIM_TIME_MS, 0, false);
-}
+void ui_event_navigate_back(lv_event_t *e) { lv_scr_load(ui_MainScreen); }
 
-void ui_event_navigate_detail_back(lv_event_t *e) {
-    /* Mirror the entry animation: CH1 came from left so exit to left; CH2 came from right so exit to right */
-    lv_scr_load_anim_t anim = (current_channel_index == 0) ? LV_SCR_LOAD_ANIM_MOVE_LEFT : LV_SCR_LOAD_ANIM_MOVE_RIGHT;
-    lv_scr_load_anim(ui_MainScreen, anim, UI_ANIM_TIME_MS, 0, false);
+void ui_event_navigate_detail_back(lv_event_t *e) { lv_scr_load(ui_MainScreen); }
+
+void ui_show_status_panel(const char *text, bool dismissable) {
+    if (!lv_obj_is_valid(ui_StatusScreen)) {
+        ui_create_status_screen();
+    }
+
+    lv_obj_t *active = lv_scr_act();
+    if (active != ui_StatusScreen) {
+        ui_status_return_screen = active;
+    }
+
+    lv_label_set_text(ui_status_msg_label, (text != NULL && text[0] != '\0') ? text : "Working...");
+    lv_obj_clear_flag(ui_status_close_btn, dismissable ? LV_OBJ_FLAG_HIDDEN : LV_OBJ_FLAG_HIDDEN);
+    lv_scr_load(ui_StatusScreen);
 }
 
 lv_obj_t *ui_create_screen_header(lv_obj_t *screen, lv_event_cb_t back_cb, const char *back_label) {

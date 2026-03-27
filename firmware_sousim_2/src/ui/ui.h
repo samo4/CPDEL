@@ -7,6 +7,8 @@ extern "C" {
 
 #include "lvgl.h"
 
+#define UI_CHANNEL_COUNT 2
+
 extern lv_obj_t *ui_MainScreen;
 extern lv_obj_t *ui_ChannelDetailScreen;
 extern lv_obj_t *ui_GraphScreen;
@@ -26,7 +28,7 @@ typedef struct {
     double lv_cutoff_threshold;
 } channel_data_t;
 
-extern channel_data_t channels[2];
+extern channel_data_t channels[UI_CHANNEL_COUNT];
 extern int current_channel_index;
 
 void ui_init(void);
@@ -42,6 +44,7 @@ void ui_main_update_channel(int ch);
 void ui_main_update_wifi(int rssi_dbm, const char *ip_str);
 void ui_detail_update_channel(int ch);
 void ui_graph_update_channel(int ch);
+void ui_show_status_panel(const char *text, bool dismissable);
 
 void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),
                     lv_obj_t *return_screen);

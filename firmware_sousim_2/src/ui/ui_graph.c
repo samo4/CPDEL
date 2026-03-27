@@ -11,7 +11,7 @@ typedef struct {
     int count; /* valid samples stored, ≤ GRAPH_BUF_SIZE */
 } ch_buf_t;
 
-static ch_buf_t ch_buf[2];
+static ch_buf_t ch_buf[UI_CHANNEL_COUNT];
 static lv_obj_t *title_label;
 static lv_obj_t *chart;
 static lv_chart_series_t *ser_volt;

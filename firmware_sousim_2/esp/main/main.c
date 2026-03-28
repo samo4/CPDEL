@@ -10,7 +10,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 
-#define SCPI_IMPLEMENTATION
+#define APP_BUS_IMPLEMENTATION
 #include "app_bus.h"
 
 #include "dc_load_controller.h"

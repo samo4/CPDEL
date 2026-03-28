@@ -299,7 +299,7 @@ gh run view <run-id> --log
 # Workflow automatically detects and uses it
 
 git tag v1.0.0              # Create tag
-git push origin v1.0.0      # Trigger workflow
+git push --tags
 gh release view v1.0.0      # View release
 ```
 

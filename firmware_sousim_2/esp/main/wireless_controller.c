@@ -6,7 +6,7 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "sys_bus.h"
+#include "scpi.h"
 
 static const char *TAG = "WIRELESS";
 
@@ -59,23 +59,26 @@ esp_err_t wireless_save_credentials(const char *ssid, const char *password, bool
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    sys_msg_t msg = {0};
+    bus_msg_t msg = {0};
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
             case WIFI_EVENT_STA_START:
-                msg.type = SYS_MSG_WIFI_STATUS;
-                msg.data.args[0] = 1; // connecting
-                sys_bus_publish(&msg);
+                msg.cmd = SCPI_CMD_WIFI_STATUS;
+                msg.source = SRC_CTRL;
+                msg.payload.scalar.value = 1.0f; // connecting
+                event_bus_publish(&msg);
                 break;
             case WIFI_EVENT_STA_CONNECTED:
-                msg.type = SYS_MSG_WIFI_STATUS;
-                msg.data.args[0] = 2; // connected
-                sys_bus_publish(&msg);
+                msg.cmd = SCPI_CMD_WIFI_STATUS;
+                msg.source = SRC_CTRL;
+                msg.payload.scalar.value = 2.0f; // connected
+                event_bus_publish(&msg);
                 break;
             case WIFI_EVENT_STA_DISCONNECTED:
-                msg.type = SYS_MSG_WIFI_STATUS;
-                msg.data.args[0] = 0; // disconnected
-                sys_bus_publish(&msg);
+                msg.cmd = SCPI_CMD_WIFI_STATUS;
+                msg.source = SRC_CTRL;
+                msg.payload.scalar.value = 0.0f; // disconnected
+                event_bus_publish(&msg);
                 break;
         }
     }
@@ -83,19 +86,20 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
 static void rssi_task(void *arg) {
     wifi_ap_record_t ap_info;
-    sys_msg_t msg = {0};
-    msg.type = SYS_MSG_RSSI;
+    bus_msg_t msg = {0};
+    msg.cmd = SCPI_CMD_WIFI_RSSI;
+    msg.source = SRC_CTRL;
     while (1) {
         if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
-            msg.data.wifi.rssi = ap_info.rssi;
+            msg.payload.wifi.rssi = ap_info.rssi;
             esp_netif_ip_info_t ip_info;
             esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
             if (netif && esp_netif_get_ip_info(netif, &ip_info) == ESP_OK) {
-                msg.data.wifi.ip = ip_info.ip.addr;
+                msg.payload.wifi.ip = ip_info.ip.addr;
             } else {
-                msg.data.wifi.ip = 0;
+                msg.payload.wifi.ip = 0;
             }
-            sys_bus_publish(&msg);
+            event_bus_publish(&msg);
         }
         vTaskDelay(pdMS_TO_TICKS(2500));
     }

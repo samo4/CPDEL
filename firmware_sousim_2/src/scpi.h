@@ -1,7 +1,12 @@
 #pragma once
 
+#include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "freertos_includes.h"
 
 typedef enum {
@@ -18,48 +23,86 @@ typedef enum {
     SCPI_CMD_MEAS_VOLT_CONT,
     SCPI_CMD_MEAS_CURR_CONT,
     /* Source (setpoint / mode) — one-shot query; response reuses the same cmd with source=SRC_CTRL */
-    SCPI_CMD_SOUR_VOLT, /* request: argc=0; response: argc=1, args[0]=voltage setpoint */
-    SCPI_CMD_SOUR_CURR, /* request: argc=0; response: argc=1, args[0]=current setpoint */
-    SCPI_CMD_SOUR_MODE, /* request: argc=0; response: argc=1, args[0] 0=CV 1=CC */
+    SCPI_CMD_SOUR_VOLT,   /* request: no payload; response: scalar.value = voltage setpoint */
+    SCPI_CMD_SOUR_CURR,   /* request: no payload; response: scalar.value = current setpoint */
+    SCPI_CMD_SOUR_MODE,   /* request: no payload; response: scalar.value = mode */
+    SCPI_CMD_WIFI_STATUS, /* scalar.value: 0=disconnected, 1=connecting, 2=connected */
+    SCPI_CMD_WIFI_RSSI,   /* wifi.rssi + wifi.ip */
     SCPI_CMD_SELECT_CHANNEL,
     SCPI_CMD_IDN,
     SCPI_CMD_ERROR,
-} scpi_cmd_t;
+} bus_cmd_t;
 
 typedef enum {
     SRC_GUI,
     SRC_WEB,
     SRC_LXI,
     SRC_CTRL,
-} scpi_source_t;
+} bus_source_t;
+
+typedef enum {
+    SCPI_FLAG_ENABLED = 1u << 0,
+    SCPI_FLAG_ERROR = 1u << 1,
+} scpi_flags_t;
+
+typedef union {
+    struct {
+        uint8_t channel; /* 0-based channel index — common initial sequence with meas */
+        uint8_t _pad[3];
+        float value;
+    } scalar; /* 8 bytes */
+
+    struct {
+        uint8_t channel; /* 0-based channel index — common initial sequence with scalar */
+        uint8_t mode;
+        uint8_t flags;
+        uint8_t _pad;
+        float voltage;
+        float current;
+    } meas; /* 12 bytes */
+
+    struct {
+        int32_t rssi;
+        uint32_t ip; // ESP-IDF style
+    } wifi;
+} scpi_payload_t; /* 12 bytes; channel is accessible via either variant (CIS) */
+
+_Static_assert(offsetof(scpi_payload_t, scalar.channel) == 0, "scalar.channel must stay at offset 0");
+_Static_assert(offsetof(scpi_payload_t, meas.channel) == 0, "meas.channel must stay at offset 0");
+_Static_assert(sizeof(((scpi_payload_t *)0)->scalar) <= 8, "scalar payload grew unexpectedly");
+_Static_assert(sizeof(((scpi_payload_t *)0)->wifi) <= 8, "wifi payload grew unexpectedly");
+_Static_assert(sizeof(scpi_payload_t) <= 16, "scpi_payload_t grew unexpectedly");
 
 typedef struct {
-    scpi_cmd_t cmd;
-    uint8_t channel; /* 0-based channel index */
-    float args[2];
-    uint8_t argc;
-    scpi_source_t source;
     uint32_t timestamp_ms; /* Monotonic time since boot, in milliseconds */
-} scpi_msg_t;
+    scpi_payload_t payload;
+    uint8_t cmd;    // bus_cmd_t, but keep as uint8_t for compactness
+    uint8_t source; // bus_source_t, but keep as uint8_t for compactness
+    /* 2 bytes implicit trailing padding; struct alignment = 4 */
+} bus_msg_t;
+
+_Static_assert(offsetof(bus_msg_t, payload) == 4, "payload offset changed unexpectedly");
+_Static_assert(sizeof(bus_msg_t) <= 24, "bus_msg_t grew unexpectedly; queue RAM usage increased");
 
 void event_bus_subscribe(QueueHandle_t q);
-void event_bus_publish(const scpi_msg_t *msg);
+void event_bus_publish(const bus_msg_t *msg);
 
-const char *event_bus_source_str(scpi_source_t s);
+const char *event_bus_source_str(bus_source_t s);
 
 /* Encode msg to a SCPI string.  Returns chars written (excl. NUL),
    or -1 on unknown command.  Safe with buf_size == 0. */
-int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size);
+int scpi_encode(const bus_msg_t *msg, char *buf, size_t buf_size);
 
 /* Decode a SCPI string into *out.  Returns 0 on success, -1 on parse error.
    out->source defaults to SRC_LXI (strings typically originate from network). */
-int scpi_decode(const char *str, scpi_msg_t *out);
+int scpi_decode(const char *str, bus_msg_t *out);
 
-void respond_measurement(scpi_source_t dest, uint8_t ch, float current, float voltage);
+void respond_measurement(bus_source_t dest, uint8_t ch, float current, float voltage, bool is_enabled, uint8_t mode,
+                         bool is_error);
 
 #ifdef SCPI_IMPLEMENTATION
 
-const char *event_bus_source_str(scpi_source_t s) {
+const char *event_bus_source_str(bus_source_t s) {
     switch (s) {
         case SRC_GUI:
             return "GUI";
@@ -83,18 +126,18 @@ void event_bus_subscribe(QueueHandle_t q) {
     s_subscribers[s_sub_count++] = q;
 }
 
-void event_bus_publish(const scpi_msg_t *msg) {
+void event_bus_publish(const bus_msg_t *msg) {
     for (int i = 0; i < s_sub_count; i++) xQueueSend(s_subscribers[i], msg, 0);
 }
 
-int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size) {
-    unsigned ch = (unsigned)msg->channel + 1u; /* 1-based for SCPI */
+int scpi_encode(const bus_msg_t *msg, char *buf, size_t buf_size) {
+    unsigned ch = (unsigned)msg->payload.meas.channel + 1u; /* 1-based for SCPI */
 
     //  TODO someday
 
     switch (msg->cmd) {
         case SCPI_CMD_OUTPUT_STATE:
-            return snprintf(buf, buf_size, "OUTP%u:STAT %s", ch, (msg->args[0] != 0.0f) ? "ON" : "OFF");
+            return snprintf(buf, buf_size, "OUTP%u:STAT %s", ch, (msg->payload.scalar.value != 0.0f) ? "ON" : "OFF");
 
         case SCPI_CMD_IDN:
             return snprintf(buf, buf_size, "*IDN?");
@@ -107,7 +150,7 @@ int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size) {
     }
 }
 
-int scpi_decode(const char *str, scpi_msg_t *out) {
+int scpi_decode(const char *str, bus_msg_t *out) {
     memset(out, 0, sizeof(*out));
     out->source = SRC_LXI; /* strings typically come from a network/LXI interface */
 
@@ -127,18 +170,10 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         char onoff[4] = {0};
         if (sscanf(str, "OUTP%u:STAT %3s", &ch, onoff) == 2) {
             out->cmd = SCPI_CMD_OUTPUT_STATE;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
-    }
-
-    /* INST:NSEL <ch> */
-    if (strncmp(str, "INST:NSEL ", 10) == 0) {
-        out->cmd = SCPI_CMD_SELECT_CHANNEL;
-        out->channel = (uint8_t)(atoi(str + 10) - 1);
-        return 0;
     }
 
     /* SOUR<ch>:FUNC VOLT|CURR */
@@ -147,9 +182,8 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         int consumed = 0;
         if (sscanf(str, "SOUR%u:FUNC %n", &ch, &consumed) == 1 && consumed > 0) {
             out->cmd = SCPI_CMD_SET_MODE;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = (strncmp(str + consumed, "VOLT", 4) == 0) ? 0.0f : 1.0f;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = (strncmp(str + consumed, "VOLT", 4) == 0) ? 0.0f : 1.0f;
             return 0;
         }
     }
@@ -160,9 +194,8 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:VOLT %f", &ch, &val) == 2) {
             out->cmd = SCPI_CMD_SET_VOLTAGE;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = val;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = val;
             return 0;
         }
     }
@@ -173,9 +206,8 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:CURR %f", &ch, &val) == 2) {
             out->cmd = SCPI_CMD_SET_CURRENT;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = val;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = val;
             return 0;
         }
     }
@@ -186,9 +218,8 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         float val = 0.0f;
         if (sscanf(str, "BATT%u:LVP %f", &ch, &val) == 2) {
             out->cmd = SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = val;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = val;
             return 0;
         }
     }
@@ -199,17 +230,15 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         char onoff[4] = {0};
         if (sscanf(str, "MEAS:VOLT:CONT %3s (@%u)", onoff, &ch) == 2) {
             out->cmd = SCPI_CMD_MEAS_VOLT_CONT;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
         /* legacy query form — treat as ON */
         if (sscanf(str, "MEAS:VOLT:CONT? (@%u)", &ch) == 1) {
             out->cmd = SCPI_CMD_MEAS_VOLT_CONT;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = 1.0f;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = 1.0f;
             return 0;
         }
     }
@@ -220,17 +249,15 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         char onoff[4] = {0};
         if (sscanf(str, "MEAS:CURR:CONT %3s (@%u)", onoff, &ch) == 2) {
             out->cmd = SCPI_CMD_MEAS_CURR_CONT;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
         /* legacy query form — treat as ON */
         if (sscanf(str, "MEAS:CURR:CONT? (@%u)", &ch) == 1) {
             out->cmd = SCPI_CMD_MEAS_CURR_CONT;
-            out->channel = (uint8_t)(ch - 1u);
-            out->args[0] = 1.0f;
-            out->argc = 1;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = 1.0f;
             return 0;
         }
     }
@@ -240,7 +267,7 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         unsigned ch = 0;
         if (sscanf(str, "MEAS:VOLT? (@%u)", &ch) == 1) {
             out->cmd = SCPI_CMD_MEAS_VOLT;
-            out->channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
             return 0;
         }
     }
@@ -250,7 +277,7 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         unsigned ch = 0;
         if (sscanf(str, "MEAS:CURR? (@%u)", &ch) == 1) {
             out->cmd = SCPI_CMD_MEAS_CURR;
-            out->channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
             return 0;
         }
     }
@@ -258,16 +285,18 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
     return -1; /* unknown / unrecognised */
 }
 
-void respond_measurement(scpi_source_t dest, uint8_t ch, float current, float voltage) {
+void respond_measurement(bus_source_t dest, uint8_t ch, float current, float voltage, bool is_enabled, uint8_t mode,
+                         bool is_error) {
     (void)dest;
-    scpi_msg_t resp = {0};
-    resp.cmd = SCPI_MEASUREMENTS;
-    resp.channel = ch;
-    resp.args[0] = current;
-    resp.args[1] = voltage;
-    resp.argc = 2;
-    resp.source = SRC_CTRL;
+    bus_msg_t resp = {0};
     resp.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    resp.cmd = SCPI_MEASUREMENTS;
+    resp.payload.meas.channel = ch;
+    resp.source = SRC_CTRL;
+    resp.payload.meas.voltage = voltage;
+    resp.payload.meas.current = current;
+    resp.payload.meas.mode = mode;
+    resp.payload.meas.flags = (is_enabled ? SCPI_FLAG_ENABLED : 0u) | (is_error ? SCPI_FLAG_ERROR : 0u);
     event_bus_publish(&resp);
 }
 

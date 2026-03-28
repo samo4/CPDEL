@@ -16,13 +16,12 @@ static lv_obj_t *cutoff_sw;
 static lv_obj_t *cutoff_val_lbl;
 
 static void publish_low_voltage_cutoff(float cutoff_v) {
-    scpi_msg_t msg = {
+    bus_msg_t msg = {
         .cmd = SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION,
-        .channel = (uint8_t)_ch,
-        .args = {cutoff_v, 0.0f},
-        .argc = 1,
+        .payload.scalar.channel = (uint8_t)_ch,
         .source = SRC_GUI,
     };
+    msg.payload.scalar.value = cutoff_v;
     event_bus_publish(&msg);
 }
 
@@ -57,13 +56,12 @@ static void event_mode_change(lv_event_t *e) {
     channels[_ch].mode = mode;
     update_setpoint_view(mode);
 
-    scpi_msg_t msg = {
+    bus_msg_t msg = {
         .cmd = SCPI_CMD_SET_MODE,
-        .channel = (uint8_t)_ch,
-        .args = {(float)mode, 0.0f},
-        .argc = 1,
+        .payload.scalar.channel = (uint8_t)_ch,
         .source = SRC_GUI,
     };
+    msg.payload.scalar.value = (float)mode;
 #ifdef ESP_PLATFORM
     ESP_LOGI(TAG, "Set CH%u mode to %s", _ch + 1, MODE_NAMES[mode]);
 #endif
@@ -84,7 +82,7 @@ static void event_cutoff_toggle(lv_event_t *e) {
 
 static void on_setpoint_confirmed(double value) {
     uint8_t mode = channels[_ch].mode;
-    scpi_cmd_t cmd;
+    bus_cmd_t cmd;
     switch (mode) {
         case 0:
             channels[_ch].voltage_setpoint = value;
@@ -107,13 +105,12 @@ static void on_setpoint_confirmed(double value) {
     }
     update_setpoint_view(mode);
 
-    scpi_msg_t msg = {
+    bus_msg_t msg = {
         .cmd = cmd,
-        .channel = (uint8_t)_ch,
-        .args = {(float)value, 0.0f},
-        .argc = 1,
+        .payload.scalar.channel = (uint8_t)_ch,
         .source = SRC_GUI,
     };
+    msg.payload.scalar.value = (float)value;
 #ifdef ESP_PLATFORM
     ESP_LOGI(TAG, "Sending CH%u %s set to %.3f", _ch + 1, MODE_NAMES[mode], value);
 #endif

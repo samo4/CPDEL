@@ -1,7 +1,6 @@
 #include "ui.h"
 #include <stdio.h>
 #include "../scpi.h"
-#include "../sys_bus.h"
 
 lv_obj_t *ui_MainScreen;
 lv_obj_t *ui_ChannelDetailScreen;
@@ -54,55 +53,60 @@ static void ui_create_status_screen(void) {
 
 channel_data_t channels[UI_CHANNEL_COUNT];
 int _ch = 0;
+static TickType_t s_output_inhibit_until[UI_CHANNEL_COUNT];
+
+void ui_set_output_local_with_inhibit(int channel, bool enabled, uint32_t inhibit_ms) {
+    if (channel < 0 || channel >= UI_CHANNEL_COUNT) return;
+    channels[channel].output_enabled = enabled;
+    s_output_inhibit_until[channel] = xTaskGetTickCount() + pdMS_TO_TICKS(inhibit_ms);
+}
 
 /* Drain queue_gui from the LVGL tick — safe to call LVGL APIs here since
    this runs inside lv_timer_handler() on the same thread as LVGL. */
 static void gui_queue_timer_cb(lv_timer_t *t) {
     (void)t;
-    scpi_msg_t msg;
+    bus_msg_t msg;
     while (xQueueReceive(queue_gui, &msg, 0) == pdTRUE) {
-        if (msg.channel >= UI_CHANNEL_COUNT) {
-            return;
-        }
         switch (msg.cmd) {
             case SCPI_MEASUREMENTS:
-                channels[msg.channel].measured_current = msg.args[0];
-                channels[msg.channel].measured_voltage = msg.args[1];
-                channels[msg.channel].measured_power =
-                    channels[msg.channel].measured_voltage * channels[msg.channel].measured_current;
-                ui_main_update_channel(msg.channel);
-                // ui_detail_update_channel(msg.channel);
-                ui_graph_update_channel(msg.channel, msg.timestamp_ms);
+                if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
+                channels[msg.payload.meas.channel].measured_current = msg.payload.meas.current;
+                channels[msg.payload.meas.channel].measured_voltage = msg.payload.meas.voltage;
+                channels[msg.payload.meas.channel].measured_power =
+                    channels[msg.payload.meas.channel].measured_voltage *
+                    channels[msg.payload.meas.channel].measured_current;
+                if (xTaskGetTickCount() >= s_output_inhibit_until[msg.payload.meas.channel]) {
+                    channels[msg.payload.meas.channel].output_enabled =
+                        (msg.payload.meas.flags & SCPI_FLAG_ENABLED) != 0;
+                }
+                channels[msg.payload.meas.channel].mode = msg.payload.meas.mode;
+                ui_main_update_channel(msg.payload.meas.channel);
+                // ui_detail_update_channel(msg.payload.meas.channel);
+                ui_graph_update_channel(msg.payload.meas.channel, msg.timestamp_ms);
                 break;
             case SCPI_CMD_SOUR_VOLT:
-                channels[msg.channel].voltage_setpoint = msg.args[0];
-                // ui_detail_update_channel(msg.channel);
+                if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
+                channels[msg.payload.meas.channel].voltage_setpoint = msg.payload.scalar.value;
+                // ui_detail_update_channel(msg.payload.meas.channel);
                 break;
             case SCPI_CMD_SOUR_CURR:
-                channels[msg.channel].current_setpoint = msg.args[0];
-                // ui_detail_update_channel(msg.channel);
+                if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
+                channels[msg.payload.meas.channel].current_setpoint = msg.payload.scalar.value;
+                // ui_detail_update_channel(msg.payload.meas.channel);
                 break;
             case SCPI_CMD_SOUR_MODE:
-                channels[msg.channel].mode = (uint8_t)msg.args[0]; // TODO: validate!
-                ui_main_update_channel(msg.channel);
-                // ui_detail_update_channel(msg.channel);
+                if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
+                channels[msg.payload.meas.channel].mode = (uint8_t)msg.payload.scalar.value; // TODO: validate!
+                ui_main_update_channel(msg.payload.meas.channel);
+                // ui_detail_update_channel(msg.payload.meas.channel);
                 break;
-            default:
-                break;
-        }
-    }
-
-    /* Drain system-status bus (RSSI, connection state, battery, ...) */
-    sys_msg_t smsg;
-    while (xQueueReceive(queue_ui_status, &smsg, 0) == pdTRUE) {
-        switch (smsg.type) {
-            case SYS_MSG_RSSI: {
+            case SCPI_CMD_WIFI_RSSI: {
                 char ip_str[16] = "";
-                uint32_t ip = smsg.data.wifi.ip;
+                uint32_t ip = msg.payload.wifi.ip;
                 snprintf(ip_str, sizeof(ip_str), "%lu.%lu.%lu.%lu", ip & 0xFF, (ip >> 8) & 0xFF, (ip >> 16) & 0xFF,
                          (ip >> 24) & 0xFF);
                 if (ip == 0) ip_str[0] = '\0';
-                ui_main_update_wifi((int)smsg.data.wifi.rssi, ip_str);
+                ui_main_update_wifi((int)msg.payload.wifi.rssi, ip_str);
                 break;
             }
             default:
@@ -114,23 +118,25 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
 /* Poll the controller for current setpoint and mode (called every 5 s). */
 static void ui_poll_source_timer_cb(lv_timer_t *t) {
     (void)t;
-    /*scpi_msg_t msg = {.argc = 0, .source = SRC_GUI};
+    /*
+    bus_msg_t msg = {.source = SRC_GUI};
     for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
-        msg.channel = (uint8_t)i;
+        msg.payload.meas.channel = (uint8_t)i;
         msg.cmd = SCPI_CMD_SOUR_VOLT;
         event_bus_publish(&msg);
         msg.cmd = SCPI_CMD_SOUR_CURR;
         event_bus_publish(&msg);
         msg.cmd = SCPI_CMD_SOUR_MODE;
         event_bus_publish(&msg);
-    }*/
+    }
+    */
 }
 
 void ui_init(void) {
     if (queue_gui != NULL) {
         return;
     }
-    queue_gui = xQueueCreate(16, sizeof(scpi_msg_t));
+    queue_gui = xQueueCreate(16, sizeof(bus_msg_t));
     if (queue_gui == NULL) {
         // die hard?
         return;
@@ -167,13 +173,14 @@ void ui_init(void) {
     /* Periodic poll for setpoints / mode (rarely change — every 5 s is enough) */
     lv_timer_create(ui_poll_source_timer_cb, 5000, NULL);
 
-    for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
-        scpi_msg_t msg = {.channel = (uint8_t)i, .args = {1.0f}, .argc = 1, .source = SRC_GUI};
-        msg.cmd = SCPI_CMD_MEAS_VOLT_CONT;
-        event_bus_publish(&msg);
-        msg.cmd = SCPI_CMD_MEAS_CURR_CONT;
-        event_bus_publish(&msg);
-    }
+    // for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
+    //     bus_msg_t msg = {.payload.scalar.channel = (uint8_t)i, .source = SRC_GUI};
+    //     msg.payload.scalar.value = 1.0f;
+    //     msg.cmd = SCPI_CMD_MEAS_VOLT_CONT;
+    //     event_bus_publish(&msg);
+    //     msg.cmd = SCPI_CMD_MEAS_CURR_CONT;
+    //     event_bus_publish(&msg);
+    // }
 
     /* Initial one-shot poll so we have data before the first 5 s tick */
     lv_timer_t *t = lv_timer_create(ui_poll_source_timer_cb, 0, NULL);

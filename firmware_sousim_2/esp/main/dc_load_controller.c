@@ -218,11 +218,12 @@ static void dc_load_controller_task(void *arg) {
         for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
             ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_request_data_blocking(i));
             dc_load_handle_low_voltage_cutoff(&s_dc_load_state.devices[i]);
-            respond_measurement(SRC_CTRL, i, s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].voltage);
+            respond_measurement(SRC_CTRL, i, s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].voltage,
+                                s_dc_load_state.devices[i].is_enabled, (uint8_t)s_dc_load_state.devices[i].mode, false);
             vTaskDelay(pdMS_TO_TICKS(200));
         }
 
-        if (xTaskGetTickCount() - s_last_status_log >= pdMS_TO_TICKS(5000)) {
+        if (xTaskGetTickCount() - s_last_status_log >= pdMS_TO_TICKS(30000)) {
             for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
                 ESP_LOGI(TAG, "Dev %u: U=%.2f V, I=%.3f A, P=%.2f W, Enabled=%s, Mode=%s",
                          s_dc_load_state.devices[i].address, s_dc_load_state.devices[i].voltage,
@@ -233,70 +234,71 @@ static void dc_load_controller_task(void *arg) {
             s_last_status_log = xTaskGetTickCount();
         }
 
-        scpi_msg_t msg;
+        bus_msg_t msg;
         while (xQueueReceive(queue_dc_load, &msg, 0) == pdTRUE) {
-            if (msg.channel >= DC_LOAD_DEVICE_COUNT) {
-                ESP_LOGE(TAG, "Received command for invalid channel %u", msg.channel);
-                return;
+            if (msg.source == SRC_CTRL) {
+                continue;
+            }
+            if (msg.payload.meas.channel >= DC_LOAD_DEVICE_COUNT) {
+                ESP_LOGE(TAG, "Received command for invalid channel %u", msg.payload.meas.channel);
+                continue;
             }
 
             switch (msg.cmd) {
                 case SCPI_CMD_OUTPUT_STATE:
-                    ESP_LOGI(TAG, "output to %s", (msg.args[0] != 0.0f) ? "ON" : "OFF");
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_enable(&s_dc_load_state.devices[msg.channel], msg.args[0] != 0.0f));
+                    ESP_LOGI(TAG, "output to %s", (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF");
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_enable(&s_dc_load_state.devices[msg.payload.meas.channel],
+                                                                     msg.payload.scalar.value != 0.0f));
                     break;
                 case SCPI_CMD_SET_MODE:
-                    ESP_LOGI(TAG, "mode to %s", dc_load_mode_abbrev((uint8_t)msg.args[0]));
-                    if ((uint8_t)msg.args[0] > DC_LOAD_MODE_VOLTAGE_CURRENT) {
-                        ESP_LOGE(TAG, "Invalid mode %u", (uint8_t)msg.args[0]);
+                    ESP_LOGI(TAG, "mode to %s", dc_load_mode_abbrev((uint8_t)msg.payload.scalar.value));
+                    if ((uint8_t)msg.payload.scalar.value > DC_LOAD_MODE_VOLTAGE_CURRENT) {
+                        ESP_LOGE(TAG, "Invalid mode %u", (uint8_t)msg.payload.scalar.value);
                         break;
                     }
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_mode(&s_dc_load_state.devices[msg.channel], (dc_load_mode_t)(uint8_t)msg.args[0]));
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_mode(&s_dc_load_state.devices[msg.payload.meas.channel],
+                                                                   (dc_load_mode_t)(uint8_t)msg.payload.scalar.value));
                     break;
                 case SCPI_CMD_SET_VOLTAGE:
-                    ESP_LOGI(TAG, "voltage setpoint to %.2f V", (double)msg.args[0]);
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_command_voltage(&s_dc_load_state.devices[msg.channel], msg.args[0]));
+                    ESP_LOGI(TAG, "voltage setpoint to %.2f V", (double)msg.payload.scalar.value);
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_command_voltage(
+                        &s_dc_load_state.devices[msg.payload.meas.channel], msg.payload.scalar.value));
                     break;
                 case SCPI_CMD_SET_CURRENT:
-                    ESP_LOGI(TAG, "current setpoint to %.3f A", (double)msg.args[0]);
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_command_current(&s_dc_load_state.devices[msg.channel], msg.args[0]));
+                    ESP_LOGI(TAG, "current setpoint to %.3f A", (double)msg.payload.scalar.value);
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_command_current(
+                        &s_dc_load_state.devices[msg.payload.meas.channel], msg.payload.scalar.value));
                     break;
                 case SCPI_CMD_SET_POWER:
-                    ESP_LOGI(TAG, "power setpoint to %.2f W", (double)msg.args[0]);
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_command_power(&s_dc_load_state.devices[msg.channel], msg.args[0]));
+                    ESP_LOGI(TAG, "power setpoint to %.2f W", (double)msg.payload.scalar.value);
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_command_power(
+                        &s_dc_load_state.devices[msg.payload.meas.channel], msg.payload.scalar.value));
                     break;
                 case SCPI_CMD_SET_RESISTANCE:
-                    ESP_LOGI(TAG, "resistance setpoint to %.2f Ohm", (double)msg.args[0]);
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_command_resistance(&s_dc_load_state.devices[msg.channel], msg.args[0]));
+                    ESP_LOGI(TAG, "resistance setpoint to %.2f Ohm", (double)msg.payload.scalar.value);
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_command_resistance(
+                        &s_dc_load_state.devices[msg.payload.meas.channel], msg.payload.scalar.value));
                     break;
                 case SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION:
-                    ESP_LOGI(TAG, "low voltage cutoff to %.2f V", (double)msg.args[0]);
-                    s_dc_load_state.devices[msg.channel].lv_cutoff_threshold = msg.args[0];
+                    ESP_LOGI(TAG, "low voltage cutoff to %.2f V", (double)msg.payload.scalar.value);
+                    s_dc_load_state.devices[msg.payload.meas.channel].lv_cutoff_threshold = msg.payload.scalar.value;
                     break;
                 case SCPI_CMD_MEAS_VOLT:
                     // we already have it. TODO: check if it's not stale
-                    event_bus_publish(&(scpi_msg_t){
+                    event_bus_publish(&(bus_msg_t){
                         .cmd = SCPI_CMD_MEAS_VOLT,
-                        .channel = msg.channel,
-                        .args = {s_dc_load_state.devices[msg.channel].voltage, 0.0f},
-                        .argc = 1,
+                        .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
+                        .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].voltage,
                     });
                     break;
                 case SCPI_CMD_MEAS_CURR:
                     // we already have it. TODO: check if it's not stale
-                    event_bus_publish(&(scpi_msg_t){
+                    event_bus_publish(&(bus_msg_t){
                         .cmd = SCPI_CMD_MEAS_CURR,
-                        .channel = msg.channel,
-                        .args = {s_dc_load_state.devices[msg.channel].current, 0.0f},
-                        .argc = 1,
+                        .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
+                        .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].current,
                     });
                     break;
                 default:
@@ -311,7 +313,7 @@ void dc_load_controller_init(void) {
     if (queue_dc_load != NULL) {
         return;
     }
-    queue_dc_load = xQueueCreate(16, sizeof(scpi_msg_t));
+    queue_dc_load = xQueueCreate(16, sizeof(bus_msg_t));
     if (queue_dc_load == NULL) {
         // die hard?
         ESP_LOGE(TAG, "Failed to create dc load command queue");

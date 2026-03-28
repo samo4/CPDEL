@@ -32,15 +32,14 @@ static void event_output_toggle(lv_event_t *e) {
     if (ch < 0 || ch >= UI_CHANNEL_COUNT) return;
 
     bool enabled = lv_obj_has_state(ch_output_sw[ch], LV_STATE_CHECKED);
-    channels[ch].output_enabled = enabled;
+    ui_set_output_local_with_inhibit(ch, enabled, 1000);
 
-    scpi_msg_t msg = {
+    bus_msg_t msg = {
         .cmd = SCPI_CMD_OUTPUT_STATE,
-        .channel = (uint8_t)ch,
-        .args = {enabled ? 1.0f : 0.0f, 0.0f},
-        .argc = 1,
+        .payload.scalar.channel = (uint8_t)ch,
         .source = SRC_GUI,
     };
+    msg.payload.scalar.value = enabled ? 1.0f : 0.0f;
     event_bus_publish(&msg);
 }
 

@@ -97,14 +97,15 @@ static void ingest_measurement_locked(uint8_t channel, float current, float volt
 
 void rrd_task(void *param) {
     (void)param;
-    scpi_msg_t msg;
+    bus_msg_t msg;
     TickType_t last_report_tick = xTaskGetTickCount();
 
     for (;;) {
         if (xQueueReceive(queue_rrd, &msg, pdMS_TO_TICKS(200)) == pdTRUE) {
             if (msg.cmd == SCPI_MEASUREMENTS) {
                 if (s_rrd_lock && xSemaphoreTake(s_rrd_lock, portMAX_DELAY) == pdTRUE) {
-                    ingest_measurement_locked(msg.channel, msg.args[0], msg.args[1], msg.timestamp_ms);
+                    ingest_measurement_locked(msg.payload.meas.channel, msg.payload.meas.current,
+                                              msg.payload.meas.voltage, msg.timestamp_ms);
                     xSemaphoreGive(s_rrd_lock);
                 }
             }
@@ -132,7 +133,7 @@ void rrd_init(void) {
     if (queue_rrd != NULL) {
         return;
     }
-    queue_rrd = xQueueCreate(16, sizeof(scpi_msg_t));
+    queue_rrd = xQueueCreate(16, sizeof(bus_msg_t));
     if (queue_rrd == NULL) {
         // die hard?
         return;

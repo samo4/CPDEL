@@ -51,6 +51,7 @@ void ui_main_update_wifi(int rssi_dbm, const char *ip_str);
 void ui_detail_update_channel(int channel);
 void ui_graph_update_channel(int channel, uint32_t sample_ts_ms);
 void ui_show_status_panel(const char *text, bool dismissable);
+void ui_set_output_local_with_inhibit(int channel, bool enabled, uint32_t inhibit_ms);
 
 void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),
                     lv_obj_t *return_screen);

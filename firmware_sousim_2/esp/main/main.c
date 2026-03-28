@@ -13,9 +13,6 @@
 #define SCPI_IMPLEMENTATION
 #include "scpi.h"
 
-#define SYS_BUS_IMPLEMENTATION
-#include "sys_bus.h"
-
 #include "dc_load_controller.h"
 #include "display.h"
 #include "rrd.h"
@@ -102,7 +99,6 @@ void app_main(void) {
     wireless_init();
     dc_load_controller_init();
 
-    sys_bus_init();
     rrd_init();
 
     // run after all queues are initialized!

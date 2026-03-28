@@ -3,9 +3,10 @@
 ## TODO
 
 - [x] wireless edit ssid and password (store in nvme)
-- [ ] connect to modbus
-- [ ] rethink queues
+- [x] connect to modbus
+- [x] rethink queues
 - [ ] rrdtool-like graph
+- [ ] OTA
 
 ## vscode
 

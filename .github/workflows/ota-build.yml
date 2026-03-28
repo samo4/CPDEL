@@ -53,7 +53,7 @@ jobs:
           # Fix pkg_resources import in IDF virtualenv on some runners.
           python -m ensurepip --upgrade || true
           python -m pip install --upgrade pip setuptools wheel
-          python -c "import pkg_resources; print('pkg_resources OK')"
+          python -m pip --version
 
           cd ${{ github.workspace }}/${{ env.PROJECT_DIR }}/esp
           idf.py build

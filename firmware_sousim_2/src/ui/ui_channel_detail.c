@@ -134,15 +134,15 @@ static void event_open_setpoint_numpad(lv_event_t *e) {
     uint8_t mode = channels[_ch].mode;
     switch (mode) {
         case 0:
-            ui_open_numpad("Set Voltage (V)", channels[_ch].voltage_setpoint, 0.0, 30.0, on_setpoint_confirmed,
+            ui_open_numpad("Set Voltage (V)", channels[_ch].voltage_setpoint, 0.0, 200.0, on_setpoint_confirmed,
                            ui_ChannelDetailScreen);
             break;
         case 1:
-            ui_open_numpad("Set Current (A)", channels[_ch].current_setpoint, 0.0, 5.0, on_setpoint_confirmed,
+            ui_open_numpad("Set Current (A)", channels[_ch].current_setpoint, 0.0, 10.0, on_setpoint_confirmed,
                            ui_ChannelDetailScreen);
             break;
         case 2:
-            ui_open_numpad("Set Power (W)", channels[_ch].power_setpoint, 0.0, 100.0, on_setpoint_confirmed,
+            ui_open_numpad("Set Power (W)", channels[_ch].power_setpoint, 0.0, 200.0, on_setpoint_confirmed,
                            ui_ChannelDetailScreen);
             break;
         case 3:

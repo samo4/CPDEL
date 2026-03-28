@@ -86,7 +86,7 @@ void ui_main_update_channel(int _ch) {
             break;
         case 2:
             lv_label_set_text_fmt(ch_sp_lbl[_ch], "%.2fW", c->power_setpoint);
-            lv_obj_set_style_bg_color(ch_mode_badge[_ch], lv_palette_main(LV_PALETTE_BLUE), 0);
+            lv_obj_set_style_bg_color(ch_mode_badge[_ch], lv_palette_main(LV_PALETTE_CYAN), 0);
             break;
         case 3:
             lv_label_set_text_fmt(ch_sp_lbl[_ch], "%.2fR", c->resistance_setpoint);
@@ -143,17 +143,21 @@ void ui_create_main_screen(void) {
     lv_obj_align(cont, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW); // Side by side
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_all(cont, 5, 0);
+    lv_obj_set_style_bg_color(cont, lv_palette_main(LV_PALETTE_BLUE), 0);
+    lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(cont, 0, 0);
+    lv_obj_set_style_pad_all(cont, 2, 0);
+    lv_obj_set_style_pad_gap(cont, 2, 0);
     lv_obj_set_style_radius(cont, 0, 0);
-    lv_obj_t *ch1_btn = lv_btn_create(cont);
-    lv_obj_set_size(ch1_btn, 140, 180); // Roughly half width minus padding
-    create_channel_panel(ch1_btn, 0);
-    lv_obj_add_event_cb(ch1_btn, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)0);
+    lv_obj_t *ch1_panel = lv_obj_create(cont);
+    lv_obj_clear_flag(ch1_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(ch1_panel, 140, 180); // Roughly half width minus padding
+    create_channel_panel(ch1_panel, 0);
 
-    lv_obj_t *ch2_btn = lv_btn_create(cont);
-    lv_obj_set_size(ch2_btn, 140, 180);
-    create_channel_panel(ch2_btn, 1);
-    lv_obj_add_event_cb(ch2_btn, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)1);
+    lv_obj_t *ch2_panel = lv_obj_create(cont);
+    lv_obj_clear_flag(ch2_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(ch2_panel, 140, 180);
+    create_channel_panel(ch2_panel, 1);
 
     /*
     // Top-left (0,0)
@@ -182,6 +186,15 @@ void ui_create_main_screen(void) {
 static void create_channel_panel(lv_obj_t *parent, int _ch) {
     if (_ch < 0 || _ch >= UI_CHANNEL_COUNT) return;
 
+    lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(parent, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(parent, 1, 0);
+    lv_obj_set_style_border_color(parent, lv_palette_darken(LV_PALETTE_BLUE, 3), 0);
+    lv_obj_set_style_pad_top(parent, 2, 0);
+    lv_obj_set_style_pad_bottom(parent, 4, 0);
+    lv_obj_set_style_pad_left(parent, 5, 0);
+    lv_obj_set_style_pad_right(parent, 5, 0);
+
     lv_obj_t *title = lv_label_create(parent);
     lv_label_set_text_fmt(title, "CH %d", _ch + 1);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 5, 5);
@@ -191,12 +204,16 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_label_set_text(volt_val, "0.00 V");
     lv_obj_set_style_text_font(volt_val, &lv_font_montserrat_20, 0);
     lv_obj_align(volt_val, LV_ALIGN_TOP_RIGHT, -5, 30);
+    lv_obj_add_flag(volt_val, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(volt_val, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)_ch);
     ch_volt_lbl[_ch] = volt_val;
 
     lv_obj_t *curr_val = lv_label_create(parent);
     lv_label_set_text(curr_val, "0.000 A");
     lv_obj_set_style_text_font(curr_val, &lv_font_montserrat_20, 0);
     lv_obj_align(curr_val, LV_ALIGN_TOP_RIGHT, -5, 60);
+    lv_obj_add_flag(curr_val, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(curr_val, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)_ch);
     ch_curr_lbl[_ch] = curr_val;
 
     lv_obj_t *pwr_val = lv_label_create(parent);

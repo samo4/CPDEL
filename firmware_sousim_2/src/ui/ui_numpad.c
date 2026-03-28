@@ -162,7 +162,7 @@ void ui_create_numpad_screen(void) {
     lv_obj_set_width(range_label, LV_PCT(100));
     lv_obj_set_style_text_align(range_label, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_style_text_color(range_label, lv_palette_lighten(LV_PALETTE_GREY, 2), 0);
-    lv_label_set_text(range_label, "0.00 – 30.00");
+    lv_label_set_text(range_label, "0.00 - 30.00");
 
     for (int row_i = 0; row_i < 4; row_i++) {
         lv_obj_t *row = make_key_row(col);
@@ -218,7 +218,7 @@ void ui_open_numpad(const char *title, double current_value, double min, double 
     input_buf[len] = '\0';
 
     lv_label_set_text(numpad_title_label, title);
-    lv_label_set_text_fmt(range_label, "%.2f \xe2\x80\x93 %.2f", min, max);
+    lv_label_set_text_fmt(range_label, "%.2f - %.2f", min, max);
     numpad_update_display();
 
     lv_scr_load(ui_NumpadScreen);

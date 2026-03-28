@@ -57,7 +57,6 @@ void ui_open_numpad(const char *title, double current_value, double min, double 
 void ui_open_keyboard(const char *title, const char *current_value, bool password_mode,
                       void (*confirm_cb)(const char *text), lv_obj_t *return_screen);
 
-// Callbacks (can be implemented in ui_events.c or inline)
 void ui_event_channel_select(lv_event_t *e);
 void ui_event_navigate_settings(lv_event_t *e);
 void ui_event_navigate_graph(lv_event_t *e);

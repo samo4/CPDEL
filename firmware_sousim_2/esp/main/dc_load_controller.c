@@ -54,6 +54,7 @@ typedef struct {
     float voltage;
     float current;
     float power;
+    float lv_cutoff_threshold;
 } dc_load_device_t;
 
 enum {
@@ -197,12 +198,26 @@ static esp_err_t modbus_request_data_blocking(uint8_t index) {
     return ESP_OK;
 }
 
+static esp_err_t dc_load_handle_low_voltage_cutoff(const dc_load_device_t *device) {
+    // TODO: check if data is stale
+    if (!device->is_enabled || device->lv_cutoff_threshold <= 0.0f || device->lv_cutoff_threshold > 998.0f) {
+        return ESP_OK;
+    }
+    if (device->voltage < device->lv_cutoff_threshold) {
+        ESP_LOGW(TAG, "Device @%u voltage %.2f V is below cutoff %.2f V, disabling output", device->address,
+                 device->voltage, device->lv_cutoff_threshold);
+        return modbus_send_enable(device, false);
+    }
+    return ESP_OK;
+}
+
 static void dc_load_controller_task(void *arg) {
     (void)arg;
     static TickType_t s_last_status_log = 0;
     while (true) {
         for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
             ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_request_data_blocking(i));
+            dc_load_handle_low_voltage_cutoff(&s_dc_load_state.devices[i]);
             respond_measurement(SRC_CTRL, i, s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].voltage);
             vTaskDelay(pdMS_TO_TICKS(200));
         }
@@ -260,6 +275,10 @@ static void dc_load_controller_task(void *arg) {
                     ESP_ERROR_CHECK_WITHOUT_ABORT(
                         modbus_send_command_resistance(&s_dc_load_state.devices[msg.channel], msg.args[0]));
                     break;
+                case SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION:
+                    ESP_LOGI(TAG, "low voltage cutoff to %.2f V", (double)msg.args[0]);
+                    s_dc_load_state.devices[msg.channel].lv_cutoff_threshold = msg.args[0];
+                    break;
                 case SCPI_CMD_MEAS_VOLT:
                     // we already have it. TODO: check if it's not stale
                     event_bus_publish(&(scpi_msg_t){
@@ -303,6 +322,7 @@ void dc_load_controller_init(void) {
     for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
         s_dc_load_state.devices[i].address = i + 1;
         s_dc_load_state.devices[i].mode = DC_LOAD_MODE_CURRENT;
+        s_dc_load_state.devices[i].lv_cutoff_threshold = 999.0f;
     }
 
     mb_communication_info_t comm = {

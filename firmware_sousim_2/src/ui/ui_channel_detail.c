@@ -15,6 +15,17 @@ static lv_obj_t *setpoint_val_lbl;
 static lv_obj_t *cutoff_sw;
 static lv_obj_t *cutoff_val_lbl;
 
+static void publish_low_voltage_cutoff(float cutoff_v) {
+    scpi_msg_t msg = {
+        .cmd = SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION,
+        .channel = (uint8_t)_ch,
+        .args = {cutoff_v, 0.0f},
+        .argc = 1,
+        .source = SRC_GUI,
+    };
+    event_bus_publish(&msg);
+}
+
 static void update_setpoint_view(uint8_t mode) {
     if (setpoint_label == NULL || setpoint_val_lbl == NULL) return;
     switch (mode) {
@@ -62,6 +73,13 @@ static void event_mode_change(lv_event_t *e) {
 static void event_cutoff_toggle(lv_event_t *e) {
     bool en = lv_obj_has_state(cutoff_sw, LV_STATE_CHECKED);
     channels[_ch].lv_cutoff_enabled = en;
+
+    /* Controller treats <=0 or >998 as disabled. Use 999V as explicit OFF sentinel. */
+    if (en) {
+        publish_low_voltage_cutoff((float)channels[_ch].lv_cutoff_threshold);
+    } else {
+        publish_low_voltage_cutoff(999.0f);
+    }
 }
 
 static void on_setpoint_confirmed(double value) {
@@ -105,6 +123,10 @@ static void on_setpoint_confirmed(double value) {
 static void on_cutoff_confirmed(double value) {
     channels[_ch].lv_cutoff_threshold = value;
     lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", value);
+
+    if (channels[_ch].lv_cutoff_enabled) {
+        publish_low_voltage_cutoff((float)value);
+    }
 }
 
 // ── Numpad open events ────────────────────────────────────────────────────────

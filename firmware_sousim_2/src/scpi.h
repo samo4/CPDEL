@@ -9,9 +9,10 @@ typedef enum {
     SCPI_CMD_SET_MODE,
     SCPI_CMD_SET_CURRENT,
     SCPI_CMD_SET_VOLTAGE,
-    SCPI_CMD_SET_POWER,      /* args[0] = power setpoint in Watts */
-    SCPI_CMD_SET_RESISTANCE, /* args[0] = resistance setpoint in Ohms */
-    SCPI_MEASUREMENTS,       // continous measurements (U,I) from controller
+    SCPI_CMD_SET_POWER,                  /* args[0] = power setpoint in Watts */
+    SCPI_CMD_SET_RESISTANCE,             /* args[0] = resistance setpoint in Ohms */
+    SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION, /* args[0] = LVP setpoint in Volts */
+    SCPI_MEASUREMENTS,                   // continous measurements (U,I) from controller
     SCPI_CMD_MEAS_VOLT,
     SCPI_CMD_MEAS_CURR,
     SCPI_CMD_MEAS_VOLT_CONT,
@@ -89,47 +90,11 @@ void event_bus_publish(const scpi_msg_t *msg) {
 int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size) {
     unsigned ch = (unsigned)msg->channel + 1u; /* 1-based for SCPI */
 
+    //  TODO someday
+
     switch (msg->cmd) {
         case SCPI_CMD_OUTPUT_STATE:
             return snprintf(buf, buf_size, "OUTP%u:STAT %s", ch, (msg->args[0] != 0.0f) ? "ON" : "OFF");
-
-        case SCPI_CMD_SELECT_CHANNEL:
-            return snprintf(buf, buf_size, "INST:NSEL %u", ch);
-
-        case SCPI_CMD_SET_MODE:
-            /* args[0] == 0 → CV (voltage source), args[0] == 1 → CC (current source) */
-            return snprintf(buf, buf_size, "SOUR%u:FUNC %s", ch, (msg->args[0] == 0.0f) ? "VOLT" : "CURR");
-
-        case SCPI_CMD_SET_VOLTAGE:
-            return snprintf(buf, buf_size, "SOUR%u:VOLT %.3f", ch, (double)msg->args[0]);
-
-        case SCPI_CMD_SET_CURRENT:
-            return snprintf(buf, buf_size, "SOUR%u:CURR %.3f", ch, (double)msg->args[0]);
-
-        case SCPI_CMD_MEAS_VOLT:
-            return snprintf(buf, buf_size, "MEAS:VOLT? (@%u)", ch);
-
-        case SCPI_CMD_MEAS_CURR:
-            return snprintf(buf, buf_size, "MEAS:CURR? (@%u)", ch);
-
-        case SCPI_CMD_MEAS_VOLT_CONT:
-            return snprintf(buf, buf_size, "MEAS:VOLT:CONT %s (@%u)", (msg->args[0] != 0.0f) ? "ON" : "OFF", ch);
-
-        case SCPI_CMD_MEAS_CURR_CONT:
-            return snprintf(buf, buf_size, "MEAS:CURR:CONT %s (@%u)", (msg->args[0] != 0.0f) ? "ON" : "OFF", ch);
-
-        case SCPI_CMD_SOUR_VOLT:
-            if (msg->argc > 0) return snprintf(buf, buf_size, "SOUR%u:VOLT? = %.3f", ch, (double)msg->args[0]);
-            return snprintf(buf, buf_size, "SOUR%u:VOLT?", ch);
-
-        case SCPI_CMD_SOUR_CURR:
-            if (msg->argc > 0) return snprintf(buf, buf_size, "SOUR%u:CURR? = %.3f", ch, (double)msg->args[0]);
-            return snprintf(buf, buf_size, "SOUR%u:CURR?", ch);
-
-        case SCPI_CMD_SOUR_MODE:
-            if (msg->argc > 0)
-                return snprintf(buf, buf_size, "SOUR%u:FUNC? = %s", ch, (msg->args[0] == 0.0f) ? "CV" : "CC");
-            return snprintf(buf, buf_size, "SOUR%u:FUNC?", ch);
 
         case SCPI_CMD_IDN:
             return snprintf(buf, buf_size, "*IDN?");
@@ -208,6 +173,19 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:CURR %f", &ch, &val) == 2) {
             out->cmd = SCPI_CMD_SET_CURRENT;
+            out->channel = (uint8_t)(ch - 1u);
+            out->args[0] = val;
+            out->argc = 1;
+            return 0;
+        }
+    }
+
+    /* BATT<ch>:LVP <val> */
+    {
+        unsigned ch = 0;
+        float val = 0.0f;
+        if (sscanf(str, "BATT%u:LVP %f", &ch, &val) == 2) {
+            out->cmd = SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION;
             out->channel = (uint8_t)(ch - 1u);
             out->args[0] = val;
             out->argc = 1;

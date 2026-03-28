@@ -1,12 +1,12 @@
 #include "wireless_controller.h"
 
 #include <string.h>
+#include "app_bus.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "scpi.h"
 
 static const char *TAG = "WIRELESS";
 
@@ -63,22 +63,22 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
             case WIFI_EVENT_STA_START:
-                msg.cmd = SCPI_CMD_WIFI_STATUS;
+                msg.cmd = APP_CMD_WIFI_STATUS;
                 msg.source = SRC_CTRL;
                 msg.payload.scalar.value = 1.0f; // connecting
-                event_bus_publish(&msg);
+                app_bus_publish(&msg);
                 break;
             case WIFI_EVENT_STA_CONNECTED:
-                msg.cmd = SCPI_CMD_WIFI_STATUS;
+                msg.cmd = APP_CMD_WIFI_STATUS;
                 msg.source = SRC_CTRL;
                 msg.payload.scalar.value = 2.0f; // connected
-                event_bus_publish(&msg);
+                app_bus_publish(&msg);
                 break;
             case WIFI_EVENT_STA_DISCONNECTED:
-                msg.cmd = SCPI_CMD_WIFI_STATUS;
+                msg.cmd = APP_CMD_WIFI_STATUS;
                 msg.source = SRC_CTRL;
                 msg.payload.scalar.value = 0.0f; // disconnected
-                event_bus_publish(&msg);
+                app_bus_publish(&msg);
                 break;
         }
     }
@@ -87,7 +87,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 static void rssi_task(void *arg) {
     wifi_ap_record_t ap_info;
     bus_msg_t msg = {0};
-    msg.cmd = SCPI_CMD_WIFI_RSSI;
+    msg.cmd = APP_CMD_WIFI_RSSI;
     msg.source = SRC_CTRL;
     while (1) {
         if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
@@ -99,7 +99,7 @@ static void rssi_task(void *arg) {
             } else {
                 msg.payload.wifi.ip = 0;
             }
-            event_bus_publish(&msg);
+            app_bus_publish(&msg);
         }
         vTaskDelay(pdMS_TO_TICKS(2500));
     }

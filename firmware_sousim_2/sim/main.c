@@ -11,7 +11,7 @@
 #include "lvgl.h"
 
 #define SCPI_IMPLEMENTATION
-#include "scpi.h"
+#include "app_bus.h"
 
 #define SIM_CONTROLLER_IMPLEMENTATION
 #include "sim_controller.h"

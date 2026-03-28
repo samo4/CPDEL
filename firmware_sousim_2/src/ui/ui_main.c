@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "scpi.h"
+#include "app_bus.h"
 #include "ui.h"
 
 static void create_channel_panel(lv_obj_t *parent, int _ch);
@@ -35,12 +35,12 @@ static void event_output_toggle(lv_event_t *e) {
     ui_set_output_local_with_inhibit(ch, enabled, 1000);
 
     bus_msg_t msg = {
-        .cmd = SCPI_CMD_OUTPUT_STATE,
+        .cmd = APP_CMD_OUTPUT_STATE,
         .payload.scalar.channel = (uint8_t)ch,
         .source = SRC_GUI,
     };
     msg.payload.scalar.value = enabled ? 1.0f : 0.0f;
-    event_bus_publish(&msg);
+    app_bus_publish(&msg);
 }
 
 void ui_main_update_wifi(int rssi_dbm, const char *ip_str) {

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "scpi.h"
+#include "app_bus.h"
 #include "ui.h"
 
 #ifdef ESP_PLATFORM
@@ -17,12 +17,12 @@ static lv_obj_t *cutoff_val_lbl;
 
 static void publish_low_voltage_cutoff(float cutoff_v) {
     bus_msg_t msg = {
-        .cmd = SCPI_CMD_SET_LOW_VOLTAGE_PROTECTION,
+        .cmd = APP_CMD_SET_LOW_VOLTAGE_PROTECTION,
         .payload.scalar.channel = (uint8_t)_ch,
         .source = SRC_GUI,
     };
     msg.payload.scalar.value = cutoff_v;
-    event_bus_publish(&msg);
+    app_bus_publish(&msg);
 }
 
 static void update_setpoint_view(uint8_t mode) {
@@ -57,7 +57,7 @@ static void event_mode_change(lv_event_t *e) {
     update_setpoint_view(mode);
 
     bus_msg_t msg = {
-        .cmd = SCPI_CMD_SET_MODE,
+        .cmd = APP_CMD_SET_MODE,
         .payload.scalar.channel = (uint8_t)_ch,
         .source = SRC_GUI,
     };
@@ -65,7 +65,7 @@ static void event_mode_change(lv_event_t *e) {
 #ifdef ESP_PLATFORM
     ESP_LOGI(TAG, "Set CH%u mode to %s", _ch + 1, MODE_NAMES[mode]);
 #endif
-    event_bus_publish(&msg);
+    app_bus_publish(&msg);
 }
 
 static void event_cutoff_toggle(lv_event_t *e) {
@@ -86,19 +86,19 @@ static void on_setpoint_confirmed(double value) {
     switch (mode) {
         case 0:
             channels[_ch].voltage_setpoint = value;
-            cmd = SCPI_CMD_SET_VOLTAGE;
+            cmd = APP_CMD_SET_VOLTAGE;
             break;
         case 1:
             channels[_ch].current_setpoint = value;
-            cmd = SCPI_CMD_SET_CURRENT;
+            cmd = APP_CMD_SET_CURRENT;
             break;
         case 2:
             channels[_ch].power_setpoint = value;
-            cmd = SCPI_CMD_SET_POWER;
+            cmd = APP_CMD_SET_POWER;
             break;
         case 3:
             channels[_ch].resistance_setpoint = value;
-            cmd = SCPI_CMD_SET_RESISTANCE;
+            cmd = APP_CMD_SET_RESISTANCE;
             break;
         default:
             return;
@@ -114,7 +114,7 @@ static void on_setpoint_confirmed(double value) {
 #ifdef ESP_PLATFORM
     ESP_LOGI(TAG, "Sending CH%u %s set to %.3f", _ch + 1, MODE_NAMES[mode], value);
 #endif
-    event_bus_publish(&msg);
+    app_bus_publish(&msg);
 }
 
 static void on_cutoff_confirmed(double value) {

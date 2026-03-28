@@ -3,11 +3,11 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "app_bus.h"
 #include "freertos_includes.h"
-#include "scpi.h"
 #include "ui/ui.h"
 
-#include "scpi.h"
+#include "app_bus.h"
 
 #define STREAM_TICK_MS 200
 
@@ -27,7 +27,7 @@ static void respond_source(bus_source_t dest, uint8_t ch, bus_cmd_t cmd, float v
     resp.payload.scalar.channel = ch;
     resp.source = SRC_CTRL;
     resp.payload.scalar.value = value;
-    event_bus_publish(&resp);
+    app_bus_publish(&resp);
 }
 
 /* Per-channel controller state */
@@ -48,39 +48,39 @@ void sim_controller_task(void *param) {
         /* Block up to STREAM_TICK_MS so we can service continuous streams on timeout */
         if (xQueueReceive(queue_sim, &msg, pdMS_TO_TICKS(STREAM_TICK_MS)) == pdTRUE) {
             scpi_encode(&msg, buf, sizeof(buf));
-            printf("[ctrl %s] %s\n", event_bus_source_str(msg.source), buf);
+            printf("[ctrl %s] %s\n", app_bus_source_str(msg.source), buf);
             fflush(stdout);
 
             switch (msg.cmd) {
-                case SCPI_CMD_MEAS_VOLT:
+                case APP_CMD_MEAS_VOLT:
                     respond_measurement(msg.source, msg.payload.meas.channel, ctrl_curr_sp[msg.payload.meas.channel],
                                         ctrl_volt_sp[msg.payload.meas.channel],
                                         ctrl_output_enabled[msg.payload.meas.channel] != 0,
                                         ctrl_mode[msg.payload.meas.channel], false);
                     break;
 
-                case SCPI_CMD_MEAS_CURR:
+                case APP_CMD_MEAS_CURR:
                     respond_measurement(msg.source, msg.payload.meas.channel, ctrl_curr_sp[msg.payload.meas.channel],
                                         ctrl_volt_sp[msg.payload.meas.channel],
                                         ctrl_output_enabled[msg.payload.meas.channel] != 0,
                                         ctrl_mode[msg.payload.meas.channel], false);
                     break;
 
-                case SCPI_CMD_SET_VOLTAGE:
+                case APP_CMD_SET_VOLTAGE:
                     ctrl_volt_sp[msg.payload.meas.channel] = msg.payload.scalar.value;
                     printf("[ctrl] SET VOLT ch%u = %.3f\n", (unsigned)msg.payload.meas.channel + 1u,
                            (double)msg.payload.scalar.value);
                     fflush(stdout);
                     break;
 
-                case SCPI_CMD_SET_CURRENT:
+                case APP_CMD_SET_CURRENT:
                     ctrl_curr_sp[msg.payload.meas.channel] = msg.payload.scalar.value;
                     printf("[ctrl] SET CURR ch%u = %.3f\n", (unsigned)msg.payload.meas.channel + 1u,
                            (double)msg.payload.scalar.value);
                     fflush(stdout);
                     break;
 
-                case SCPI_CMD_SET_MODE:
+                case APP_CMD_SET_MODE:
                     ctrl_mode[msg.payload.meas.channel] = (uint8_t)msg.payload.scalar.value;
                     printf("[ctrl] SET MODE ch%u = %s\n", (unsigned)msg.payload.meas.channel + 1u,
                            (ctrl_mode[msg.payload.meas.channel] == 0)   ? "CV"
@@ -91,48 +91,48 @@ void sim_controller_task(void *param) {
                     fflush(stdout);
                     break;
 
-                case SCPI_CMD_OUTPUT_STATE:
+                case APP_CMD_OUTPUT_STATE:
                     ctrl_output_enabled[msg.payload.meas.channel] = (msg.payload.scalar.value != 0.0f) ? 1u : 0u;
                     printf("[ctrl] OUTPUT ch%u = %s\n", (unsigned)msg.payload.meas.channel + 1u,
                            ctrl_output_enabled[msg.payload.meas.channel] ? "ON" : "OFF");
                     fflush(stdout);
                     break;
                 /*
-                case SCPI_CMD_MEAS_VOLT_CONT: {
+                case APP_CMD_MEAS_VOLT_CONT: {
                     uint8_t bit = (uint8_t)(1u << msg.source);
                     if (msg.payload.scalar.value != 0.0f)
                         stream_volt[msg.payload.meas.channel] |= bit;
                     else
                         stream_volt[msg.payload.meas.channel] &= ~bit;
                     printf("[ctrl] stream VOLT ch%u %s for %s\n", (unsigned)msg.payload.meas.channel + 1u,
-                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", event_bus_source_str(msg.source));
+                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", app_bus_source_str(msg.source));
                     fflush(stdout);
                     break;
                 }
-                case SCPI_CMD_MEAS_CURR_CONT: {
+                case APP_CMD_MEAS_CURR_CONT: {
                     uint8_t bit = (uint8_t)(1u << msg.source);
                     if (msg.payload.scalar.value != 0.0f)
                         stream_curr[msg.payload.meas.channel] |= bit;
                     else
                         stream_curr[msg.payload.meas.channel] &= ~bit;
                     printf("[ctrl] stream CURR ch%u %s for %s\n", (unsigned)msg.payload.meas.channel + 1u,
-                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", event_bus_source_str(msg.source));
+                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", app_bus_source_str(msg.source));
                     fflush(stdout);
                     break;
                 }
                 */
-                case SCPI_CMD_SOUR_VOLT:
-                    respond_source(msg.source, msg.payload.meas.channel, SCPI_CMD_SOUR_VOLT,
+                case APP_CMD_SOUR_VOLT:
+                    respond_source(msg.source, msg.payload.meas.channel, APP_CMD_SOUR_VOLT,
                                    ctrl_volt_sp[msg.payload.meas.channel], "VOLT_SP");
                     break;
 
-                case SCPI_CMD_SOUR_CURR:
-                    respond_source(msg.source, msg.payload.meas.channel, SCPI_CMD_SOUR_CURR,
+                case APP_CMD_SOUR_CURR:
+                    respond_source(msg.source, msg.payload.meas.channel, APP_CMD_SOUR_CURR,
                                    ctrl_curr_sp[msg.payload.meas.channel], "CURR_SP");
                     break;
 
-                case SCPI_CMD_SOUR_MODE:
-                    respond_source(msg.source, msg.payload.meas.channel, SCPI_CMD_SOUR_MODE,
+                case APP_CMD_SOUR_MODE:
+                    respond_source(msg.source, msg.payload.meas.channel, APP_CMD_SOUR_MODE,
                                    (float)ctrl_mode[msg.payload.meas.channel], "MODE");
                     break;
 
@@ -158,11 +158,11 @@ void sim_controller_task(void *param) {
                 last_rssi_tick = now;
                 int rssi = (int)(-70 + 15 * sinf(2.0f * 3.14f * t_s / 30.0f));
                 bus_msg_t smsg = {0};
-                smsg.cmd = SCPI_CMD_WIFI_RSSI;
+                smsg.cmd = APP_CMD_WIFI_RSSI;
                 smsg.source = SRC_CTRL;
                 smsg.payload.wifi.rssi = rssi;
                 smsg.payload.wifi.ip = 0xC0A80164; // 192.168.1.100 as example
-                event_bus_publish(&smsg);
+                app_bus_publish(&smsg);
             }
         }
     }
@@ -178,7 +178,7 @@ void sim_controller_init(void) {
         printf("Failed to create sim command queue\n");
         return;
     }
-    event_bus_subscribe(queue_sim);
+    app_bus_subscribe(queue_sim);
 
     xTaskCreate(sim_controller_task, "Controller", 2048, NULL, 3, NULL);
 }

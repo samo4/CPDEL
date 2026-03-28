@@ -1,7 +1,7 @@
 #include "rrd.h"
 
 #include <string.h>
-#include "scpi.h"
+#include "app_bus.h"
 
 #ifdef ESP_PLATFORM
 #include "esp_log.h"
@@ -138,7 +138,7 @@ void rrd_init(void) {
         // die hard?
         return;
     }
-    event_bus_subscribe(queue_rrd);
+    app_bus_subscribe(queue_rrd);
 
     memset(s_channels, 0, sizeof(s_channels));
 

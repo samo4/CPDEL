@@ -11,7 +11,7 @@
 #include "esp_log.h"
 
 #define SCPI_IMPLEMENTATION
-#include "scpi.h"
+#include "app_bus.h"
 
 #include "dc_load_controller.h"
 #include "display.h"

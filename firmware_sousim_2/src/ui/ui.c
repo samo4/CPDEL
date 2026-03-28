@@ -1,6 +1,6 @@
 #include "ui.h"
 #include <stdio.h>
-#include "../scpi.h"
+#include "../app_bus.h"
 
 lv_obj_t *ui_MainScreen;
 lv_obj_t *ui_ChannelDetailScreen;
@@ -84,23 +84,23 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
                 // ui_detail_update_channel(msg.payload.meas.channel);
                 ui_graph_update_channel(msg.payload.meas.channel, msg.timestamp_ms);
                 break;
-            case SCPI_CMD_SOUR_VOLT:
+            case APP_CMD_SOUR_VOLT:
                 if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
                 channels[msg.payload.meas.channel].voltage_setpoint = msg.payload.scalar.value;
                 // ui_detail_update_channel(msg.payload.meas.channel);
                 break;
-            case SCPI_CMD_SOUR_CURR:
+            case APP_CMD_SOUR_CURR:
                 if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
                 channels[msg.payload.meas.channel].current_setpoint = msg.payload.scalar.value;
                 // ui_detail_update_channel(msg.payload.meas.channel);
                 break;
-            case SCPI_CMD_SOUR_MODE:
+            case APP_CMD_SOUR_MODE:
                 if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
                 channels[msg.payload.meas.channel].mode = (uint8_t)msg.payload.scalar.value; // TODO: validate!
                 ui_main_update_channel(msg.payload.meas.channel);
                 // ui_detail_update_channel(msg.payload.meas.channel);
                 break;
-            case SCPI_CMD_WIFI_RSSI: {
+            case APP_CMD_WIFI_RSSI: {
                 char ip_str[16] = "";
                 uint32_t ip = msg.payload.wifi.ip;
                 snprintf(ip_str, sizeof(ip_str), "%lu.%lu.%lu.%lu", ip & 0xFF, (ip >> 8) & 0xFF, (ip >> 16) & 0xFF,
@@ -122,12 +122,12 @@ static void ui_poll_source_timer_cb(lv_timer_t *t) {
     bus_msg_t msg = {.source = SRC_GUI};
     for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
         msg.payload.meas.channel = (uint8_t)i;
-        msg.cmd = SCPI_CMD_SOUR_VOLT;
-        event_bus_publish(&msg);
-        msg.cmd = SCPI_CMD_SOUR_CURR;
-        event_bus_publish(&msg);
-        msg.cmd = SCPI_CMD_SOUR_MODE;
-        event_bus_publish(&msg);
+        msg.cmd = APP_CMD_SOUR_VOLT;
+        app_bus_publish(&msg);
+        msg.cmd = APP_CMD_SOUR_CURR;
+        app_bus_publish(&msg);
+        msg.cmd = APP_CMD_SOUR_MODE;
+        app_bus_publish(&msg);
     }
     */
 }
@@ -141,7 +141,7 @@ void ui_init(void) {
         // die hard?
         return;
     }
-    event_bus_subscribe(queue_gui);
+    app_bus_subscribe(queue_gui);
 
     for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
         channels[i].voltage_setpoint = 0.0;
@@ -176,10 +176,10 @@ void ui_init(void) {
     // for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
     //     bus_msg_t msg = {.payload.scalar.channel = (uint8_t)i, .source = SRC_GUI};
     //     msg.payload.scalar.value = 1.0f;
-    //     msg.cmd = SCPI_CMD_MEAS_VOLT_CONT;
-    //     event_bus_publish(&msg);
-    //     msg.cmd = SCPI_CMD_MEAS_CURR_CONT;
-    //     event_bus_publish(&msg);
+    //     msg.cmd = APP_CMD_MEAS_VOLT_CONT;
+    //     app_bus_publish(&msg);
+    //     msg.cmd = APP_CMD_MEAS_CURR_CONT;
+    //     app_bus_publish(&msg);
     // }
 
     /* Initial one-shot poll so we have data before the first 5 s tick */

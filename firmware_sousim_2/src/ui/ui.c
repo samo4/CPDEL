@@ -83,7 +83,7 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
                 // ui_detail_update_channel(msg.channel);
                 break;
             case SCPI_CMD_SOUR_MODE:
-                channels[msg.channel].is_cv_mode = (msg.args[0] == 0.0f);
+                channels[msg.channel].mode = (uint8_t)msg.args[0]; // TODO: validate!
                 ui_main_update_channel(msg.channel);
                 // ui_detail_update_channel(msg.channel);
                 break;
@@ -144,7 +144,7 @@ void ui_init(void) {
         channels[i].measured_current = 0.0;
         channels[i].measured_power = 0.0;
         channels[i].output_enabled = false;
-        channels[i].is_cv_mode = false;
+        channels[i].mode = 0;
         channels[i].lv_cutoff_enabled = false;
         channels[i].lv_cutoff_threshold = 0.0f;
     }

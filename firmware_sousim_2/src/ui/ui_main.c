@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "scpi.h"
 #include "ui.h"
 
 static void create_channel_panel(lv_obj_t *parent, int _ch);
@@ -9,6 +10,39 @@ static lv_obj_t *ch_curr_lbl[UI_CHANNEL_COUNT];
 static lv_obj_t *ch_pwr_lbl[UI_CHANNEL_COUNT];
 static lv_obj_t *ch_mode_badge[UI_CHANNEL_COUNT];
 static lv_obj_t *ch_sp_lbl[UI_CHANNEL_COUNT];
+static lv_obj_t *ch_output_sw[UI_CHANNEL_COUNT];
+
+static const char *ui_mode_badge_text(uint8_t mode) {
+    switch (mode) {
+        case 0:
+            return "CV";
+        case 1:
+            return "CC";
+        case 2:
+            return "CP";
+        case 3:
+            return "CR";
+        default:
+            return "--";
+    }
+}
+
+static void event_output_toggle(lv_event_t *e) {
+    int ch = (int)(intptr_t)lv_event_get_user_data(e);
+    if (ch < 0 || ch >= UI_CHANNEL_COUNT) return;
+
+    bool enabled = lv_obj_has_state(ch_output_sw[ch], LV_STATE_CHECKED);
+    channels[ch].output_enabled = enabled;
+
+    scpi_msg_t msg = {
+        .cmd = SCPI_CMD_OUTPUT_STATE,
+        .channel = (uint8_t)ch,
+        .args = {enabled ? 1.0f : 0.0f, 0.0f},
+        .argc = 1,
+        .source = SRC_GUI,
+    };
+    event_bus_publish(&msg);
+}
 
 void ui_main_update_wifi(int rssi_dbm, const char *ip_str) {
     char buf[48];
@@ -40,11 +74,36 @@ void ui_main_update_channel(int _ch) {
     lv_label_set_text_fmt(ch_volt_lbl[_ch], "%.2f V", c->measured_voltage);
     lv_label_set_text_fmt(ch_curr_lbl[_ch], "%.3f A", c->measured_current);
     lv_label_set_text_fmt(ch_pwr_lbl[_ch], "%.2f W", c->measured_power);
-    lv_label_set_text(ch_mode_badge[_ch], c->is_cv_mode ? "CV" : "CC");
-    lv_label_set_text_fmt(ch_sp_lbl[_ch], c->is_cv_mode ? "%.2fV" : "%.3fA",
-                          c->is_cv_mode ? c->voltage_setpoint : c->current_setpoint);
-    lv_obj_set_style_bg_color(
-        ch_mode_badge[_ch], c->is_cv_mode ? lv_palette_main(LV_PALETTE_GREEN) : lv_palette_main(LV_PALETTE_ORANGE), 0);
+    lv_label_set_text(ch_mode_badge[_ch], ui_mode_badge_text(c->mode));
+    switch (c->mode) {
+        case 0:
+            lv_label_set_text_fmt(ch_sp_lbl[_ch], "%.2fV", c->voltage_setpoint);
+            lv_obj_set_style_bg_color(ch_mode_badge[_ch], lv_palette_main(LV_PALETTE_GREEN), 0);
+            break;
+        case 1:
+            lv_label_set_text_fmt(ch_sp_lbl[_ch], "%.3fA", c->current_setpoint);
+            lv_obj_set_style_bg_color(ch_mode_badge[_ch], lv_palette_main(LV_PALETTE_ORANGE), 0);
+            break;
+        case 2:
+            lv_label_set_text_fmt(ch_sp_lbl[_ch], "%.2fW", c->power_setpoint);
+            lv_obj_set_style_bg_color(ch_mode_badge[_ch], lv_palette_main(LV_PALETTE_BLUE), 0);
+            break;
+        case 3:
+            lv_label_set_text_fmt(ch_sp_lbl[_ch], "%.2fR", c->resistance_setpoint);
+            lv_obj_set_style_bg_color(ch_mode_badge[_ch], lv_palette_main(LV_PALETTE_PURPLE), 0);
+            break;
+        default:
+            lv_label_set_text(ch_sp_lbl[_ch], "--");
+            lv_obj_set_style_bg_color(ch_mode_badge[_ch], lv_palette_main(LV_PALETTE_GREY), 0);
+            break;
+    }
+
+    if (ch_output_sw[_ch] != NULL) {
+        if (c->output_enabled)
+            lv_obj_add_state(ch_output_sw[_ch], LV_STATE_CHECKED);
+        else
+            lv_obj_clear_state(ch_output_sw[_ch], LV_STATE_CHECKED);
+    }
 }
 
 void ui_create_main_screen(void) {
@@ -169,6 +228,8 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_obj_align(sw, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
     lv_obj_set_style_bg_color(sw, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);
     lv_obj_set_style_bg_color(sw, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_add_event_cb(sw, event_output_toggle, LV_EVENT_VALUE_CHANGED, (void *)(intptr_t)_ch);
+    ch_output_sw[_ch] = sw;
 
     // Static text "ON" helper
     lv_obj_t *sw_label = lv_label_create(parent);

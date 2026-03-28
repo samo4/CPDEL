@@ -21,11 +21,13 @@ extern lv_obj_t *ui_OtaScreen;
 typedef struct {
     double voltage_setpoint;
     double current_setpoint;
+    double power_setpoint;
+    double resistance_setpoint;
     double measured_voltage;
     double measured_current;
     double measured_power;
     bool output_enabled;
-    bool is_cv_mode; // true = CV, false = CC
+    uint8_t mode; /* 0=CV 1=CC 2=CP 3=CR — matches dc_load_mode_t */
     bool lv_cutoff_enabled;
     double lv_cutoff_threshold;
 } channel_data_t;

@@ -53,6 +53,7 @@ typedef struct {
     float command_voltage;
     float voltage;
     float current;
+    float power;
 } dc_load_device_t;
 
 enum {
@@ -105,7 +106,7 @@ static esp_err_t modbus_send_enable(const dc_load_device_t *device, bool enable)
 
 static esp_err_t modbus_send_mode(const dc_load_device_t *device, dc_load_mode_t mode) {
     uint16_t value = (uint16_t)mode;
-    ESP_LOGW(TAG, "Setting device at addr=%u mode to %s (%u)", device->address, dc_load_mode_abbrev(mode), value);
+    ESP_LOGW(TAG, "dev @%u mode to %s (%u)", device->address, dc_load_mode_abbrev(mode), value);
     mb_param_request_t req = {
         .slave_addr = device->address,
         .command = MB_FUNC_WRITE_HOLD_REG,
@@ -137,7 +138,29 @@ static esp_err_t modbus_send_command_voltage(const dc_load_device_t *device, flo
     return mbc_master_send_request(s_dc_load_state.mbm_handle, &req, &value);
 }
 
-static esp_err_t modbus_send_function(const dc_load_device_t *device, uint16_t func_code) {
+static esp_err_t modbus_send_command_power(const dc_load_device_t *device, float power_w) {
+    uint16_t value = (uint16_t)(power_w * 100.0f); /* [100mW]: 1W = 10 units */
+    mb_param_request_t req = {
+        .slave_addr = device->address,
+        .command = MB_FUNC_WRITE_HOLD_REG,
+        .reg_start = 0x05,
+        .reg_size = 1,
+    };
+    return mbc_master_send_request(s_dc_load_state.mbm_handle, &req, &value);
+}
+
+static esp_err_t modbus_send_command_resistance(const dc_load_device_t *device, float resistance_ohm) {
+    uint16_t value = (uint16_t)(resistance_ohm * 10.0f); /* [100mOhm]: 1Ohm = 10 units */
+    mb_param_request_t req = {
+        .slave_addr = device->address,
+        .command = MB_FUNC_WRITE_HOLD_REG,
+        .reg_start = 0x06,
+        .reg_size = 1,
+    };
+    return mbc_master_send_request(s_dc_load_state.mbm_handle, &req, &value);
+}
+
+__attribute__((unused)) static esp_err_t modbus_send_function(const dc_load_device_t *device, uint16_t func_code) {
     mb_param_request_t req = {
         .slave_addr = device->address,
         .command = MB_FUNC_WRITE_HOLD_REG,
@@ -169,23 +192,30 @@ static esp_err_t modbus_request_data_blocking(uint8_t index) {
     s_dc_load_state.devices[index].is_enabled = values[2] != 0;
     s_dc_load_state.devices[index].voltage = (float)values[6] / 100.0f;
     s_dc_load_state.devices[index].current = (float)values[7] / 1000.0f;
+    s_dc_load_state.devices[index].power = (float)values[8] / 1000.0f;
 
-    if (index == 0) {
-        ESP_LOGW(TAG, "Dev %u: U=%.2f V, I=%.3f A, Enabled=%s, Mode=%s", device->address,
-                 s_dc_load_state.devices[index].voltage, s_dc_load_state.devices[index].current,
-                 s_dc_load_state.devices[index].is_enabled ? "Yes" : "No",
-                 dc_load_mode_abbrev(s_dc_load_state.devices[index].mode));
-    }
     return ESP_OK;
 }
 
 static void dc_load_controller_task(void *arg) {
     (void)arg;
+    static TickType_t s_last_status_log = 0;
     while (true) {
         for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
             ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_request_data_blocking(i));
             respond_measurement(SRC_CTRL, i, s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].voltage);
             vTaskDelay(pdMS_TO_TICKS(200));
+        }
+
+        if (xTaskGetTickCount() - s_last_status_log >= pdMS_TO_TICKS(5000)) {
+            for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
+                ESP_LOGW(TAG, "Dev %u: U=%.2f V, I=%.3f A, P=%.2f W, Enabled=%s, Mode=%s",
+                         s_dc_load_state.devices[i].address, s_dc_load_state.devices[i].voltage,
+                         s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].power,
+                         s_dc_load_state.devices[i].is_enabled ? "Yes" : "No",
+                         dc_load_mode_abbrev(s_dc_load_state.devices[i].mode));
+            }
+            s_last_status_log = xTaskGetTickCount();
         }
 
         scpi_msg_t msg;
@@ -196,23 +226,59 @@ static void dc_load_controller_task(void *arg) {
             }
 
             switch (msg.cmd) {
-                case SCPI_CMD_SET_VOLTAGE:
-                    ESP_LOGI(TAG, "Setting device at addr=%u voltage setpoint to %.3f V",
-                             s_dc_load_state.devices[msg.channel].address, (double)msg.args[0]);
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_enable(&s_dc_load_state.devices[msg.channel], true));
+                case SCPI_CMD_OUTPUT_STATE:
+                    ESP_LOGI(TAG, "output to %s", (msg.args[0] != 0.0f) ? "ON" : "OFF");
                     ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_mode(&s_dc_load_state.devices[msg.channel], DC_LOAD_MODE_VOLTAGE));
+                        modbus_send_enable(&s_dc_load_state.devices[msg.channel], msg.args[0] != 0.0f));
+                    break;
+                case SCPI_CMD_SET_MODE:
+                    ESP_LOGI(TAG, "mode to %s", dc_load_mode_abbrev((uint8_t)msg.args[0]));
+                    if ((uint8_t)msg.args[0] > DC_LOAD_MODE_VOLTAGE_CURRENT) {
+                        ESP_LOGE(TAG, "Invalid mode %u", (uint8_t)msg.args[0]);
+                        break;
+                    }
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(
+                        modbus_send_mode(&s_dc_load_state.devices[msg.channel], (dc_load_mode_t)(uint8_t)msg.args[0]));
+                    break;
+                case SCPI_CMD_SET_VOLTAGE:
+                    ESP_LOGI(TAG, "voltage setpoint to %.2f V", (double)msg.args[0]);
                     ESP_ERROR_CHECK_WITHOUT_ABORT(
                         modbus_send_command_voltage(&s_dc_load_state.devices[msg.channel], msg.args[0]));
                     break;
                 case SCPI_CMD_SET_CURRENT:
-                    ESP_LOGI(TAG, "Setting device at addr=%u current setpoint to %.3f A",
-                             s_dc_load_state.devices[msg.channel].address, (double)msg.args[0]);
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_enable(&s_dc_load_state.devices[msg.channel], true));
-                    ESP_ERROR_CHECK_WITHOUT_ABORT(
-                        modbus_send_mode(&s_dc_load_state.devices[msg.channel], DC_LOAD_MODE_CURRENT));
+                    ESP_LOGI(TAG, "current setpoint to %.3f A", (double)msg.args[0]);
                     ESP_ERROR_CHECK_WITHOUT_ABORT(
                         modbus_send_command_current(&s_dc_load_state.devices[msg.channel], msg.args[0]));
+                    break;
+                case SCPI_CMD_SET_POWER:
+                    ESP_LOGI(TAG, "power setpoint to %.2f W", (double)msg.args[0]);
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(
+                        modbus_send_command_power(&s_dc_load_state.devices[msg.channel], msg.args[0]));
+                    break;
+                case SCPI_CMD_SET_RESISTANCE:
+                    ESP_LOGI(TAG, "resistance setpoint to %.2f Ohm", (double)msg.args[0]);
+                    ESP_ERROR_CHECK_WITHOUT_ABORT(
+                        modbus_send_command_resistance(&s_dc_load_state.devices[msg.channel], msg.args[0]));
+                    break;
+                case SCPI_CMD_MEAS_VOLT:
+                    // we already have it. TODO: check if it's not stale
+                    event_bus_publish(&(scpi_msg_t){
+                        .cmd = SCPI_CMD_MEAS_VOLT,
+                        .channel = msg.channel,
+                        .args = {s_dc_load_state.devices[msg.channel].voltage, 0.0f},
+                        .argc = 1,
+                        .source = SRC_CTRL,
+                    });
+                    break;
+                case SCPI_CMD_MEAS_CURR:
+                    // we already have it. TODO: check if it's not stale
+                    event_bus_publish(&(scpi_msg_t){
+                        .cmd = SCPI_CMD_MEAS_CURR,
+                        .channel = msg.channel,
+                        .args = {s_dc_load_state.devices[msg.channel].current, 0.0f},
+                        .argc = 1,
+                        .source = SRC_CTRL,
+                    });
                     break;
                 default:
                     ESP_LOGV(TAG, "Unknown SCPI command: %d", msg.cmd);

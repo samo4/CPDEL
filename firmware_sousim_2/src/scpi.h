@@ -5,10 +5,13 @@
 #include "freertos_includes.h"
 
 typedef enum {
+    SCPI_CMD_OUTPUT_STATE,
     SCPI_CMD_SET_MODE,
     SCPI_CMD_SET_CURRENT,
     SCPI_CMD_SET_VOLTAGE,
-    SCPI_MEASUREMENTS, // continous measurements (U,I) from controller
+    SCPI_CMD_SET_POWER,      /* args[0] = power setpoint in Watts */
+    SCPI_CMD_SET_RESISTANCE, /* args[0] = resistance setpoint in Ohms */
+    SCPI_MEASUREMENTS,       // continous measurements (U,I) from controller
     SCPI_CMD_MEAS_VOLT,
     SCPI_CMD_MEAS_CURR,
     SCPI_CMD_MEAS_VOLT_CONT,
@@ -87,6 +90,9 @@ int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size) {
     unsigned ch = (unsigned)msg->channel + 1u; /* 1-based for SCPI */
 
     switch (msg->cmd) {
+        case SCPI_CMD_OUTPUT_STATE:
+            return snprintf(buf, buf_size, "OUTP%u:STAT %s", ch, (msg->args[0] != 0.0f) ? "ON" : "OFF");
+
         case SCPI_CMD_SELECT_CHANNEL:
             return snprintf(buf, buf_size, "INST:NSEL %u", ch);
 
@@ -148,6 +154,19 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
     if (strcmp(str, "SYST:ERR?") == 0) {
         out->cmd = SCPI_CMD_ERROR;
         return 0;
+    }
+
+    /* OUTPut%u:STATe %d */
+    {
+        unsigned ch = 0;
+        char onoff[4] = {0};
+        if (sscanf(str, "OUTP%u:STAT %3s", &ch, onoff) == 2) {
+            out->cmd = SCPI_CMD_OUTPUT_STATE;
+            out->channel = (uint8_t)(ch - 1u);
+            out->args[0] = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
+            out->argc = 1;
+            return 0;
+        }
     }
 
     /* INST:NSEL <ch> */

@@ -15,32 +15,46 @@ static lv_obj_t *setpoint_val_lbl;
 static lv_obj_t *cutoff_sw;
 static lv_obj_t *cutoff_val_lbl;
 
-static void update_setpoint_view(bool is_cv) {
+static void update_setpoint_view(uint8_t mode) {
     if (setpoint_label == NULL || setpoint_val_lbl == NULL) return;
-    if (is_cv) {
-        lv_label_set_text(setpoint_label, "Set Voltage (V)");
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[_ch].voltage_setpoint);
-    } else {
-        lv_label_set_text(setpoint_label, "Set Current (A)");
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", channels[_ch].current_setpoint);
+    switch (mode) {
+        case 0: /* CV */
+            lv_label_set_text(setpoint_label, "Set Voltage (V)");
+            lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[_ch].voltage_setpoint);
+            break;
+        case 1: /* CC */
+            lv_label_set_text(setpoint_label, "Set Current (A)");
+            lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", channels[_ch].current_setpoint);
+            break;
+        case 2: /* CP */
+            lv_label_set_text(setpoint_label, "Set Power (W)");
+            lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[_ch].power_setpoint);
+            break;
+        case 3: /* CR */
+            lv_label_set_text(setpoint_label, "Set Resistance (\u03a9)");
+            lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[_ch].resistance_setpoint);
+            break;
+        default:
+            break;
     }
 }
 
+static const char *const MODE_NAMES[] = {"CV", "CC", "CP", "CR"};
+
 static void event_mode_change(lv_event_t *e) {
-    uint16_t idx = lv_dropdown_get_selected(mode_dd);
-    bool is_cv = (idx == 0);
-    channels[_ch].is_cv_mode = is_cv;
-    update_setpoint_view(is_cv);
+    uint8_t mode = (uint8_t)lv_dropdown_get_selected(mode_dd);
+    channels[_ch].mode = mode;
+    update_setpoint_view(mode);
 
     scpi_msg_t msg = {
         .cmd = SCPI_CMD_SET_MODE,
         .channel = (uint8_t)_ch,
-        .args = {is_cv ? 0.0f : 1.0f, 0.0f},
+        .args = {(float)mode, 0.0f},
         .argc = 1,
         .source = SRC_GUI,
     };
 #ifdef ESP_PLATFORM
-    ESP_LOGI(TAG, "Set CH%u mode to %s", _ch + 1, is_cv ? "CV" : "CC");
+    ESP_LOGI(TAG, "Set CH%u mode to %s", _ch + 1, MODE_NAMES[mode]);
 #endif
     event_bus_publish(&msg);
 }
@@ -51,24 +65,39 @@ static void event_cutoff_toggle(lv_event_t *e) {
 }
 
 static void on_setpoint_confirmed(double value) {
-    bool is_cv = channels[_ch].is_cv_mode;
-    if (is_cv) {
-        channels[_ch].voltage_setpoint = value;
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", value);
-    } else {
-        channels[_ch].current_setpoint = value;
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", value);
+    uint8_t mode = channels[_ch].mode;
+    scpi_cmd_t cmd;
+    switch (mode) {
+        case 0:
+            channels[_ch].voltage_setpoint = value;
+            cmd = SCPI_CMD_SET_VOLTAGE;
+            break;
+        case 1:
+            channels[_ch].current_setpoint = value;
+            cmd = SCPI_CMD_SET_CURRENT;
+            break;
+        case 2:
+            channels[_ch].power_setpoint = value;
+            cmd = SCPI_CMD_SET_POWER;
+            break;
+        case 3:
+            channels[_ch].resistance_setpoint = value;
+            cmd = SCPI_CMD_SET_RESISTANCE;
+            break;
+        default:
+            return;
     }
+    update_setpoint_view(mode);
 
     scpi_msg_t msg = {
-        .cmd = is_cv ? SCPI_CMD_SET_VOLTAGE : SCPI_CMD_SET_CURRENT,
+        .cmd = cmd,
         .channel = (uint8_t)_ch,
-        .args = {value, 0.0f},
+        .args = {(float)value, 0.0f},
         .argc = 1,
         .source = SRC_GUI,
     };
 #ifdef ESP_PLATFORM
-    ESP_LOGI(TAG, "Sending CH%u %s set to %.3f %s", _ch + 1, is_cv ? "voltage" : "current", value, is_cv ? "V" : "A");
+    ESP_LOGI(TAG, "Sending CH%u %s set to %.3f", _ch + 1, MODE_NAMES[mode], value);
 #endif
     event_bus_publish(&msg);
 }
@@ -80,13 +109,26 @@ static void on_cutoff_confirmed(double value) {
 
 // ── Numpad open events ────────────────────────────────────────────────────────
 static void event_open_setpoint_numpad(lv_event_t *e) {
-    bool is_cv = channels[_ch].is_cv_mode;
-    if (is_cv) {
-        ui_open_numpad("Set Voltage (V)", channels[_ch].voltage_setpoint, 0.0, 30.0, on_setpoint_confirmed,
-                       ui_ChannelDetailScreen);
-    } else {
-        ui_open_numpad("Set Current (A)", channels[_ch].current_setpoint, 0.0, 5.0, on_setpoint_confirmed,
-                       ui_ChannelDetailScreen);
+    uint8_t mode = channels[_ch].mode;
+    switch (mode) {
+        case 0:
+            ui_open_numpad("Set Voltage (V)", channels[_ch].voltage_setpoint, 0.0, 30.0, on_setpoint_confirmed,
+                           ui_ChannelDetailScreen);
+            break;
+        case 1:
+            ui_open_numpad("Set Current (A)", channels[_ch].current_setpoint, 0.0, 5.0, on_setpoint_confirmed,
+                           ui_ChannelDetailScreen);
+            break;
+        case 2:
+            ui_open_numpad("Set Power (W)", channels[_ch].power_setpoint, 0.0, 100.0, on_setpoint_confirmed,
+                           ui_ChannelDetailScreen);
+            break;
+        case 3:
+            ui_open_numpad("Set Resistance (Ohm)", channels[_ch].resistance_setpoint, 0.0, 1000.0,
+                           on_setpoint_confirmed, ui_ChannelDetailScreen);
+            break;
+        default:
+            break;
     }
 }
 
@@ -101,9 +143,8 @@ static void refresh_detail_screen(lv_event_t *e) {
     lv_label_set_text_fmt(title_label, "CH%d  %.2fV  %.3fA", _ch + 1, channels[_ch].measured_voltage,
                           channels[_ch].measured_current);
 
-    bool is_cv = channels[_ch].is_cv_mode;
-    lv_dropdown_set_selected(mode_dd, is_cv ? 0 : 1);
-    update_setpoint_view(is_cv);
+    lv_dropdown_set_selected(mode_dd, channels[_ch].mode);
+    update_setpoint_view(channels[_ch].mode);
 
     if (channels[_ch].lv_cutoff_enabled)
         lv_obj_add_state(cutoff_sw, LV_STATE_CHECKED);
@@ -157,7 +198,7 @@ void ui_create_channel_detail_screen(void) {
     lv_label_set_text(l_mode, "Control Mode");
 
     mode_dd = lv_dropdown_create(r1);
-    lv_dropdown_set_options(mode_dd, "CV\nCC");
+    lv_dropdown_set_options(mode_dd, "CV\nCC\nCP\nCR");
     lv_obj_set_width(mode_dd, 100);
     lv_obj_add_event_cb(mode_dd, event_mode_change, LV_EVENT_VALUE_CHANGED, NULL);
 

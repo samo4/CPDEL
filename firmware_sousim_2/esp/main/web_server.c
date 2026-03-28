@@ -17,6 +17,7 @@ static httpd_handle_t s_server = NULL;
 static int s_ws_clients[WEB_WS_MAX_CLIENTS];
 static SemaphoreHandle_t s_ws_clients_lock;
 static QueueHandle_t s_web_bus_queue;
+static TaskHandle_t s_web_ws_task_handle;
 
 static const char *mode_name_from_value(int mode) {
     switch (mode) {
@@ -356,7 +357,7 @@ void web_server_init(void) {
             s_web_bus_queue = xQueueCreate(8, sizeof(bus_msg_t));
             if (s_web_bus_queue != NULL) {
                 app_bus_subscribe(s_web_bus_queue);
-                xTaskCreate(web_ws_broadcast_task, "web_ws_bus", 2048, NULL, 4, NULL);
+                xTaskCreate(web_ws_broadcast_task, "web_ws_bus", 2048, NULL, 4, &s_web_ws_task_handle);
             }
         }
 
@@ -375,4 +376,18 @@ void web_server_init(void) {
         httpd_register_uri_handler(server, &file_uri);
         ESP_LOGI(TAG, "Web server started on port 80");
     }
+}
+
+void web_server_stop(void) {
+    if (s_server != NULL) {
+        httpd_stop(s_server);
+        s_server = NULL;
+    }
+
+#ifdef CONFIG_HTTPD_WS_SUPPORT
+    if (s_web_ws_task_handle != NULL) {
+        vTaskDelete(s_web_ws_task_handle);
+        s_web_ws_task_handle = NULL;
+    }
+#endif
 }

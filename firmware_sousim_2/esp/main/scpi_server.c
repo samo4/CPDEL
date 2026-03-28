@@ -25,6 +25,9 @@
 #define SCPI_MAX_CLIENTS 4
 
 static const char *TAG = "SCPI";
+static TaskHandle_t s_server_task_handle = NULL;
+static int s_listen_sock = -1;
+static volatile bool s_server_running = false;
 
 typedef struct {
     int socket;
@@ -136,11 +139,15 @@ static void scpi_client_task(void *arg) {
 /* Server task: listen for incoming connections on port 5025. */
 static void scpi_server_task(void *arg) {
     (void)arg;
+    s_server_running = true;
 
     int listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listen_sock < 0) {
+        s_server_running = false;
+        s_server_task_handle = NULL;
         return; /* Failed to create socket */
     }
+    s_listen_sock = listen_sock;
 
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -153,20 +160,32 @@ static void scpi_server_task(void *arg) {
 
     if (bind(listen_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         closesocket(listen_sock);
+        s_listen_sock = -1;
+        s_server_running = false;
+        s_server_task_handle = NULL;
         return;
     }
 
     if (listen(listen_sock, SCPI_LISTEN_BACKLOG) < 0) {
         closesocket(listen_sock);
+        s_listen_sock = -1;
+        s_server_running = false;
+        s_server_task_handle = NULL;
         return;
     }
 
     /* Accept incoming connections */
-    while (1) {
+    while (s_server_running) {
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
 
         int client_sock = accept(listen_sock, (struct sockaddr *)&client_addr, &client_addr_len);
+        if (client_sock < 0) {
+            /* During shutdown accept() can fail immediately; avoid tight-spin starving IDLE. */
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+
         if (client_sock > 0) {
             /* Allocate client state and spawn handler task */
             scpi_client_t *client = (scpi_client_t *)pvPortMalloc(sizeof(scpi_client_t));
@@ -175,12 +194,28 @@ static void scpi_server_task(void *arg) {
                 client->rx_len = 0;
                 memset(client->rx_buf, 0, sizeof(client->rx_buf));
 
-                xTaskCreate(scpi_client_task, "scpi_client", 1536, client, 5, NULL);
+                xTaskCreate(scpi_client_task, "scpi_client", 1280, client, 5, NULL);
             } else {
                 closesocket(client_sock);
             }
         }
     }
+
+    closesocket(listen_sock);
+    s_listen_sock = -1;
+    s_server_running = false;
+    s_server_task_handle = NULL;
+    vTaskDelete(NULL);
 }
 
-void scpi_server_start(void) { xTaskCreate(scpi_server_task, "scpi_server", 3072, NULL, 5, NULL); }
+void scpi_server_start(void) { xTaskCreate(scpi_server_task, "scpi_server", 2560, NULL, 5, &s_server_task_handle); }
+
+void scpi_server_stop(void) {
+    s_server_running = false;
+
+    if (s_listen_sock >= 0) {
+        shutdown(s_listen_sock, SHUT_RDWR);
+        closesocket(s_listen_sock);
+        s_listen_sock = -1;
+    }
+}

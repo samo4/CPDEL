@@ -9,7 +9,6 @@ idf_component_register(
         "../../src/ui/ui_settings.c"
         "../../src/ui/ui_wireless.c"
         "../../src/ui/ui_ota.c"
-        "../../src/rrd.c"
         "display.c"
         "touch.c"
         "wireless_controller.c"
@@ -29,6 +28,9 @@ idf_component_register(
         esp_event
         esp_netif
         esp_http_server
+        esp_http_client
+        esp_https_ota
+        mbedtls
         app_update
         spiffs
 )

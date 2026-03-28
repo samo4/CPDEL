@@ -50,3 +50,19 @@ CONFIG_HTTPD_WS_SUPPORT=y
 # OTA: if new firmware doesn't call esp_ota_mark_app_valid_cancel_rollback(),
 # the bootloader automatically rolls back to the previous working image.
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# HTTPS OTA root CA bundle for esp_crt_bundle_attach()
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+
+# Reduce TLS RAM footprint for OTA (GitHub Pages download)
+CONFIG_MBEDTLS_ASYMMETRIC_CONTENT_LEN=y
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=4096
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=4096
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+
+# OTA over HTTPS can block for multiple seconds in TLS/network paths.
+# Relax Task WDT defaults to avoid false positives during OTA operations.
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=30
+# Keep task WDT enabled, but stop monitoring IDLE during OTA-heavy runtime.
+# (We still manually feed/reset from OTA task loop.)
+# CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0 is not set

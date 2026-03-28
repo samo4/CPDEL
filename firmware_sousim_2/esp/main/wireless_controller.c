@@ -9,6 +9,7 @@
 #include "freertos/task.h"
 
 static const char *TAG = "WIRELESS";
+static TaskHandle_t s_rssi_task_handle = NULL;
 
 esp_err_t wireless_get_configured_ssid(char *ssid, size_t ssid_size) {
     if (ssid == NULL || ssid_size == 0) {
@@ -129,5 +130,11 @@ void wireless_init(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
 
-    xTaskCreate(rssi_task, "rssi_task", 2048, NULL, 5, NULL);
+    xTaskCreate(rssi_task, "rssi_task", 1536, NULL, 5, &s_rssi_task_handle);
+}
+
+void wireless_pause_background(void) {
+    if (s_rssi_task_handle != NULL) {
+        vTaskSuspend(s_rssi_task_handle);
+    }
 }

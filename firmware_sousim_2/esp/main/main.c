@@ -15,15 +15,17 @@
 
 #include "dc_load_controller.h"
 #include "display.h"
-#include "rrd.h"
+// #include "rrd.h"
 #include "scpi_server.h"
 #include "touch.h"
 #include "web_server.h"
 #include "wireless_controller.h"
 
+#include "app_runtime.h"
 #include "ui/ui.h"
 
 static const char *TAG = __FILE_NAME__;
+static TaskHandle_t s_lvgl_task_handle = NULL;
 
 #define HEARTBEAT_GPIO GPIO_NUM_40
 
@@ -100,13 +102,29 @@ void app_main(void) {
     wireless_init();
     dc_load_controller_init();
 
-    rrd_init();
+    // rrd_init();
 
     // run after all queues are initialized!
     ui_init();
     web_server_init();
     scpi_server_start();
 
-    xTaskCreate(lvgl_task, "LVGL", 3072, NULL, 5, NULL);
-    xTaskCreate(heartbeat_task, "Heartbeat", 1024, NULL, 2, NULL);
+    xTaskCreate(lvgl_task, "LVGL", 3072, NULL, 5, &s_lvgl_task_handle);
+    // xTaskCreate(heartbeat_task, "Heartbeat", 768, NULL, 2, NULL);
+}
+
+void app_prepare_for_ota(void) {
+    ESP_LOGI(TAG, "Preparing for OTA: stopping non-essential services");
+
+    web_server_stop();
+    scpi_server_stop();
+    wireless_pause_background();
+
+    if (s_lvgl_task_handle != NULL) {
+        vTaskSuspend(s_lvgl_task_handle);
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(150));
+
+    ESP_LOGI(TAG, "Post-prep free heap: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
 }

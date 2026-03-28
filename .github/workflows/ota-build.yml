@@ -23,20 +23,28 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Setup ESP-IDF
-        uses: esp-rs/esp-idf-action@v1
-        with:
-          esp-idf-version: v4.3.3
-          targets: esp32s2
-
-      - name: Build firmware
+      - name: Install ESP-IDF and Build firmware
         run: |
-          cd ${{ env.PROJECT_DIR }}/esp
+          git clone -b v4.3.3 --depth 1 https://github.com/espressif/esp-idf.git esp-idf-v4.3.3
+          cd esp-idf-v4.3.3
+          ./install.sh esp32s2
+          source ./export.sh
+          
+          cd ${{ github.workspace }}/${{ env.PROJECT_DIR }}/esp
           idf.py build
+          
+          # Find the firmware binary
+          FW_BIN=$(find . -name "firmware.bin" -o -name "*.bin" | grep -E "(firmware|app)" | head -1)
+          if [ -z "$FW_BIN" ]; then
+            echo "Error: No firmware binary found"
+            find . -name "*.bin" -type f
+            exit 1
+          fi
+          
+          echo "Found firmware: $FW_BIN"
+          echo "FIRMWARE_BIN=${{ github.workspace }}/${{ env.PROJECT_DIR }}/esp/$FW_BIN" >> $GITHUB_ENV
           echo "BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
-          echo "FIRMWARE_SHA256=$(sha256sum build/esp32s2/esp-idf/build/firmware.bin | cut -d' ' -f1)" >> $GITHUB_ENV
-          echo "REPO_OWNER=$(echo ${{ github.repository }} | cut -d'/' -f1)" >> $GITHUB_ENV
-          echo "REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)" >> $GITHUB_ENV
+          echo "FIRMWARE_SHA256=$(sha256sum "$FW_BIN" | cut -d' ' -f1)" >> $GITHUB_ENV
 
       - name: Create OTA artifacts
         run: |
@@ -45,10 +53,10 @@ jobs:
           mkdir -p "${ARTIFACT_DIR}"
 
           # Copy firmware
-          cp ${{ env.PROJECT_DIR }}/esp/build/esp32s2/esp-idf/build/firmware.bin "${ARTIFACT_DIR}/"
+          cp "${{ env.FIRMWARE_BIN }}" "${ARTIFACT_DIR}/firmware.bin"
 
           # Get firmware size
-          FIRMWARE_SIZE=$(stat -c%s "${{ env.PROJECT_DIR }}/esp/build/esp32s2/esp-idf/build/firmware.bin")
+          FIRMWARE_SIZE=$(stat -c%s "${ARTIFACT_DIR}/firmware.bin")
 
           # Generate manifest.json
           cat > "${ARTIFACT_DIR}/manifest.json" <<EOF

@@ -8,6 +8,7 @@ on:
 
 env:
   PROJECT_DIR: firmware_sousim_2
+  ESP_IDF_VERSION: v6.0
 
 jobs:
   build:
@@ -22,7 +23,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install build dependencies
         run: |
@@ -34,12 +35,20 @@ jobs:
           # Upgrade host pip tooling first.
           python -m pip install --upgrade pip setuptools wheel
 
-          git clone -b v4.3.3 --depth 1 https://github.com/espressif/esp-idf.git esp-idf-v4.3.3
-          cd esp-idf-v4.3.3
+          git clone -b "${{ env.ESP_IDF_VERSION }}" --depth 1 https://github.com/espressif/esp-idf.git esp-idf
+          cd esp-idf
 
           # Install IDF tools + Python env.
           ./install.sh esp32s2
           source ./export.sh
+
+          # Guardrail: ensure we are really on ESP-IDF 6.x.
+          IDF_VER="$(idf.py --version)"
+          echo "Using $IDF_VER"
+          echo "$IDF_VER" | grep -E "ESP-IDF v6\.|v6\." >/dev/null || {
+            echo "ERROR: Expected ESP-IDF 6.x, got: $IDF_VER"
+            exit 1
+          }
 
           # Fix pkg_resources import in IDF virtualenv on some runners.
           python -m ensurepip --upgrade || true

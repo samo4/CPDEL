@@ -8,25 +8,15 @@
 #include "sys_bus.h"
 #include "ui/ui.h"
 
+#include "scpi.h"
+
 #define STREAM_TICK_MS 200
 
-void sim_controller_task(void *param);
+QueueHandle_t queue_sim = NULL;
+
+void sim_controller_init(void);
 
 #ifdef SIM_CONTROLLER_IMPLEMENTATION
-
-static void respond_measurement(scpi_source_t dest, uint8_t ch, float value, const char *kind) {
-    (void)dest;
-    // printf("[ctrl] MEAS:%s (@%u) = %.4f\n", kind, (unsigned)ch + 1u, (double)value);
-    // fflush(stdout);
-
-    scpi_msg_t resp = {0};
-    resp.cmd = (kind[0] == 'V') ? SCPI_CMD_MEAS_VOLT : SCPI_CMD_MEAS_CURR;
-    resp.channel = ch;
-    resp.args[0] = value;
-    resp.argc = 1;
-    resp.source = SRC_CTRL;
-    xQueueSend(queue_gui, &resp, 0);
-}
 
 static void respond_source(scpi_source_t dest, uint8_t ch, scpi_cmd_t cmd, float value, const char *kind) {
     (void)dest;
@@ -39,12 +29,8 @@ static void respond_source(scpi_source_t dest, uint8_t ch, scpi_cmd_t cmd, float
     resp.args[0] = value;
     resp.argc = 1;
     resp.source = SRC_CTRL;
-    xQueueSend(queue_gui, &resp, 0);
+    event_bus_publish(&resp);
 }
-
-/* Per-channel measurement streaming bitmasks (one bit per scpi_source_t) */
-static uint8_t stream_volt[2] = {0};
-static uint8_t stream_curr[2] = {0};
 
 /* Per-channel controller state */
 static float ctrl_volt_sp[2] = {0.0f, 0.0f};
@@ -61,7 +47,7 @@ void sim_controller_task(void *param) {
 
     for (;;) {
         /* Block up to STREAM_TICK_MS so we can service continuous streams on timeout */
-        if (xQueueReceive(queue_test, &msg, pdMS_TO_TICKS(STREAM_TICK_MS)) == pdTRUE) {
+        if (xQueueReceive(queue_sim, &msg, pdMS_TO_TICKS(STREAM_TICK_MS)) == pdTRUE) {
             scpi_encode(&msg, buf, sizeof(buf));
             printf("[ctrl %s] %s\n", event_bus_source_str(msg.source), buf);
             fflush(stdout);
@@ -93,7 +79,7 @@ void sim_controller_task(void *param) {
                            (ctrl_mode[msg.channel] == 0) ? "CV" : "CC");
                     fflush(stdout);
                     break;
-
+                /*
                 case SCPI_CMD_MEAS_VOLT_CONT: {
                     uint8_t bit = (uint8_t)(1u << msg.source);
                     if (msg.args[0] != 0.0f)
@@ -116,6 +102,7 @@ void sim_controller_task(void *param) {
                     fflush(stdout);
                     break;
                 }
+                */
                 case SCPI_CMD_SOUR_VOLT:
                     respond_source(msg.source, msg.channel, SCPI_CMD_SOUR_VOLT, ctrl_volt_sp[msg.channel], "VOLT_SP");
                     break;
@@ -140,10 +127,8 @@ void sim_controller_task(void *param) {
             float t_s = (float)now / 1000.0f;
             float sim_val = 1.0f + sinf(2.0f * 3.14f * t_s / 60.0f);
             for (int ch = 0; ch < 2; ch++) {
-                if (stream_volt[ch])
-                    respond_measurement(SRC_GUI, (uint8_t)ch, fminf(sim_val, ctrl_volt_sp[ch]), "VOLT");
-                if (stream_curr[ch])
-                    respond_measurement(SRC_GUI, (uint8_t)ch, fminf(sim_val, ctrl_curr_sp[ch]), "CURR");
+                respond_measurement(SRC_GUI, (uint8_t)ch, fminf(sim_val, ctrl_curr_sp[ch]),
+                                    fminf(sim_val, ctrl_volt_sp[ch]));
             }
 
             /* Publish simulated RSSI every 2 s — slow sine between -85 and -55 dBm */
@@ -157,6 +142,21 @@ void sim_controller_task(void *param) {
             }
         }
     }
+}
+
+void sim_controller_init(void) {
+    if (queue_sim != NULL) {
+        return;
+    }
+    queue_sim = xQueueCreate(16, sizeof(scpi_msg_t));
+    if (queue_sim == NULL) {
+        // die hard?
+        printf("Failed to create sim command queue\n");
+        return;
+    }
+    event_bus_subscribe(queue_sim);
+
+    xTaskCreate(sim_controller_task, "Controller", 2048, NULL, 3, NULL);
 }
 
 #endif /* SIM_CONTROLLER_IMPLEMENTATION */

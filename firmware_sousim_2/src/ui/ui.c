@@ -16,6 +16,8 @@ static lv_obj_t *ui_status_msg_label;
 static lv_obj_t *ui_status_close_btn;
 static lv_obj_t *ui_status_return_screen;
 
+static QueueHandle_t queue_gui = NULL;
+
 static void ui_status_close_event_cb(lv_event_t *e) {
     (void)e;
     if (lv_obj_is_valid(ui_status_return_screen)) {
@@ -51,7 +53,7 @@ static void ui_create_status_screen(void) {
 }
 
 channel_data_t channels[UI_CHANNEL_COUNT];
-int current_channel_index = 0;
+int _ch = 0;
 
 /* Drain queue_gui from the LVGL tick — safe to call LVGL APIs here since
    this runs inside lv_timer_handler() on the same thread as LVGL. */
@@ -59,35 +61,31 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
     (void)t;
     scpi_msg_t msg;
     while (xQueueReceive(queue_gui, &msg, 0) == pdTRUE) {
+        if (msg.channel >= UI_CHANNEL_COUNT) {
+            return;
+        }
         switch (msg.cmd) {
-            case SCPI_CMD_MEAS_VOLT:
-                channels[msg.channel].measured_voltage = msg.args[0];
-                ui_main_update_channel(msg.channel);
-                ui_detail_update_channel(msg.channel);
-                ui_graph_update_channel(msg.channel);
-                break;
-            case SCPI_CMD_MEAS_CURR:
+            case SCPI_MEASUREMENTS:
                 channels[msg.channel].measured_current = msg.args[0];
-                channels[msg.channel].measured_power = channels[msg.channel].measured_voltage * msg.args[0];
+                channels[msg.channel].measured_voltage = msg.args[1];
+                channels[msg.channel].measured_power =
+                    channels[msg.channel].measured_voltage * channels[msg.channel].measured_current;
                 ui_main_update_channel(msg.channel);
-                ui_detail_update_channel(msg.channel);
-                ui_graph_update_channel(msg.channel);
+                // ui_detail_update_channel(msg.channel);
+                ui_graph_update_channel(msg.channel, msg.timestamp_ms);
                 break;
             case SCPI_CMD_SOUR_VOLT:
                 channels[msg.channel].voltage_setpoint = msg.args[0];
-                ui_detail_update_channel(msg.channel);
-                ui_graph_update_channel(msg.channel);
+                // ui_detail_update_channel(msg.channel);
                 break;
             case SCPI_CMD_SOUR_CURR:
                 channels[msg.channel].current_setpoint = msg.args[0];
-                ui_detail_update_channel(msg.channel);
-                ui_graph_update_channel(msg.channel);
+                // ui_detail_update_channel(msg.channel);
                 break;
             case SCPI_CMD_SOUR_MODE:
                 channels[msg.channel].is_cv_mode = (msg.args[0] == 0.0f);
                 ui_main_update_channel(msg.channel);
-                ui_detail_update_channel(msg.channel);
-                ui_graph_update_channel(msg.channel);
+                // ui_detail_update_channel(msg.channel);
                 break;
             default:
                 break;
@@ -116,7 +114,7 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
 /* Poll the controller for current setpoint and mode (called every 5 s). */
 static void ui_poll_source_timer_cb(lv_timer_t *t) {
     (void)t;
-    scpi_msg_t msg = {.argc = 0, .source = SRC_GUI};
+    /*scpi_msg_t msg = {.argc = 0, .source = SRC_GUI};
     for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
         msg.channel = (uint8_t)i;
         msg.cmd = SCPI_CMD_SOUR_VOLT;
@@ -125,10 +123,20 @@ static void ui_poll_source_timer_cb(lv_timer_t *t) {
         event_bus_publish(&msg);
         msg.cmd = SCPI_CMD_SOUR_MODE;
         event_bus_publish(&msg);
-    }
+    }*/
 }
 
 void ui_init(void) {
+    if (queue_gui != NULL) {
+        return;
+    }
+    queue_gui = xQueueCreate(16, sizeof(scpi_msg_t));
+    if (queue_gui == NULL) {
+        // die hard?
+        return;
+    }
+    event_bus_subscribe(queue_gui);
+
     for (int i = 0; i < UI_CHANNEL_COUNT; i++) {
         channels[i].voltage_setpoint = 0.0;
         channels[i].current_setpoint = 0.0;
@@ -178,7 +186,7 @@ void ui_event_channel_select(lv_event_t *e) {
     // lv_obj_t *target = lv_event_get_target(e);
     // Assuming user data contains channel index (intptr_t)
     intptr_t ch_idx = (intptr_t)lv_event_get_user_data(e);
-    current_channel_index = (int)ch_idx;
+    _ch = (int)ch_idx;
 
     lv_scr_load(ui_ChannelDetailScreen);
 }

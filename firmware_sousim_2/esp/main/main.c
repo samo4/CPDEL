@@ -18,6 +18,7 @@
 
 #include "dc_load_controller.h"
 #include "display.h"
+#include "rrd.h"
 #include "touch.h"
 #include "web_server.h"
 #include "wireless_controller.h"
@@ -96,15 +97,15 @@ void app_main(void) {
     ESP_ERROR_CHECK(gpio_set_direction(HEARTBEAT_GPIO, GPIO_MODE_OUTPUT));
     ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, 0));
 
-    display_init(); // SPI + ILI9341 + LVGL disp_drv + tick timer
-    touch_init();   // FT6206/FT5x06 touch input
+    display_init();
+    touch_init();
     wireless_init();
     dc_load_controller_init();
 
-    event_bus_init();
     sys_bus_init();
+    rrd_init();
 
-    // run after bus init!
+    // run after all queues are initialized!
     ui_init();
     web_server_init();
 

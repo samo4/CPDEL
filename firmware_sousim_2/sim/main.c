@@ -19,6 +19,7 @@
 #define SIM_CONTROLLER_IMPLEMENTATION
 #include "sim_controller.h"
 
+#include "rrd.h"
 #include "ui/ui.h"
 
 static void heartbeat_task(void *param) {
@@ -82,10 +83,10 @@ int main(int argc, char **argv) {
     indev_drv.read_cb = sdl_mouse_read;
     lv_indev_drv_register(&indev_drv);
 
-    event_bus_init();
     sys_bus_init();
+    rrd_init();
     xTaskCreate(heartbeat_task, "Heartbeat", 1024, NULL, 2, NULL);
-    xTaskCreate(sim_controller_task, "Controller", 2048, NULL, 3, NULL);
+    sim_controller_init();
 
     ui_init(); // run after controller task is created so it can publish initial measurement stream commands
 

@@ -8,6 +8,7 @@ typedef enum {
     SCPI_CMD_SET_MODE,
     SCPI_CMD_SET_CURRENT,
     SCPI_CMD_SET_VOLTAGE,
+    SCPI_MEASUREMENTS, // continous measurements (U,I) from controller
     SCPI_CMD_MEAS_VOLT,
     SCPI_CMD_MEAS_CURR,
     SCPI_CMD_MEAS_VOLT_CONT,
@@ -34,14 +35,10 @@ typedef struct {
     float args[2];
     uint8_t argc;
     scpi_source_t source;
+    uint32_t timestamp_ms; /* Monotonic time since boot, in milliseconds */
 } scpi_msg_t;
 
-extern QueueHandle_t queue_gui;
-extern QueueHandle_t queue_test;
-extern QueueHandle_t queue_web;
-extern QueueHandle_t queue_hw_control;
-
-void event_bus_init(void);
+void event_bus_subscribe(QueueHandle_t q);
 void event_bus_publish(const scpi_msg_t *msg);
 
 const char *event_bus_source_str(scpi_source_t s);
@@ -54,12 +51,9 @@ int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size);
    out->source defaults to SRC_LXI (strings typically originate from network). */
 int scpi_decode(const char *str, scpi_msg_t *out);
 
-#ifdef SCPI_IMPLEMENTATION
+void respond_measurement(scpi_source_t dest, uint8_t ch, float current, float voltage);
 
-QueueHandle_t queue_gui = NULL;
-QueueHandle_t queue_test = NULL;
-QueueHandle_t queue_web = NULL;
-QueueHandle_t queue_hw_control = NULL;
+#ifdef SCPI_IMPLEMENTATION
 
 const char *event_bus_source_str(scpi_source_t s) {
     switch (s) {
@@ -76,18 +70,17 @@ const char *event_bus_source_str(scpi_source_t s) {
     }
 }
 
-void event_bus_init(void) {
-    queue_gui = xQueueCreate(16, sizeof(scpi_msg_t));
-    queue_test = xQueueCreate(16, sizeof(scpi_msg_t));
-    queue_web = xQueueCreate(16, sizeof(scpi_msg_t));
-    queue_hw_control = xQueueCreate(16, sizeof(scpi_msg_t));
+#define EVENT_BUS_MAX_SUBSCRIBERS 8
+static QueueHandle_t s_subscribers[EVENT_BUS_MAX_SUBSCRIBERS];
+static int s_sub_count = 0;
+
+void event_bus_subscribe(QueueHandle_t q) {
+    assert(s_sub_count < EVENT_BUS_MAX_SUBSCRIBERS);
+    s_subscribers[s_sub_count++] = q;
 }
 
 void event_bus_publish(const scpi_msg_t *msg) {
-    if (queue_gui) xQueueSend(queue_gui, msg, 0);
-    if (queue_test) xQueueSend(queue_test, msg, 0);
-    if (queue_web) xQueueSend(queue_web, msg, 0);
-    if (queue_hw_control) xQueueSend(queue_hw_control, msg, 0);
+    for (int i = 0; i < s_sub_count; i++) xQueueSend(s_subscribers[i], msg, 0);
 }
 
 int scpi_encode(const scpi_msg_t *msg, char *buf, size_t buf_size) {
@@ -266,6 +259,19 @@ int scpi_decode(const char *str, scpi_msg_t *out) {
     }
 
     return -1; /* unknown / unrecognised */
+}
+
+void respond_measurement(scpi_source_t dest, uint8_t ch, float current, float voltage) {
+    (void)dest;
+    scpi_msg_t resp = {0};
+    resp.cmd = SCPI_MEASUREMENTS;
+    resp.channel = ch;
+    resp.args[0] = current;
+    resp.args[1] = voltage;
+    resp.argc = 2;
+    resp.source = SRC_CTRL;
+    resp.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    event_bus_publish(&resp);
 }
 
 #endif

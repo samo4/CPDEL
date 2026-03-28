@@ -31,7 +31,7 @@ typedef struct {
 } channel_data_t;
 
 extern channel_data_t channels[UI_CHANNEL_COUNT];
-extern int current_channel_index;
+extern int _ch; // currently selected channel index (0-based)
 
 void ui_init(void);
 
@@ -44,10 +44,10 @@ void ui_create_keyboard_screen(void);
 void ui_create_wireless_screen(void);
 void ui_create_ota_screen(void);
 
-void ui_main_update_channel(int ch);
+void ui_main_update_channel(int channel);
 void ui_main_update_wifi(int rssi_dbm, const char *ip_str);
-void ui_detail_update_channel(int ch);
-void ui_graph_update_channel(int ch);
+void ui_detail_update_channel(int channel);
+void ui_graph_update_channel(int channel, uint32_t sample_ts_ms);
 void ui_show_status_panel(const char *text, bool dismissable);
 
 void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),

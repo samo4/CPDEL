@@ -9,6 +9,7 @@ idf_component_register(
         "../../src/ui/ui_settings.c"
         "../../src/ui/ui_wireless.c"
         "../../src/ui/ui_ota.c"
+        "../../src/rrd.c"
         "display.c"
         "touch.c"
         "wireless_controller.c"

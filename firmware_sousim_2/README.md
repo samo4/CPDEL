@@ -5,6 +5,7 @@
 - [x] wireless edit ssid and password (store in nvme)
 - [ ] connect to modbus
 - [ ] rethink queues
+- [ ] rrdtool-like graph
 
 ## vscode
 

@@ -70,6 +70,7 @@ add_executable(lvgl_mockup
     ../src/ui/ui_ota.c
     ../src/ui/ui_settings.c
     ../src/ui/ui_wireless.c
+    ../src/rrd.c
 )
 
 # Include directories

@@ -2,6 +2,12 @@
 #include "scpi.h"
 #include "ui.h"
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+#endif
+
+static const char *TAG = "UI_CH_DETAIL";
+
 static lv_obj_t *title_label;
 static lv_obj_t *mode_dd;
 static lv_obj_t *setpoint_label;
@@ -13,98 +19,102 @@ static void update_setpoint_view(bool is_cv) {
     if (setpoint_label == NULL || setpoint_val_lbl == NULL) return;
     if (is_cv) {
         lv_label_set_text(setpoint_label, "Set Voltage (V)");
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[current_channel_index].voltage_setpoint);
+        lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", channels[_ch].voltage_setpoint);
     } else {
         lv_label_set_text(setpoint_label, "Set Current (A)");
-        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", channels[current_channel_index].current_setpoint);
+        lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", channels[_ch].current_setpoint);
     }
 }
 
 static void event_mode_change(lv_event_t *e) {
     uint16_t idx = lv_dropdown_get_selected(mode_dd);
     bool is_cv = (idx == 0);
-    channels[current_channel_index].is_cv_mode = is_cv;
+    channels[_ch].is_cv_mode = is_cv;
     update_setpoint_view(is_cv);
 
     scpi_msg_t msg = {
         .cmd = SCPI_CMD_SET_MODE,
-        .channel = (uint8_t)current_channel_index,
+        .channel = (uint8_t)_ch,
         .args = {is_cv ? 0.0f : 1.0f, 0.0f},
         .argc = 1,
         .source = SRC_GUI,
     };
+#ifdef ESP_PLATFORM
+    ESP_LOGI(TAG, "Set CH%u mode to %s", _ch + 1, is_cv ? "CV" : "CC");
+#endif
     event_bus_publish(&msg);
 }
 
 static void event_cutoff_toggle(lv_event_t *e) {
     bool en = lv_obj_has_state(cutoff_sw, LV_STATE_CHECKED);
-    channels[current_channel_index].lv_cutoff_enabled = en;
+    channels[_ch].lv_cutoff_enabled = en;
 }
 
 static void on_setpoint_confirmed(double value) {
-    bool is_cv = channels[current_channel_index].is_cv_mode;
+    bool is_cv = channels[_ch].is_cv_mode;
     if (is_cv) {
-        channels[current_channel_index].voltage_setpoint = value;
+        channels[_ch].voltage_setpoint = value;
         lv_label_set_text_fmt(setpoint_val_lbl, "%.2f", value);
     } else {
-        channels[current_channel_index].current_setpoint = value;
+        channels[_ch].current_setpoint = value;
         lv_label_set_text_fmt(setpoint_val_lbl, "%.3f", value);
     }
 
     scpi_msg_t msg = {
         .cmd = is_cv ? SCPI_CMD_SET_VOLTAGE : SCPI_CMD_SET_CURRENT,
-        .channel = (uint8_t)current_channel_index,
+        .channel = (uint8_t)_ch,
         .args = {value, 0.0f},
         .argc = 1,
         .source = SRC_GUI,
     };
+#ifdef ESP_PLATFORM
+    ESP_LOGI(TAG, "Sending CH%u %s set to %.3f %s", _ch + 1, is_cv ? "voltage" : "current", value, is_cv ? "V" : "A");
+#endif
     event_bus_publish(&msg);
 }
 
 static void on_cutoff_confirmed(double value) {
-    channels[current_channel_index].lv_cutoff_threshold = value;
+    channels[_ch].lv_cutoff_threshold = value;
     lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", value);
 }
 
 // ── Numpad open events ────────────────────────────────────────────────────────
 static void event_open_setpoint_numpad(lv_event_t *e) {
-    bool is_cv = channels[current_channel_index].is_cv_mode;
+    bool is_cv = channels[_ch].is_cv_mode;
     if (is_cv) {
-        ui_open_numpad("Set Voltage (V)", channels[current_channel_index].voltage_setpoint, 0.0, 30.0,
-                       on_setpoint_confirmed, ui_ChannelDetailScreen);
+        ui_open_numpad("Set Voltage (V)", channels[_ch].voltage_setpoint, 0.0, 30.0, on_setpoint_confirmed,
+                       ui_ChannelDetailScreen);
     } else {
-        ui_open_numpad("Set Current (A)", channels[current_channel_index].current_setpoint, 0.0, 5.0,
-                       on_setpoint_confirmed, ui_ChannelDetailScreen);
+        ui_open_numpad("Set Current (A)", channels[_ch].current_setpoint, 0.0, 5.0, on_setpoint_confirmed,
+                       ui_ChannelDetailScreen);
     }
 }
 
 static void event_open_cutoff_numpad(lv_event_t *e) {
-    ui_open_numpad("UV Cutoff Voltage (V)", channels[current_channel_index].lv_cutoff_threshold, 0.0, 30.0,
-                   on_cutoff_confirmed, ui_ChannelDetailScreen);
+    ui_open_numpad("UV Cutoff Voltage (V)", channels[_ch].lv_cutoff_threshold, 0.0, 30.0, on_cutoff_confirmed,
+                   ui_ChannelDetailScreen);
 }
 
 // Refresh whole screen data when entering (call this from event)
 static void refresh_detail_screen(lv_event_t *e) {
     (void)e;
-    lv_label_set_text_fmt(title_label, "CH%d  %.2fV  %.3fA", current_channel_index + 1,
-                          channels[current_channel_index].measured_voltage,
-                          channels[current_channel_index].measured_current);
+    lv_label_set_text_fmt(title_label, "CH%d  %.2fV  %.3fA", _ch + 1, channels[_ch].measured_voltage,
+                          channels[_ch].measured_current);
 
-    bool is_cv = channels[current_channel_index].is_cv_mode;
+    bool is_cv = channels[_ch].is_cv_mode;
     lv_dropdown_set_selected(mode_dd, is_cv ? 0 : 1);
     update_setpoint_view(is_cv);
 
-    if (channels[current_channel_index].lv_cutoff_enabled)
+    if (channels[_ch].lv_cutoff_enabled)
         lv_obj_add_state(cutoff_sw, LV_STATE_CHECKED);
     else
         lv_obj_clear_state(cutoff_sw, LV_STATE_CHECKED);
 
-    lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", channels[current_channel_index].lv_cutoff_threshold);
+    lv_label_set_text_fmt(cutoff_val_lbl, "%.2f", channels[_ch].lv_cutoff_threshold);
 }
 
-void ui_detail_update_channel(int ch) {
-    /* Only update if this channel is currently shown */
-    if (ch != current_channel_index) return;
+void ui_detail_update_channel(int channel) {
+    if (_ch != channel) return;
     refresh_detail_screen(NULL);
 }
 

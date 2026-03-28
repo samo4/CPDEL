@@ -15,6 +15,7 @@ idf_component_register(
         "wireless_controller.c"
         "dc_load_controller.c"
         "web_server.c"
+        "scpi_server.c"
         "main.c"
     INCLUDE_DIRS
         "."

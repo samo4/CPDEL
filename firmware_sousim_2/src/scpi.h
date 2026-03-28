@@ -58,15 +58,29 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* SOUR<ch>:FUNC VOLT|CURR */
+    /* SOUR<ch>:FUNC VOLT|CURR|POW|RES */
     {
         unsigned ch = 0;
         int consumed = 0;
         if (sscanf(str, "SOUR%u:FUNC %n", &ch, &consumed) == 1 && consumed > 0) {
-            out->cmd = APP_CMD_SET_MODE;
-            out->payload.scalar.channel = (uint8_t)(ch - 1u);
-            out->payload.scalar.value = (strncmp(str + consumed, "VOLT", 4) == 0) ? 0.0f : 1.0f;
-            return 0;
+            const char *mode = str + consumed;
+            float mode_val = -1.0f;
+
+            if (strcmp(mode, "VOLT") == 0)
+                mode_val = 0.0f;
+            else if (strcmp(mode, "CURR") == 0)
+                mode_val = 1.0f;
+            else if (strcmp(mode, "POW") == 0)
+                mode_val = 2.0f;
+            else if (strcmp(mode, "RES") == 0)
+                mode_val = 3.0f;
+
+            if (mode_val >= 0.0f) {
+                out->cmd = APP_CMD_SET_MODE;
+                out->payload.scalar.channel = (uint8_t)(ch - 1u);
+                out->payload.scalar.value = mode_val;
+                return 0;
+            }
         }
     }
 
@@ -88,6 +102,30 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:CURR %f", &ch, &val) == 2) {
             out->cmd = APP_CMD_SET_CURRENT;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = val;
+            return 0;
+        }
+    }
+
+    /* SOUR<ch>:POW <val> */
+    {
+        unsigned ch = 0;
+        float val = 0.0f;
+        if (sscanf(str, "SOUR%u:POW %f", &ch, &val) == 2) {
+            out->cmd = APP_CMD_SET_POWER;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            out->payload.scalar.value = val;
+            return 0;
+        }
+    }
+
+    /* SOUR<ch>:RES <val> */
+    {
+        unsigned ch = 0;
+        float val = 0.0f;
+        if (sscanf(str, "SOUR%u:RES %f", &ch, &val) == 2) {
+            out->cmd = APP_CMD_SET_RESISTANCE;
             out->payload.scalar.channel = (uint8_t)(ch - 1u);
             out->payload.scalar.value = val;
             return 0;

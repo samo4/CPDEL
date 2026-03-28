@@ -1,181 +1,188 @@
+const { createApp } = Vue;
 
-const elError = document.getElementById("error")
-
-const ctx1 = document.getElementById("chart-1")
-const ctx2 = document.getElementById("chart-2")
-
-const chartOptions1 = {
-  type: "scatter",
-  data: {
-    labels: ["I"],
-    datasets: [
-      {
-        label: "U",
-        yAxisID: 'A',
-        borderColor: "rgba(255, 99, 132, 0.2)",
-        showLine: true,
-        data: [],
-      },
-      {
-        label: "I",
-        yAxisID: 'B',
-        borderColor: "rgba(99, 255, 132, 0.2)",
-        showLine: true,
-        data: [],
-      }
-    ],
+createApp({
+  data() {
+    return {
+      selectedChannel: 0,
+      rawScpi: "",
+      logs: [],
+      channels: [
+        {
+          id: 1,
+          mode: "CC",
+          outputEnabled: false,
+          measuredVoltage: 0.0,
+          measuredCurrent: 0.0,
+          measuredPower: 0.0,
+          cvSetpoint: 0.0,
+          ccSetpoint: 0.0,
+          cpSetpoint: 0.0,
+          crSetpoint: 0.0,
+          setpointValue: 0.0,
+          uvCutoffEnabled: false,
+          uvCutoffValue: 0.0,
+        },
+        {
+          id: 2,
+          mode: "CC",
+          outputEnabled: false,
+          measuredVoltage: 0.0,
+          measuredCurrent: 0.0,
+          measuredPower: 0.0,
+          cvSetpoint: 0.0,
+          ccSetpoint: 0.0,
+          cpSetpoint: 0.0,
+          crSetpoint: 0.0,
+          setpointValue: 0.0,
+          uvCutoffEnabled: false,
+          uvCutoffValue: 0.0,
+        },
+      ],
+    };
   },
-  options: {
-    /*parsing: {
-        xAxisKey: 'ds',
-        yAxisKey: 'voltage'
-    },*/
-    scales: {
-      x: {
-        type: 'linear',
-        position: 'bottom'
-      },
-      A: {
-        type: 'linear',
-        position: 'left',
-        beginAtZero: true
-      },
-      B: {
-        type: 'linear',
-        position: 'right',
-        beginAtZero: true
-      }
+  computed: {
+    activeChannel() {
+      return this.channels[this.selectedChannel];
     },
   },
-}
-
-const chartOptions2 = {
-  type: "scatter",
-  data: {
-    labels: ["I"],
-    datasets: [
-      {
-        label: "U",
-        yAxisID: 'A',
-        borderColor: "rgba(255, 99, 132, 0.2)",
-        showLine: true,
-        data: [],
-      },
-      {
-        label: "I",
-        yAxisID: 'B',
-        borderColor: "rgba(99, 255, 132, 0.2)",
-        showLine: true,
-        data: [],
-      }
-    ],
+  mounted() {
+    this.channels.forEach((channel) => {
+      channel.setpointValue = this.getSetpointByMode(channel, channel.mode);
+    });
   },
-  options: {
-    /*parsing: {
-        xAxisKey: 'ds',
-        yAxisKey: 'voltage'
-    },*/
-    scales: {
-      x: {
-        type: 'linear',
-        position: 'bottom'
-      },
-      A: {
-        type: 'linear',
-        position: 'left',
-        beginAtZero: true
-      },
-      B: {
-        type: 'linear',
-        position: 'right',
-        beginAtZero: true
+  methods: {
+    addLog(cmd, ok) {
+      const now = new Date();
+      const time = now.toTimeString().slice(0, 8);
+      this.logs.unshift({ time, cmd, ok });
+      if (this.logs.length > 60) {
+        this.logs.length = 60;
       }
     },
+    async sendScpi(cmd) {
+      const response = await fetch("/api/scpi", {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain",
+        },
+        body: cmd,
+      });
+
+      if (!response.ok) {
+        let reason = "";
+        try {
+          reason = await response.text();
+        } catch (err) {
+          reason = "request failed";
+        }
+        throw new Error(reason || "request failed");
+      }
+    },
+    setpointFieldLabel(mode) {
+      if (mode === "CV") return "Set Voltage (V)";
+      if (mode === "CC") return "Set Current (A)";
+      if (mode === "CP") return "Set Power (W)";
+      if (mode === "CR") return "Set Resistance (Ohm)";
+      return "Setpoint";
+    },
+    getSetpointByMode(ch, mode) {
+      if (mode === "CV") return ch.cvSetpoint;
+      if (mode === "CC") return ch.ccSetpoint;
+      if (mode === "CP") return ch.cpSetpoint;
+      if (mode === "CR") return ch.crSetpoint;
+      return 0;
+    },
+    setSetpointByMode(ch, mode, value) {
+      if (mode === "CV") ch.cvSetpoint = value;
+      else if (mode === "CC") ch.ccSetpoint = value;
+      else if (mode === "CP") ch.cpSetpoint = value;
+      else if (mode === "CR") ch.crSetpoint = value;
+    },
+    setpointLabel(ch) {
+      if (ch.mode === "CV") return `${Number(ch.cvSetpoint).toFixed(2)} V`;
+      if (ch.mode === "CC") return `${Number(ch.ccSetpoint).toFixed(3)} A`;
+      if (ch.mode === "CP") return `${Number(ch.cpSetpoint).toFixed(2)} W`;
+      if (ch.mode === "CR") return `${Number(ch.crSetpoint).toFixed(2)} Ohm`;
+      return "--";
+    },
+    async toggleOutput(index) {
+      const ch = this.channels[index];
+      const next = !ch.outputEnabled;
+      const cmd = `OUTP${ch.id}:STAT ${next ? "ON" : "OFF"}`;
+
+      try {
+        await this.sendScpi(cmd);
+        ch.outputEnabled = next;
+        this.addLog(cmd, true);
+      } catch (err) {
+        this.addLog(`${cmd} (${err.message})`, false);
+      }
+    },
+    async applyMode(index) {
+      const ch = this.channels[index];
+      const modeMap = {
+        CV: "VOLT",
+        CC: "CURR",
+        CP: "POW",
+        CR: "RES",
+      };
+
+      const cmd = `SOUR${ch.id}:FUNC ${modeMap[ch.mode] || "VOLT"}`;
+      ch.setpointValue = this.getSetpointByMode(ch, ch.mode);
+
+      try {
+        await this.sendScpi(cmd);
+        this.addLog(cmd, true);
+      } catch (err) {
+        this.addLog(`${cmd} (${err.message})`, false);
+      }
+    },
+    async applySetpoint(index) {
+      const ch = this.channels[index];
+      const value = Number(ch.setpointValue);
+      this.setSetpointByMode(ch, ch.mode, value);
+
+      let cmd;
+      if (ch.mode === "CV") {
+        cmd = `SOUR${ch.id}:VOLT ${value}`;
+      } else if (ch.mode === "CC") {
+        cmd = `SOUR${ch.id}:CURR ${value}`;
+      } else if (ch.mode === "CP") {
+        cmd = `SOUR${ch.id}:POW ${value}`;
+      } else {
+        cmd = `SOUR${ch.id}:RES ${value}`;
+      }
+
+      try {
+        await this.sendScpi(cmd);
+        this.addLog(cmd, true);
+      } catch (err) {
+        this.addLog(`${cmd} (${err.message})`, false);
+      }
+    },
+    async applyUvCutoff(index) {
+      const ch = this.channels[index];
+      const value = ch.uvCutoffEnabled ? Number(ch.uvCutoffValue) : 999;
+      const cmd = `BATT${ch.id}:LVP ${value}`;
+
+      try {
+        await this.sendScpi(cmd);
+        this.addLog(cmd, true);
+      } catch (err) {
+        this.addLog(`${cmd} (${err.message})`, false);
+      }
+    },
+    async sendRawScpi() {
+      const cmd = this.rawScpi.trim();
+      if (!cmd) return;
+
+      try {
+        await this.sendScpi(cmd);
+        this.addLog(cmd, true);
+      } catch (err) {
+        this.addLog(`${cmd} (${err.message})`, false);
+      }
+      this.rawScpi = "";
+    },
   },
-}
-
-const chart1 = new Chart(ctx1, chartOptions1)
-const chart2 = new Chart(ctx2, chartOptions2)
-
-const fetchStatus = async (id) => {
-  try {
-    const response = await fetch( `/status?a=${id}`)
-    const a = await response.json()
-    document.querySelector(`#current-${id}`).innerHTML = a.current
-    document.querySelector(`#voltage-${id}`).innerHTML = a.voltage
-  } catch (e) {
-    elError.innerHTML += e + "\n"
-    console.error(e)
-  }
-}
-
-const currentCommandAsync = async (id) => {
-  try {
-    const value = document.getElementById(`data-command_current-${id}`).value
-    const response = await fetch( `/status?a=${id}&v=${value/1000}&p=command_current`, { method: "PATCH" })
-    if (!response.ok) throw await response.text()
-    const a = await response.text()
-    console.log(a)
-  } catch (e) {
-    elError.innerHTML += e + "\n"
-    console.error(e)
-  }
-}
-
-const toggleEnableAsync = async (id) => {
-  try {
-    const response = await fetch( `/status?a=${id}&v=toggle&p=enable`, { method: "PATCH" })
-    const a = await response.text()
-    console.log(a)
-  } catch (e) {
-    elError.innerHTML += e + "\n"
-    console.error(e)
-  }
-}
-
-window.onload = async e => {
-  console.log('loaded')
-  // setInterval(() => { fetchStatus(1); fetchStatus(2) }, 15000)
-  document.getElementById("toggle-1").addEventListener('click', e => toggleEnableAsync(1))
-  document.getElementById("toggle-2").addEventListener('click', e => toggleEnableAsync(2))
-  document.getElementById("command_current-1").addEventListener('click', e => currentCommandAsync(1))
-  document.getElementById("command_current-2").addEventListener('click', e => currentCommandAsync(2))
-}
-
-
-if (!!window.EventSource) {
-  const source = new EventSource('/events')
-
-  source.addEventListener('open', e => {
-    console.log("Events Connected")
-  }, false)
-
-  source.addEventListener('error', e => {
-    if (e.target.readyState != EventSource.OPEN) {
-      console.log("Events Disconnected")
-    }
-  }, false)
-
-  source.addEventListener('message', e => {
-    console.log("message", e.data)
-  }, false)
-
-  source.addEventListener('new-data', e => {
-    // console.log("new-data", e.data)
-    const obj = JSON.parse(e.data)
-
-    if (obj.address == 1) {
-      chart1.data.datasets[0].data.push({ x: (obj.ds) / 10, y: obj.voltage })
-      chart1.data.datasets[1].data.push({ x: (obj.ds) / 10, y: obj.current })
-      chart1.update()
-    } else if (obj.address == 2){
-      chart2.data.datasets[0].data.push({ x: (obj.ds) / 10, y: obj.voltage })
-      chart2.data.datasets[1].data.push({ x: (obj.ds) / 10, y: obj.current })
-      chart2.update()
-    }
-
-    document.querySelector(`#current-${obj.address}`).innerHTML = obj.current
-    document.querySelector(`#voltage-${obj.address}`).innerHTML = obj.voltage
-
-  }, false);
-}
+}).mount("#app");

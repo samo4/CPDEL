@@ -1,30 +1,152 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
   <head>
-    <title>DC load</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CPDEL Control</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" type="text/css" href="http://127.0.0.1:5500/data/style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   </head>
   <body>
-    <h2>DC load LittleFS</h2>
+    <div id="app" class="shell">
+      <header class="topbar" role="banner">
+        <div>
+          <h1>CPDEL</h1>
+          <p class="subtitle">DC Electronic Load Controller</p>
+        </div>
+        <p class="status-pill">Write-only SCPI control</p>
+      </header>
 
-    <div class="row">
-      <div class="column">
-        <p><span id="voltage-1"></span>V <span id="current-1"></span>A <button type="button" id="toggle-1">Toggle</button></p>
-        <p><input type="number" id="data-command_current-1" /> [mA] <button type="button" id="command_current-1">Set I</button></p>
-        <canvas id="chart-1"></canvas>
-      </div>
-      <div class="column">
-        <p><span id="voltage-2"></span>V <span id="current-2"></span>A <button type="button" id="toggle-2">Toggle</button></p>
-        <p><input type="number" id="data-command_current-2" /> [mA] <button type="button" id="command_current-2">Set I</button></p>
-        <canvas id="chart-2"></canvas>
-      </div>
+      <main class="layout" role="main">
+        <section aria-label="Channel overview" class="panel">
+          <h2>Channels</h2>
+          <div class="channel-grid">
+            <article
+              v-for="(ch, idx) in channels"
+              :key="ch.id"
+              class="channel-card"
+              :class="{ active: selectedChannel === idx }"
+              @click="selectedChannel = idx"
+              tabindex="0"
+              @keyup.enter="selectedChannel = idx"
+            >
+              <header class="channel-head">
+                <h3>CH {{ ch.id }}</h3>
+                <span class="mode-badge" :class="'mode-' + ch.mode.toLowerCase()">{{ ch.mode }}</span>
+              </header>
+
+              <dl class="metrics">
+                <div>
+                  <dt>Voltage</dt>
+                  <dd>{{ Number(ch.measuredVoltage).toFixed(2) }} V</dd>
+                </div>
+                <div>
+                  <dt>Current</dt>
+                  <dd>{{ Number(ch.measuredCurrent).toFixed(3) }} A</dd>
+                </div>
+                <div>
+                  <dt>Power</dt>
+                  <dd>{{ Number(ch.measuredPower).toFixed(2) }} W</dd>
+                </div>
+                <div>
+                  <dt>Setpoint</dt>
+                  <dd>{{ setpointLabel(ch) }}</dd>
+                </div>
+              </dl>
+
+              <p class="output-state">
+                Load state:
+                <strong :class="ch.outputEnabled ? 'state-on' : 'state-off'"> {{ ch.outputEnabled ? 'ON' : 'OFF' }} </strong>
+              </p>
+
+              <button
+                type="button"
+                class="btn"
+                :class="ch.outputEnabled ? 'btn-danger' : 'btn-success'"
+                @click.stop="toggleOutput(idx)"
+              >
+                {{ ch.outputEnabled ? 'Turn Output OFF' : 'Turn Output ON' }}
+              </button>
+            </article>
+          </div>
+        </section>
+
+        <section aria-label="Selected channel control" class="panel controls">
+          <h2>Channel {{ activeChannel.id }} Controls</h2>
+
+          <form class="control-form" @submit.prevent>
+            <fieldset>
+              <legend>Control Mode</legend>
+              <label for="mode-select">Mode</label>
+              <select id="mode-select" v-model="activeChannel.mode" @change="applyMode(selectedChannel)">
+                <option value="CV">CV</option>
+                <option value="CC">CC</option>
+                <option value="CP">CP</option>
+                <option value="CR">CR</option>
+              </select>
+            </fieldset>
+
+            <fieldset>
+              <legend>Setpoint</legend>
+              <label for="setpoint-input">{{ setpointFieldLabel(activeChannel.mode) }}</label>
+              <div class="inline-input">
+                <input id="setpoint-input" type="number" step="0.001" v-model.number="activeChannel.setpointValue" />
+                <button type="button" class="btn" @click="applySetpoint(selectedChannel)">Apply</button>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>UV Cutoff</legend>
+              <label class="switch-row" for="uv-enabled">
+                <input
+                  id="uv-enabled"
+                  type="checkbox"
+                  v-model="activeChannel.uvCutoffEnabled"
+                  @change="applyUvCutoff(selectedChannel)"
+                />
+                Enable UV cutoff
+              </label>
+              <div class="inline-input">
+                <label for="uv-input" class="sr-only">UV cutoff voltage</label>
+                <input id="uv-input" type="number" step="0.01" min="0" max="30" v-model.number="activeChannel.uvCutoffValue" />
+                <button type="button" class="btn" @click="applyUvCutoff(selectedChannel)">Apply</button>
+              </div>
+            </fieldset>
+          </form>
+        </section>
+      </main>
+
+      <section class="panel" aria-label="Raw SCPI command">
+        <h2>Raw SCPI</h2>
+        <form class="raw-form" @submit.prevent="sendRawScpi">
+          <label for="raw-scpi">Command</label>
+          <div class="inline-input">
+            <input id="raw-scpi" v-model.trim="rawScpi" placeholder="Example: OUTP1:STAT ON" />
+            <button type="submit" class="btn">Send</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel logs" aria-label="Command log">
+        <h2>Command Log</h2>
+        <ul v-if="logs.length" class="log-list">
+          <li v-for="(entry, i) in logs" :key="i">
+            <time>{{ entry.time }}</time>
+            <span>{{ entry.cmd }}</span>
+            <strong :class="entry.ok ? 'ok' : 'err'">{{ entry.ok ? 'OK' : 'ERR' }}</strong>
+          </li>
+        </ul>
+        <p v-else class="muted">No commands sent yet.</p>
+      </section>
     </div>
 
-    <pre id="error"></pre>
-
-    <script src="http://127.0.0.1:5500/data/script.js"></script>
+    <script src="/script.js"></script>
   </body>
 </html>

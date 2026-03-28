@@ -16,6 +16,7 @@
 #include "dc_load_controller.h"
 #include "display.h"
 #include "rrd.h"
+#include "scpi_server.h"
 #include "touch.h"
 #include "web_server.h"
 #include "wireless_controller.h"
@@ -104,6 +105,7 @@ void app_main(void) {
     // run after all queues are initialized!
     ui_init();
     web_server_init();
+    scpi_server_start();
 
     xTaskCreate(lvgl_task, "LVGL", 4096, NULL, 5, NULL);
     xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);

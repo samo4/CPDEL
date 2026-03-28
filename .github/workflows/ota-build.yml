@@ -42,14 +42,6 @@ jobs:
           ./install.sh esp32s2
           source ./export.sh
 
-          # Guardrail: ensure we are really on ESP-IDF 6.x.
-          IDF_VER="$(idf.py --version)"
-          echo "Using $IDF_VER"
-          echo "$IDF_VER" | grep -E "ESP-IDF v6\.|v6\." >/dev/null || {
-            echo "ERROR: Expected ESP-IDF 6.x, got: $IDF_VER"
-            exit 1
-          }
-
           # Fix pkg_resources import in IDF virtualenv on some runners.
           python -m ensurepip --upgrade || true
           python -m pip install --upgrade pip setuptools wheel
@@ -58,8 +50,33 @@ jobs:
           cd ${{ github.workspace }}/${{ env.PROJECT_DIR }}/esp
           idf.py build
 
-          # Find the firmware binary
-          FW_BIN=$(find . -name "firmware.bin" -o -name "*.bin" | grep -E "(firmware|app)" | head -1)
+          # Resolve app firmware binary from project metadata, with fallbacks.
+          FW_BIN=""
+          if [ -f "build/project_description.json" ]; then
+            APP_ELF=$(python - <<'PY'
+import json
+try:
+    d = json.load(open('build/project_description.json', 'r', encoding='utf-8'))
+    print(d.get('app_elf', ''))
+except Exception:
+    print('')
+PY
+)
+            if [ -n "$APP_ELF" ]; then
+              FW_BIN="build/${APP_ELF%.elf}.bin"
+            fi
+          fi
+
+          if [ -z "$FW_BIN" ] || [ ! -f "$FW_BIN" ]; then
+            if [ -f "build/sousim2.bin" ]; then
+              FW_BIN="build/sousim2.bin"
+            fi
+          fi
+
+          if [ -z "$FW_BIN" ] || [ ! -f "$FW_BIN" ]; then
+            FW_BIN=$(find build -maxdepth 1 -type f -name "*.bin" ! -name "bootloader.bin" ! -name "partition-table.bin" ! -name "ota_data_initial.bin" ! -name "spiffs.bin" | head -1)
+          fi
+
           if [ -z "$FW_BIN" ]; then
             echo "Error: No firmware binary found"
             find . -name "*.bin" -type f

@@ -76,9 +76,19 @@ h3 {
   margin: 0;
   padding: 0.45rem 0.8rem;
   border-radius: 999px;
+  background: #e8ece7;
+  color: #47554f;
+  font-weight: 600;
+}
+
+.status-pill-ok {
   background: #e7f3ef;
   color: #174b40;
-  font-weight: 600;
+}
+
+.status-pill-warn {
+  background: #fff1df;
+  color: #7d4e14;
 }
 
 .layout {

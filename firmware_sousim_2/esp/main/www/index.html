@@ -21,7 +21,9 @@
           <h1>CPDEL</h1>
           <p class="subtitle">DC Electronic Load Controller</p>
         </div>
-        <p class="status-pill">Write-only SCPI control</p>
+        <p class="status-pill" :class="wsConnected ? 'status-pill-ok' : 'status-pill-warn'">
+          {{ wsConnected ? 'Live stream connected' : 'Live stream reconnecting...' }}
+        </p>
       </header>
 
       <main class="layout" role="main">

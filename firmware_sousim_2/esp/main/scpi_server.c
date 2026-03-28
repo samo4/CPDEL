@@ -175,7 +175,7 @@ static void scpi_server_task(void *arg) {
                 client->rx_len = 0;
                 memset(client->rx_buf, 0, sizeof(client->rx_buf));
 
-                xTaskCreate(scpi_client_task, "scpi_client", 2048, client, 5, NULL);
+                xTaskCreate(scpi_client_task, "scpi_client", 1536, client, 5, NULL);
             } else {
                 closesocket(client_sock);
             }
@@ -183,4 +183,4 @@ static void scpi_server_task(void *arg) {
     }
 }
 
-void scpi_server_start(void) { xTaskCreate(scpi_server_task, "scpi_server", 4096, NULL, 5, NULL); }
+void scpi_server_start(void) { xTaskCreate(scpi_server_task, "scpi_server", 3072, NULL, 5, NULL); }

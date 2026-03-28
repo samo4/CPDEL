@@ -107,6 +107,6 @@ void app_main(void) {
     web_server_init();
     scpi_server_start();
 
-    xTaskCreate(lvgl_task, "LVGL", 4096, NULL, 5, NULL);
-    xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);
+    xTaskCreate(lvgl_task, "LVGL", 3072, NULL, 5, NULL);
+    xTaskCreate(heartbeat_task, "Heartbeat", 1024, NULL, 2, NULL);
 }

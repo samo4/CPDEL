@@ -6,6 +6,9 @@ createApp({
       selectedChannel: 0,
       rawScpi: "",
       logs: [],
+      wsConnected: false,
+      ws: null,
+      wsRetryTimer: null,
       channels: [
         {
           id: 1,
@@ -49,6 +52,17 @@ createApp({
     this.channels.forEach((channel) => {
       channel.setpointValue = this.getSetpointByMode(channel, channel.mode);
     });
+    this.connectWebSocket();
+  },
+  beforeUnmount() {
+    if (this.wsRetryTimer) {
+      clearTimeout(this.wsRetryTimer);
+      this.wsRetryTimer = null;
+    }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
   },
   methods: {
     addLog(cmd, ok) {
@@ -57,6 +71,107 @@ createApp({
       this.logs.unshift({ time, cmd, ok });
       if (this.logs.length > 60) {
         this.logs.length = 60;
+      }
+    },
+    modeFromNumber(mode) {
+      if (mode === 0) return "CV";
+      if (mode === 1) return "CC";
+      if (mode === 2) return "CP";
+      if (mode === 3) return "CR";
+      return "CC";
+    },
+    setModeAndRefreshSetpoint(ch, modeName) {
+      ch.mode = modeName;
+      ch.setpointValue = this.getSetpointByMode(ch, ch.mode);
+    },
+    connectWebSocket() {
+      if (this.ws) {
+        this.ws.close();
+        this.ws = null;
+      }
+
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const wsUrl = `${protocol}://${window.location.host}/ws`;
+      const socket = new WebSocket(wsUrl);
+      this.ws = socket;
+
+      socket.onopen = () => {
+        this.wsConnected = true;
+      };
+
+      socket.onmessage = (event) => {
+        let payload;
+        try {
+          payload = JSON.parse(event.data);
+        } catch (err) {
+          return;
+        }
+        this.applyWsPayload(payload);
+      };
+
+      socket.onclose = () => {
+        this.wsConnected = false;
+        if (this.wsRetryTimer) clearTimeout(this.wsRetryTimer);
+        this.wsRetryTimer = setTimeout(() => this.connectWebSocket(), 1500);
+      };
+
+      socket.onerror = () => {
+        this.wsConnected = false;
+      };
+    },
+    applyWsPayload(payload) {
+      if (!payload || typeof payload.channel !== "number") return;
+      const ch = this.channels[payload.channel];
+      if (!ch) return;
+
+      if (payload.type === "measurement") {
+        if (typeof payload.voltage === "number") ch.measuredVoltage = payload.voltage;
+        if (typeof payload.current === "number") ch.measuredCurrent = payload.current;
+        if (typeof payload.power === "number") ch.measuredPower = payload.power;
+        if (typeof payload.outputEnabled === "number") ch.outputEnabled = payload.outputEnabled !== 0;
+        if (typeof payload.mode === "number") this.setModeAndRefreshSetpoint(ch, this.modeFromNumber(payload.mode));
+        return;
+      }
+
+      if (payload.type !== "state") return;
+
+      const value = Number(payload.value);
+      switch (payload.cmd) {
+        case "OUTPUT_STATE":
+          ch.outputEnabled = value !== 0;
+          break;
+        case "SET_MODE":
+          this.setModeAndRefreshSetpoint(ch, this.modeFromNumber(Math.round(value)));
+          break;
+        case "SET_VOLTAGE":
+          ch.cvSetpoint = value;
+          if (ch.mode === "CV") ch.setpointValue = value;
+          break;
+        case "SET_CURRENT":
+          ch.ccSetpoint = value;
+          if (ch.mode === "CC") ch.setpointValue = value;
+          break;
+        case "SET_POWER":
+          ch.cpSetpoint = value;
+          if (ch.mode === "CP") ch.setpointValue = value;
+          break;
+        case "SET_RESISTANCE":
+          ch.crSetpoint = value;
+          if (ch.mode === "CR") ch.setpointValue = value;
+          break;
+        case "SET_LOW_VOLTAGE_PROTECTION":
+          ch.uvCutoffEnabled = value > 0 && value < 998;
+          if (ch.uvCutoffEnabled) ch.uvCutoffValue = value;
+          break;
+        case "MEAS_VOLT":
+          ch.measuredVoltage = value;
+          break;
+        case "MEAS_CURR":
+          ch.measuredCurrent = value;
+          ch.measuredPower = ch.measuredVoltage * ch.measuredCurrent;
+          break;
+        default:
+          break;
       }
     },
     async sendScpi(cmd) {

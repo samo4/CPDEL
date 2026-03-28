@@ -1,0 +1,102 @@
+name: Build and Deploy OTA Firmware
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  PROJECT_DIR: firmware_sousim_2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Setup ESP-IDF
+        uses: esp-rs/esp-idf-action@v1
+        with:
+          esp-idf-version: v4.3.3
+          targets: esp32s2
+
+      - name: Build firmware
+        run: |
+          cd ${{ env.PROJECT_DIR }}/esp
+          idf.py build
+          echo "BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          echo "FIRMWARE_SHA256=$(sha256sum build/esp32s2/esp-idf/build/firmware.bin | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "REPO_OWNER=$(echo ${{ github.repository }} | cut -d'/' -f1)" >> $GITHUB_ENV
+          echo "REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)" >> $GITHUB_ENV
+
+      - name: Create OTA artifacts
+        run: |
+          VERSION="${{ github.ref_name }}"
+          ARTIFACT_DIR="${{ env.PROJECT_DIR }}/ota-artifacts/${VERSION}"
+          mkdir -p "${ARTIFACT_DIR}"
+
+          # Copy firmware
+          cp ${{ env.PROJECT_DIR }}/esp/build/esp32s2/esp-idf/build/firmware.bin "${ARTIFACT_DIR}/"
+
+          # Get firmware size
+          FIRMWARE_SIZE=$(stat -c%s "${{ env.PROJECT_DIR }}/esp/build/esp32s2/esp-idf/build/firmware.bin")
+
+          # Generate manifest.json
+          cat > "${ARTIFACT_DIR}/manifest.json" <<EOF
+          {
+            "version": "${VERSION}",
+            "timestamp": "${{ env.BUILD_TIMESTAMP }}",
+            "firmware": {
+              "filename": "firmware.bin",
+              "sha256": "${{ env.FIRMWARE_SHA256 }}",
+              "size": ${FIRMWARE_SIZE},
+              "buildNumber": ${{ github.run_number }}
+            },
+            "device": {
+              "modelName": "Universal DC Load Simulator",
+              "minFirmwareVersion": "1.0.0",
+              "interface": "HTTP/WebSocket"
+            }
+          }
+          EOF
+
+          # Generate update-info.json (compact format for device)
+          cat > "${ARTIFACT_DIR}/update-info.json" <<EOF
+          {
+            "latestVersion": "${VERSION}",
+            "url": "https://github.com/${{ github.repository }}/releases/download/${VERSION}/firmware.bin",
+            "checksum": "${{ env.FIRMWARE_SHA256 }}",
+            "timestamp": "${{ env.BUILD_TIMESTAMP }}"
+          }
+          EOF
+
+          # Create release notes from git tag message
+          git tag -l "${{ github.ref_name }}" --format='%(contents)' > "${ARTIFACT_DIR}/RELEASE_NOTES.txt" || echo "Release ${{ github.ref_name }}" > "${ARTIFACT_DIR}/RELEASE_NOTES.txt"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ env.PROJECT_DIR }}/ota-artifacts/${{ github.ref_name }}/firmware.bin
+            ${{ env.PROJECT_DIR }}/ota-artifacts/${{ github.ref_name }}/manifest.json
+            ${{ env.PROJECT_DIR }}/ota-artifacts/${{ github.ref_name }}/update-info.json
+          body_path: ${{ env.PROJECT_DIR }}/ota-artifacts/${{ github.ref_name }}/RELEASE_NOTES.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post-deploy status
+        if: success()
+        run: |
+          echo "✅ OTA build and deploy successful!"
+          echo "📦 Version: ${{ github.ref_name }}"
+          echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          echo "📝 Firmware SHA256: ${{ env.FIRMWARE_SHA256 }}"

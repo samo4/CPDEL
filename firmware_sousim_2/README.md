@@ -1,13 +1,13 @@
 # Sousim 2-CH DC Load aka CPDEL
 
-This a firmeware for the control part of a 2-channel DC electronic load, built from cheap chinese DC load modbus modules. CPDAL stands for "Completely Pointless DC Electronic Load".
+This a firmeware for the control part of a 2-channel DC electronic load, built from [cheap chinese DC load modbus modules](SOUSIM.md). CPDAL stands for "Completely Pointless DC Electronic Load". The project is pushing what can be [squeezed](MEMORY.md) into an ESP32-S2.
 
 ## TODO
 
 - [x] wireless edit ssid and password (store in nvme)
 - [x] connect to modbus
 - [x] rethink queues
-- [ ] rrdtool-like graph
+- [ ] rrdtool-like graph [where do we put it?](MEMORY.md)
 - [x] OTA
 
 ## Development

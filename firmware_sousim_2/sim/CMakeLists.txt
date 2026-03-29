@@ -67,6 +67,7 @@ add_executable(lvgl_mockup
     ../src/ui/ui_main.c
     ../src/ui/ui_numpad.c
     ../src/ui/ui_keyboard.c
+    ../src/ui/ui_modal.c
     ../src/ui/ui_ota.c
     ../src/ui/ui_settings.c
     ../src/ui/ui_wireless.c

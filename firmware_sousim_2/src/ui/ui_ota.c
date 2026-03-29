@@ -9,15 +9,16 @@
 
 static void ui_event_ota_update_github_pages(lv_event_t *e) {
     (void)e;
-    ESP_LOGW("UI", "ui_event_ota_update_github_pages");
-    if (ota_start_github_pages()) {
-        ui_show_status_panel("Updating firmware...\nDo not power off.\nAfter a few minutes the device will reboot. You "
-                             "must then verify the functionaly and if everything is correct, return to this menu to "
-                             "confirm the validity of the update. Only then will the update be permanent.",
-                             false);
-    } else {
-        ESP_LOGW("UI", "OTA already in progress");
+    if (ota_is_in_progress()) {
+        ESP_LOGW("OTA", "OTA already in progress, ignoring request");
+        return;
     }
+    ui_open_modal("Updating firmware...\nDo not power off.\nAfter a few minutes the device will reboot. You "
+                  "must then verify the functionaly and if everything is correct, return to this menu to "
+                  "confirm the validity of the update. Only then will the update be permanent.",
+                  false, ui_OtaScreen);
+    UI_LOG("OTA", "Starting OTA from GitHub Pages...");
+    // ota_go();
 }
 #endif
 

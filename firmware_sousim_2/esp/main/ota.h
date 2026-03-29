@@ -2,4 +2,5 @@
 
 #include <stdbool.h>
 
-bool ota_start_github_pages(void);
+bool ota_go(void);
+bool ota_is_in_progress(void);

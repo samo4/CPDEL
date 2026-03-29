@@ -19,7 +19,7 @@ static void ota_task(void *arg) {
 
     ESP_LOGW(TAG, "Starting OTA from %s", OTA_GH_PAGES_BIN_URL);
 
-    vTaskDelay(pdMS_TO_TICKS(500)); // wait a bit for the status panel to show up
+    vTaskDelay(pdMS_TO_TICKS(200)); // let LVGL flush the status panel to display
 
     ESP_LOGW(TAG, "Preparing for OTA: stopping non-essential services");
     app_prepare_for_ota();
@@ -34,8 +34,6 @@ static void ota_task(void *arg) {
     };
     esp_https_ota_config_t ota_cfg = {
         .http_config = &http_cfg,
-        /* Fetch in small independent Range requests so a CDN connection-close
-           between chunks never aborts the whole download. */
         .partial_http_download = true,
         .max_http_request_size = 16384,
     };
@@ -72,10 +70,12 @@ static void ota_task(void *arg) {
     esp_restart();
 }
 
-bool ota_start_github_pages(void) {
+bool ota_is_in_progress(void) { return s_in_progress; }
+
+bool ota_go(void) {
     if (s_in_progress) return false;
     s_in_progress = true;
-    if (xTaskCreate(ota_task, "ota", 6144, NULL, 6, NULL) != pdPASS) {
+    if (xTaskCreate(ota_task, "ota", 6144, NULL, 4, NULL) != pdPASS) {
         ESP_LOGE(TAG, "Failed to create OTA task");
         s_in_progress = false;
         return false;

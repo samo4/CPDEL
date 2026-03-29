@@ -7,6 +7,37 @@
 #include "freertos/FreeRTOS.h"
 #include "ota.h"
 
+static lv_obj_t *s_ver_label;
+static lv_obj_t *s_status_label;
+static lv_obj_t *s_confirm_section;
+static lv_obj_t *s_update_section;
+static char s_ver_buf[128];
+
+static void ota_screen_refresh(void) {
+    ota_image_info_t info;
+    ota_get_image_info(&info);
+
+    snprintf(s_ver_buf, sizeof(s_ver_buf), "Version: %s\nSlot: %s  Addr: 0x%06" PRIx32 "\nState: %s", info.version,
+             info.slot, info.address, info.state);
+    lv_label_set_text(s_ver_label, s_ver_buf);
+
+    if (info.confirmed) {
+        lv_label_set_text(s_status_label, "Ready to update from the cloud.");
+        lv_obj_add_flag(s_confirm_section, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(s_update_section, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
+                                          "Please verify everything works correctly, then press Confirm.");
+        lv_obj_clear_flag(s_confirm_section, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(s_update_section, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void ota_screen_loaded_cb(lv_event_t *e) {
+    (void)e;
+    ota_screen_refresh();
+}
+
 static void ui_event_ota_update_github_pages(lv_event_t *e) {
     (void)e;
     if (ota_is_in_progress()) return;
@@ -53,12 +84,8 @@ void ui_create_ota_screen(void) {
     lv_label_set_long_mode(ver_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(ver_label, LV_PCT(100));
 #ifdef ESP_PLATFORM
-    ota_image_info_t info;
-    ota_get_image_info(&info);
-    static char ver_buf[128];
-    snprintf(ver_buf, sizeof(ver_buf), "Version: %s\nSlot: %s  Addr: 0x%06" PRIx32 "\nState: %s", info.version,
-             info.slot, info.address, info.state);
-    lv_label_set_text(ver_label, ver_buf);
+    s_ver_label = ver_label;
+    lv_label_set_text(ver_label, ""); // populated on SCREEN_LOADED
 #else
     lv_label_set_text(ver_label, "Version: (simulator)");
 #endif
@@ -67,31 +94,28 @@ void ui_create_ota_screen(void) {
     lv_obj_t *status_label = lv_label_create(cont);
     lv_label_set_long_mode(status_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(status_label, LV_PCT(100));
-
 #ifdef ESP_PLATFORM
-    if (!info.confirmed) {
-        /* Running image is pending validation — prompt the user to confirm before
-           allowing another update, to avoid bricking via unverified firmware. */
-        lv_label_set_text(status_label, "This firmware has not been confirmed yet.\n"
-                                        "Please verify everything works correctly, then press Confirm.");
+    s_status_label = status_label;
+    lv_label_set_text(status_label, ""); // populated on SCREEN_LOADED
 
-        lv_obj_t *confirm_btn = lv_btn_create(cont);
-        lv_obj_set_width(confirm_btn, LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(confirm_btn, lv_palette_main(LV_PALETTE_GREEN), 0);
-        lv_obj_add_event_cb(confirm_btn, ui_event_ota_confirm, LV_EVENT_CLICKED, NULL);
-        lv_obj_t *confirm_lbl = lv_label_create(confirm_btn);
-        lv_label_set_text(confirm_lbl, LV_SYMBOL_OK " Confirm Update");
-        lv_obj_center(confirm_lbl);
-    } else {
-        lv_label_set_text(status_label, "Ready to update from the cloud.");
+    // Confirm section (shown when image is unconfirmed)
+    s_confirm_section = lv_btn_create(cont);
+    lv_obj_set_width(s_confirm_section, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(s_confirm_section, lv_palette_main(LV_PALETTE_GREEN), 0);
+    lv_obj_add_event_cb(s_confirm_section, ui_event_ota_confirm, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *confirm_lbl = lv_label_create(s_confirm_section);
+    lv_label_set_text(confirm_lbl, LV_SYMBOL_OK " Confirm Update");
+    lv_obj_center(confirm_lbl);
 
-        lv_obj_t *update_btn = lv_btn_create(cont);
-        lv_obj_set_width(update_btn, LV_SIZE_CONTENT);
-        lv_obj_add_event_cb(update_btn, ui_event_ota_update_github_pages, LV_EVENT_CLICKED, NULL);
-        lv_obj_t *update_lbl = lv_label_create(update_btn);
-        lv_label_set_text(update_lbl, LV_SYMBOL_DOWNLOAD " Update from the cloud");
-        lv_obj_center(update_lbl);
-    }
+    // Update section (shown when image is confirmed)
+    s_update_section = lv_btn_create(cont);
+    lv_obj_set_width(s_update_section, LV_SIZE_CONTENT);
+    lv_obj_add_event_cb(s_update_section, ui_event_ota_update_github_pages, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *update_lbl = lv_label_create(s_update_section);
+    lv_label_set_text(update_lbl, LV_SYMBOL_DOWNLOAD " Update from the cloud");
+    lv_obj_center(update_lbl);
+
+    lv_obj_add_event_cb(ui_OtaScreen, ota_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
 #else
     lv_label_set_text(status_label, "OTA is only available on ESP target.");
 

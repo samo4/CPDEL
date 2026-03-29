@@ -1,4 +1,6 @@
-# Sousim 2-CH DC Load
+# Sousim 2-CH DC Load aka CPDEL
+
+This a firmeware for the control part of a 2-channel DC electronic load, built from cheap chinese DC load modbus modules. CPDAL stands for "Completely Pointless DC Electronic Load".
 
 ## TODO
 
@@ -6,13 +8,13 @@
 - [x] connect to modbus
 - [x] rethink queues
 - [ ] rrdtool-like graph
-- [ ] OTA
+- [x] OTA
 
-## vscode
+## Development
 
-## PC Simulator
+### How to start development
 
-### Prerequisites (Windows)
+#### Simulator
 
 - vcpkg
 - Visual Studio with C++ workload
@@ -23,18 +25,39 @@
 ./sim.sh --clean   # clean build
 ```
 
-## ESP32-S2
-
-### Prerequisites
+#### Actual ESP32-S2 hardware
 
 - ESP-IDF
   - `winget install Espressif.EIM-CLI`
   - `eim install` (in elevated cmd.exe, not bash)
 - `+` on terminal to add ESP-IDF PowerShell terminal
+  - `./esp.ps1 flash-monitor`
+
+#### Development notes
+
+To make sure `sdkconfig.default` is really used:
+
+```bash
+idf.py fullclean
+idf.py reconfigure
+./esp.ps1 flash-monitor
+```
+
+### How to update firmware
+
+Other than `./esp.ps1 flash-monitor`, you can also update the firmware OTA via the UI (Settings -> Firmware Update). Currently, this is using [Surge](https://surge.sh/) to host the firmware binary on http (https is hard). The process is:
+
+- you build the image locally with `./esp.ps1 build`
+- you upload with `./esp.ps1 ota` (make sure the printed URL is the same as hardcoded in `ota.c`)
+- on device: Settings -> Firmware Update
+- note the slot and other details
+- update
+- check if everything is working (especially if you don't have console access)
+- confirm the update in Settings -> Firmware Update
+
+There's also the build task with github actions, which builds if you tag the commit `v*`. But github pages are only for public repos.
 
 ```
-./esp.sh COMx      # build, flash, monitor (default port: COM3)
+git tag v0.0.x
+git push --tags
 ```
-
-**Before first flash:** implement the display flush callback and touch input driver
-in [src/main_esp.c](src/main_esp.c) (marked with `TODO`).

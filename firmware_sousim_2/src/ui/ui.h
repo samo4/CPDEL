@@ -7,6 +7,14 @@ extern "C" {
 
 #include "lvgl.h"
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+#define UI_LOG(tag, fmt, ...) ESP_LOGW(tag, fmt, ##__VA_ARGS__)
+#else
+#include <stdio.h>
+#define UI_LOG(tag, fmt, ...) printf("[%s] " fmt "\n", tag, ##__VA_ARGS__)
+#endif
+
 #define UI_CHANNEL_COUNT 2
 
 extern lv_obj_t *ui_MainScreen;
@@ -17,6 +25,7 @@ extern lv_obj_t *ui_NumpadScreen;
 extern lv_obj_t *ui_KeyboardScreen;
 extern lv_obj_t *ui_WirelessScreen;
 extern lv_obj_t *ui_OtaScreen;
+extern lv_obj_t *ui_ModalScreen;
 
 typedef struct {
     double voltage_setpoint;
@@ -45,13 +54,15 @@ void ui_create_numpad_screen(void);
 void ui_create_keyboard_screen(void);
 void ui_create_wireless_screen(void);
 void ui_create_ota_screen(void);
+void ui_create_modal_screen(void);
 
 void ui_main_update_channel(int channel);
 void ui_main_update_wifi(int rssi_dbm, const char *ip_str);
 void ui_detail_update_channel(int channel);
 void ui_graph_update_channel(int channel, uint32_t sample_ts_ms);
-void ui_show_status_panel(const char *text, bool dismissable);
 void ui_set_output_local_with_inhibit(int channel, bool enabled, uint32_t inhibit_ms);
+
+void ui_open_modal(const char *text, bool dismissable, lv_obj_t *return_screen);
 
 void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),
                     lv_obj_t *return_screen);

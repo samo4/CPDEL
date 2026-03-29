@@ -42,7 +42,8 @@ static void lvgl_task(void *param) {
         uint32_t now = xTaskGetTickCount();
         if (now - hwm_tick >= pdMS_TO_TICKS(10000)) {
             hwm_tick = now;
-            ESP_LOGW("LVGL", "stack hwm: %u bytes", (unsigned)uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+            ESP_LOGW("LVGL", "free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+                     (unsigned)uxTaskGetStackHighWaterMark(NULL));
         }
     }
 }
@@ -55,7 +56,7 @@ static void heartbeat_task(void *param) {
         ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, level));
         ESP_LOGW(TAG, "[heartbeat] free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
                  (unsigned)uxTaskGetStackHighWaterMark(NULL));
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
 
@@ -80,7 +81,6 @@ void app_main(void) {
         // you can test this e.g. by requesting impossible SPI clock in display:
         // #define DISP_SPI_CLK_HZ (100 * 1000 * 1000)
         ESP_LOGW("SYSTEM", "Detected crash loop! Will just delay a bit.");
-        // ultimately we went to enable minimum system that is able to do OTA
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 
@@ -103,7 +103,6 @@ void app_main(void) {
     touch_init();
     wireless_init();
     dc_load_controller_init();
-
     // rrd_init();
 
     // run after all queues are initialized!
@@ -112,7 +111,8 @@ void app_main(void) {
     scpi_server_start();
 
     xTaskCreate(lvgl_task, "LVGL", 8192, NULL, 5, &s_lvgl_task_handle);
-    xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);
+    // heartbeat_task will die if the system is starved of memory or time:
+    xTaskCreate(heartbeat_task, "Heartbeat", 1536, NULL, 2, NULL);
 }
 
 void app_prepare_for_ota(void) {
@@ -127,11 +127,8 @@ void app_prepare_for_ota(void) {
         vTaskDelete(s_lvgl_task_handle);
         s_lvgl_task_handle = NULL;
     }
-
-    /* Release the entire LVGL heap pool back to the system. */
     lv_deinit();
 
     vTaskDelay(pdMS_TO_TICKS(150));
-
-    ESP_LOGW(TAG, "Post-prep free heap: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    ESP_LOGW(TAG, "Post-app_prepare_for_ota free heap: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
 }

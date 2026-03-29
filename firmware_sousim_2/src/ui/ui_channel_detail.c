@@ -71,13 +71,7 @@ static void event_mode_change(lv_event_t *e) {
 static void event_cutoff_toggle(lv_event_t *e) {
     bool en = lv_obj_has_state(cutoff_sw, LV_STATE_CHECKED);
     channels[_ch].lv_cutoff_enabled = en;
-
-    /* Controller treats <=0 or >998 as disabled. Use 999V as explicit OFF sentinel. */
-    if (en) {
-        publish_low_voltage_cutoff((float)channels[_ch].lv_cutoff_threshold);
-    } else {
-        publish_low_voltage_cutoff(999.0f);
-    }
+    publish_low_voltage_cutoff(en ? (float)channels[_ch].lv_cutoff_threshold : 1000.0f);
 }
 
 static void on_setpoint_confirmed(double value) {
@@ -111,9 +105,7 @@ static void on_setpoint_confirmed(double value) {
         .source = SRC_GUI,
     };
     msg.payload.scalar.value = (float)value;
-#ifdef ESP_PLATFORM
-    ESP_LOGI(TAG, "Sending CH%u %s set to %.3f", _ch + 1, MODE_NAMES[mode], value);
-#endif
+    UI_LOG("CHANNEL_DETAIL", "Sending CH%u %s set to %.3f", _ch + 1, MODE_NAMES[mode], value);
     app_bus_publish(&msg);
 }
 
@@ -156,7 +148,6 @@ static void event_open_cutoff_numpad(lv_event_t *e) {
                    ui_ChannelDetailScreen);
 }
 
-// Refresh whole screen data when entering (call this from event)
 static void refresh_detail_screen(lv_event_t *e) {
     (void)e;
     lv_label_set_text_fmt(title_label, "CH%d  %.2fV  %.3fA", _ch + 1, channels[_ch].measured_voltage,

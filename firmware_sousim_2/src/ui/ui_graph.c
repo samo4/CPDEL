@@ -14,8 +14,8 @@ static const char *TAG = "UI_GRAPH";
 typedef struct {
     lv_coord_t volt[GRAPH_BUF_SIZE];
     lv_coord_t curr[GRAPH_BUF_SIZE];
-    int head;  /* next write index */
-    int count; /* valid samples stored, ≤ GRAPH_BUF_SIZE */
+    int head;
+    int count; /* ≤ GRAPH_BUF_SIZE */
     uint32_t last_ts_ms;
 } ch_buf_t;
 

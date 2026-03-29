@@ -8,6 +8,7 @@ idf_component_register(
         "../../src/ui/ui_keyboard.c"
         "../../src/ui/ui_settings.c"
         "../../src/ui/ui_wireless.c"
+        "../../src/ui/ui_modal.c"
         "../../src/ui/ui_ota.c"
         "display.c"
         "touch.c"

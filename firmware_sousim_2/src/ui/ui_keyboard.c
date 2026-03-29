@@ -100,10 +100,6 @@ void ui_open_keyboard(const char *title, const char *current_value, bool passwor
                       void (*confirm_cb)(const char *text), lv_obj_t *return_screen) {
     static char text_buf[UI_KEYBOARD_BUF_SIZE];
 
-    if (!lv_obj_is_valid(ui_KeyboardScreen)) {
-        ui_create_keyboard_screen();
-    }
-
     keyboard_confirm_cb = confirm_cb;
     keyboard_return_screen = return_screen;
 

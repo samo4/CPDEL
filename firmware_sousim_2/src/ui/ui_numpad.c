@@ -202,7 +202,7 @@ void ui_create_numpad_screen(void) {
 void ui_open_numpad(const char *title, double current_value, double min, double max, void (*confirm_cb)(double),
                     lv_obj_t *return_screen) {
     if (!lv_obj_is_valid(return_screen)) {
-        printf("Error: invalid return screen passed to ui_open_numpad\n");
+        UI_LOG("UI_NUMPAD", "Invalid return screen passed to ui_open_numpad");
         return;
     }
     numpad_min = min;

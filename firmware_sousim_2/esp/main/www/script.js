@@ -9,6 +9,9 @@ createApp({
       wsConnected: false,
       ws: null,
       wsRetryTimer: null,
+      editingSetpoint: false,
+      graphHistory: [[], []], // ring buffer per channel: [{curr, volt}, ...], max 120 samples
+      GRAPH_MAX: 120,
       channels: [
         {
           id: 1,
@@ -64,6 +67,11 @@ createApp({
       this.ws = null;
     }
   },
+  watch: {
+    selectedChannel() {
+      this.$nextTick(() => this.drawGraph());
+    },
+  },
   methods: {
     addLog(cmd, ok) {
       const now = new Date();
@@ -82,7 +90,9 @@ createApp({
     },
     setModeAndRefreshSetpoint(ch, modeName) {
       ch.mode = modeName;
-      ch.setpointValue = this.getSetpointByMode(ch, ch.mode);
+      if (!this.editingSetpoint) {
+        ch.setpointValue = this.getSetpointByMode(ch, ch.mode);
+      }
     },
     connectWebSocket() {
       if (this.ws) {
@@ -126,7 +136,10 @@ createApp({
 
       if (payload.type === "measurement") {
         if (typeof payload.voltage === "number") ch.measuredVoltage = payload.voltage;
-        if (typeof payload.current === "number") ch.measuredCurrent = payload.current;
+        if (typeof payload.current === "number") {
+          ch.measuredCurrent = payload.current;
+          this.pushGraph(payload.channel, ch.measuredVoltage, payload.current);
+        }
         if (typeof payload.power === "number") ch.measuredPower = payload.power;
         if (typeof payload.outputEnabled === "number") ch.outputEnabled = payload.outputEnabled !== 0;
         if (typeof payload.mode === "number") this.setModeAndRefreshSetpoint(ch, this.modeFromNumber(payload.mode));
@@ -145,19 +158,19 @@ createApp({
           break;
         case "SET_VOLTAGE":
           ch.cvSetpoint = value;
-          if (ch.mode === "CV") ch.setpointValue = value;
+          if (ch.mode === "CV" && !this.editingSetpoint) ch.setpointValue = value;
           break;
         case "SET_CURRENT":
           ch.ccSetpoint = value;
-          if (ch.mode === "CC") ch.setpointValue = value;
+          if (ch.mode === "CC" && !this.editingSetpoint) ch.setpointValue = value;
           break;
         case "SET_POWER":
           ch.cpSetpoint = value;
-          if (ch.mode === "CP") ch.setpointValue = value;
+          if (ch.mode === "CP" && !this.editingSetpoint) ch.setpointValue = value;
           break;
         case "SET_RESISTANCE":
           ch.crSetpoint = value;
-          if (ch.mode === "CR") ch.setpointValue = value;
+          if (ch.mode === "CR" && !this.editingSetpoint) ch.setpointValue = value;
           break;
         case "SET_LOW_VOLTAGE_PROTECTION":
           ch.uvCutoffEnabled = value > 0 && value < 998;
@@ -169,6 +182,7 @@ createApp({
         case "MEAS_CURR":
           ch.measuredCurrent = value;
           ch.measuredPower = ch.measuredVoltage * ch.measuredCurrent;
+          this.pushGraph(payload.channel, ch.measuredVoltage, value);
           break;
         default:
           break;
@@ -192,6 +206,86 @@ createApp({
         }
         throw new Error(reason || "request failed");
       }
+    },
+    pushGraph(chIdx, volt, curr) {
+      const buf = this.graphHistory[chIdx];
+      buf.push({ volt, curr });
+      if (buf.length > this.GRAPH_MAX) buf.shift();
+      if (chIdx === this.selectedChannel) this.drawGraph();
+    },
+    drawGraph() {
+      const canvas = this.$refs.graphCanvas;
+      if (!canvas) return;
+      const buf = this.graphHistory[this.selectedChannel];
+      const W = (canvas.width = canvas.offsetWidth);
+      const H = (canvas.height = canvas.offsetHeight);
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, W, H);
+      if (buf.length < 2) return;
+
+      const maxCurr = Math.max(...buf.map((p) => p.curr), 0.001);
+      const maxVolt = Math.max(...buf.map((p) => p.volt), 0.001);
+      const pad = { t: 8, r: 52, b: 20, l: 52 };
+      const gW = W - pad.l - pad.r;
+      const gH = H - pad.t - pad.b;
+      const ticks = 4;
+
+      // grid lines
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#d6ddd7";
+      for (let i = 0; i <= ticks; i++) {
+        const y = pad.t + gH * (1 - i / ticks);
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(pad.l + gW, y);
+        ctx.stroke();
+      }
+
+      // left axis — current (green)
+      ctx.fillStyle = "#1f6f5f";
+      ctx.font = "11px 'IBM Plex Mono', monospace";
+      ctx.textAlign = "right";
+      for (let i = 0; i <= ticks; i++) {
+        const y = pad.t + gH * (1 - i / ticks);
+        ctx.fillText(((maxCurr * i) / ticks).toFixed(3) + "A", pad.l - 4, y + 4);
+      }
+
+      // right axis — voltage (orange)
+      ctx.fillStyle = "#ef8a17";
+      ctx.textAlign = "left";
+      for (let i = 0; i <= ticks; i++) {
+        const y = pad.t + gH * (1 - i / ticks);
+        ctx.fillText(((maxVolt * i) / ticks).toFixed(2) + "V", pad.l + gW + 4, y + 4);
+      }
+
+      // sample count
+      ctx.fillStyle = "#5d6a64";
+      ctx.textAlign = "center";
+      ctx.fillText(buf.length + " samples", pad.l + gW / 2, H - 4);
+
+      const drawLine = (color, fillColor, getValue, maxVal) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        buf.forEach((p, i) => {
+          const x = pad.l + (i / (buf.length - 1)) * gW;
+          const y = pad.t + gH * (1 - getValue(p) / maxVal);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        const last = buf[buf.length - 1];
+        const lx = pad.l + gW;
+        const ly = pad.t + gH * (1 - getValue(last) / maxVal);
+        ctx.lineTo(lx, pad.t + gH);
+        ctx.lineTo(pad.l, pad.t + gH);
+        ctx.closePath();
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+      };
+
+      drawLine("#1f6f5f", "rgba(31,111,95,0.10)", (p) => p.curr, maxCurr);
+      drawLine("#ef8a17", "rgba(239,138,23,0.08)", (p) => p.volt, maxVolt);
     },
     setpointFieldLabel(mode) {
       if (mode === "CV") return "Set Voltage (V)";

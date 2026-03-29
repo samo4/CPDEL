@@ -19,7 +19,7 @@
       <header class="topbar" role="banner">
         <div>
           <h1>CPDEL</h1>
-          <p class="subtitle">DC Electronic Load Controller</p>
+          <p class="subtitle">Completely pointless DC Electronic Load Controller</p>
         </div>
         <p class="status-pill" :class="wsConnected ? 'status-pill-ok' : 'status-pill-warn'">
           {{ wsConnected ? 'Live stream connected' : 'Live stream reconnecting...' }}
@@ -99,7 +99,14 @@
               <legend>Setpoint</legend>
               <label for="setpoint-input">{{ setpointFieldLabel(activeChannel.mode) }}</label>
               <div class="inline-input">
-                <input id="setpoint-input" type="number" step="0.001" v-model.number="activeChannel.setpointValue" />
+                <input
+                  id="setpoint-input"
+                  type="number"
+                  step="0.001"
+                  v-model.number="activeChannel.setpointValue"
+                  @focus="editingSetpoint = true"
+                  @blur="editingSetpoint = false"
+                />
                 <button type="button" class="btn" @click="applySetpoint(selectedChannel)">Apply</button>
               </div>
             </fieldset>
@@ -124,6 +131,11 @@
           </form>
         </section>
       </main>
+
+      <section class="panel" aria-label="Current graph">
+        <h2>Current — CH{{ activeChannel.id }}</h2>
+        <canvas ref="graphCanvas" class="current-graph"></canvas>
+      </section>
 
       <section class="panel" aria-label="Raw SCPI command">
         <h2>Raw SCPI</h2>

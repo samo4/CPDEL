@@ -3,6 +3,7 @@ param([string]$action = "build", [string]$port = "COM14", [string]$baud = "92160
 switch ($action) {
     "build"           { idf.py build }
     "flash"           { idf.py -p $port -b $baud flash }
+    "flash-spiffs"    { $env:ESPPORT = $port; $env:ESPBAUD = $baud; idf.py spiffs-flash }
     "monitor"         { idf.py -p $port -b $baud monitor }
     "flash-monitor"   { idf.py -p $port -b $baud flash monitor }
     "menuconfig"      { idf.py menuconfig }

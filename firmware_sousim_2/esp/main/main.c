@@ -35,9 +35,15 @@ static TaskHandle_t s_lvgl_task_handle = NULL;
 
 static void lvgl_task(void *param) {
     (void)param;
+    uint32_t hwm_tick = 0;
     for (;;) {
         lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(5));
+        uint32_t now = xTaskGetTickCount();
+        if (now - hwm_tick >= pdMS_TO_TICKS(10000)) {
+            hwm_tick = now;
+            ESP_LOGW("LVGL", "stack hwm: %u bytes", (unsigned)uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+        }
     }
 }
 
@@ -47,13 +53,9 @@ static void heartbeat_task(void *param) {
     for (;;) {
         level = !level;
         ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, level));
-        ESP_LOGV(TAG, "[heartbeat] gpio=%d, free heap: %u bytes", level,
-                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
+        ESP_LOGW(TAG, "[heartbeat] free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+                 (unsigned)uxTaskGetStackHighWaterMark(NULL));
         vTaskDelay(pdMS_TO_TICKS(1000));
-
-        // lv_mem_monitor_t mon;
-        // lv_mem_monitor(&mon);
-        // ESP_LOGW(TAG, "Used: %zu bytes, Frag: %d%%", mon.total_size - mon.free_size, mon.frag_pct);
     }
 }
 
@@ -109,8 +111,8 @@ void app_main(void) {
     web_server_init();
     scpi_server_start();
 
-    xTaskCreate(lvgl_task, "LVGL", 3072, NULL, 5, &s_lvgl_task_handle);
-    // xTaskCreate(heartbeat_task, "Heartbeat", 768, NULL, 2, NULL);
+    xTaskCreate(lvgl_task, "LVGL", 8192, NULL, 5, &s_lvgl_task_handle);
+    xTaskCreate(heartbeat_task, "Heartbeat", 2048, NULL, 2, NULL);
 }
 
 void app_prepare_for_ota(void) {

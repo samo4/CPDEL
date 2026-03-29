@@ -116,15 +116,20 @@ void app_main(void) {
 void app_prepare_for_ota(void) {
     ESP_LOGI(TAG, "Preparing for OTA: stopping non-essential services");
 
+    dc_load_controller_stop();
     web_server_stop();
     scpi_server_stop();
     wireless_pause_background();
 
     if (s_lvgl_task_handle != NULL) {
-        vTaskSuspend(s_lvgl_task_handle);
+        vTaskDelete(s_lvgl_task_handle);
+        s_lvgl_task_handle = NULL;
     }
+
+    /* Release the entire LVGL heap pool back to the system. */
+    lv_deinit();
 
     vTaskDelay(pdMS_TO_TICKS(150));
 
-    ESP_LOGI(TAG, "Post-prep free heap: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    ESP_LOGW(TAG, "Post-prep free heap: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT));
 }

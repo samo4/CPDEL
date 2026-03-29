@@ -9,3 +9,4 @@
 #define DC_LOAD_DEVICE_COUNT 2
 
 void dc_load_controller_init(void);
+void dc_load_controller_stop(void);

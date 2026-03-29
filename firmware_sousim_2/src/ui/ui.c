@@ -221,7 +221,11 @@ void ui_show_status_panel(const char *text, bool dismissable) {
     }
 
     lv_label_set_text(ui_status_msg_label, (text != NULL && text[0] != '\0') ? text : "Working...");
-    lv_obj_clear_flag(ui_status_close_btn, dismissable ? LV_OBJ_FLAG_HIDDEN : LV_OBJ_FLAG_HIDDEN);
+    if (dismissable) {
+        lv_obj_clear_flag(ui_status_close_btn, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(ui_status_close_btn, LV_OBJ_FLAG_HIDDEN);
+    }
     lv_scr_load(ui_StatusScreen);
 }
 

@@ -11,6 +11,7 @@ idf_component_register(
         "../../src/ui/ui_ota.c"
         "display.c"
         "touch.c"
+        "ota.c"
         "wireless_controller.c"
         "dc_load_controller.c"
         "web_server.c"

@@ -13,6 +13,8 @@
 
 static const char *TAG = "DC_LOAD";
 
+static TaskHandle_t s_task_handle = NULL;
+
 static const uart_port_t MODBUS_UART_PORT = UART_NUM_1;
 static const int MODBUS_RX_PIN = 15;  // RO -> MCU RX
 static const int MODBUS_TX_PIN = 14;  // DI -> MCU TX
@@ -349,9 +351,22 @@ void dc_load_controller_init(void) {
     ESP_LOGI(TAG, "Modbus RTU master ready: UART%d RX=%d TX=%d DIR=%d", MODBUS_UART_PORT, MODBUS_RX_PIN, MODBUS_TX_PIN,
              MODBUS_DIR_PIN);
 
-    xTaskCreate(dc_load_controller_task, "dc_load_modbus", 4096, NULL, 5, NULL);
+    xTaskCreate(dc_load_controller_task, "dc_load_modbus", 4096, NULL, 5, &s_task_handle);
 
     // TODO?: push initial settings for all known devices (into queue_dc_load)
 
     ESP_LOGI(TAG, "DC load controller initialized");
+}
+
+void dc_load_controller_stop(void) {
+    if (s_task_handle != NULL) {
+        vTaskDelete(s_task_handle);
+        s_task_handle = NULL;
+    }
+    if (s_dc_load_state.mbm_handle != NULL) {
+        mbc_master_stop(s_dc_load_state.mbm_handle);
+        mbc_master_delete(s_dc_load_state.mbm_handle);
+        s_dc_load_state.mbm_handle = NULL;
+    }
+    ESP_LOGI(TAG, "DC load controller stopped");
 }

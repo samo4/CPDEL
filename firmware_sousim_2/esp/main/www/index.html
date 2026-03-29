@@ -139,6 +139,10 @@
 
       <section class="panel" aria-label="Raw SCPI command">
         <h2>Raw SCPI</h2>
+        <p class="muted" style="margin: 0 0 0.6rem">
+          You can also connect directly via TCP on port&nbsp;<code>5025</code> — e.g. <code>telnet &lt;device-ip&gt; 5025</code> —
+          and send raw SCPI commands line by line.
+        </p>
         <form class="raw-form" @submit.prevent="sendRawScpi">
           <label for="raw-scpi">Command</label>
           <div class="inline-input">

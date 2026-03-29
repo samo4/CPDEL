@@ -62,6 +62,9 @@ _deps/
 .DS_Store
 Thumbs.db
 
+# Secrets
+.env
+
 
 # ESP-IDF
 esp/build/

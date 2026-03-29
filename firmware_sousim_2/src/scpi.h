@@ -144,7 +144,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* MEAS:VOLT:CONT ON|OFF (@ch) — must be checked before MEAS:VOLT? */
+    /* MEAS:VOLT:CONT ON|OFF (@ch) - must be checked before MEAS:VOLT? */
     {
         unsigned ch = 0;
         char onoff[4] = {0};
@@ -154,7 +154,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
-        /* legacy query form — treat as ON */
+        /* legacy query form - treat as ON */
         if (sscanf(str, "MEAS:VOLT:CONT? (@%u)", &ch) == 1) {
             out->cmd = APP_CMD_MEAS_VOLT_CONT;
             out->payload.scalar.channel = (uint8_t)(ch - 1u);
@@ -173,7 +173,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
-        /* legacy query form — treat as ON */
+        /* legacy query form - treat as ON */
         if (sscanf(str, "MEAS:CURR:CONT? (@%u)", &ch) == 1) {
             out->cmd = APP_CMD_MEAS_CURR_CONT;
             out->payload.scalar.channel = (uint8_t)(ch - 1u);

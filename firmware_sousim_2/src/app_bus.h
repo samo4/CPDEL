@@ -22,7 +22,7 @@ typedef enum {
     APP_CMD_MEAS_CURR,
     APP_CMD_MEAS_VOLT_CONT,
     APP_CMD_MEAS_CURR_CONT,
-    /* Source (setpoint / mode) — one-shot query; response reuses the same cmd with source=SRC_CTRL */
+    /* Source (setpoint / mode) - one-shot query; response reuses the same cmd with source=SRC_CTRL */
     APP_CMD_SOUR_VOLT,   /* request: no payload; response: scalar.value = voltage setpoint */
     APP_CMD_SOUR_CURR,   /* request: no payload; response: scalar.value = current setpoint */
     APP_CMD_SOUR_MODE,   /* request: no payload; response: scalar.value = mode */
@@ -47,13 +47,13 @@ typedef enum {
 
 typedef union {
     struct {
-        uint8_t channel; /* 0-based channel index — common initial sequence with meas */
+        uint8_t channel; /* 0-based channel index - common initial sequence with meas */
         uint8_t _pad[3];
         float value;
     } scalar; /* 8 bytes */
 
     struct {
-        uint8_t channel; /* 0-based channel index — common initial sequence with scalar */
+        uint8_t channel; /* 0-based channel index - common initial sequence with scalar */
         uint8_t mode;
         uint8_t flags;
         uint8_t _pad;

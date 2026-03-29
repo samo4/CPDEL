@@ -10,8 +10,8 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
     echo -e "  2. Select \033[1;36m'ESP-IDF PowerShell'\033[0m."
     echo ""
     echo "Usage once inside PowerShell:"
-    echo "  esp                  — build"
-    echo "  esp flash [PORT]     — build + flash"
-    echo "  esp monitor          — serial monitor"
+    echo "  esp                  - build"
+    echo "  esp flash [PORT]     - build + flash"
+    echo "  esp monitor          - serial monitor"
     exit 1
 fi

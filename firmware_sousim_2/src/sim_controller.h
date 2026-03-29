@@ -141,7 +141,7 @@ void sim_controller_task(void *param) {
             }
         }
 
-        /* Measurement streaming tick — 1-minute sine wave: offset 1, peak-to-peak 2, clamped to setpoint */
+        /* Measurement streaming tick - 1-minute sine wave: offset 1, peak-to-peak 2, clamped to setpoint */
         {
             static TickType_t last_rssi_tick = 0;
             TickType_t now = xTaskGetTickCount();
@@ -153,7 +153,7 @@ void sim_controller_task(void *param) {
                                     false);
             }
 
-            /* Publish simulated RSSI every 2 s — slow sine between -85 and -55 dBm */
+            /* Publish simulated RSSI every 2 s - slow sine between -85 and -55 dBm */
             if (now - last_rssi_tick >= pdMS_TO_TICKS(2000)) {
                 last_rssi_tick = now;
                 int rssi = (int)(-70 + 15 * sinf(2.0f * 3.14f * t_s / 30.0f));

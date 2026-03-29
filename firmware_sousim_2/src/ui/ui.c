@@ -23,7 +23,7 @@ void ui_set_output_local_with_inhibit(int channel, bool enabled, uint32_t inhibi
     s_output_inhibit_until[channel] = xTaskGetTickCount() + pdMS_TO_TICKS(inhibit_ms);
 }
 
-/* Drain queue_gui from the LVGL tick — safe to call LVGL APIs here since
+/* Drain queue_gui from the LVGL tick - safe to call LVGL APIs here since
    this runs inside lv_timer_handler() on the same thread as LVGL. */
 static void gui_queue_timer_cb(lv_timer_t *t) {
     (void)t;

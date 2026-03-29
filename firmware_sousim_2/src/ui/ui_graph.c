@@ -106,7 +106,7 @@ void ui_graph_update_channel(int channel, uint32_t sample_ts_ms) {
     lv_coord_t v = (lv_coord_t)(channels[channel].measured_voltage * VOLT_SCALE);
     lv_coord_t c = (lv_coord_t)(channels[channel].measured_current * CURR_SCALE);
 
-    // Always buffer — regardless of which screen is active.
+    // Always buffer - regardless of which screen is active.
     buf_push_timed(&ch_buf[channel], v, c, sample_ts_ms);
 
 #ifdef ESP_PLATFORM

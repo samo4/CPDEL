@@ -120,7 +120,7 @@ void ui_create_main_screen(void) {
     lv_label_set_text(settings_lbl, LV_SYMBOL_SETTINGS);
     lv_obj_center(settings_lbl);
 
-    // Wifi indicator — left of settings button
+    // Wifi indicator - left of settings button
     // WiFi label: right-aligned to settings button, extends left to fill header
     wifi_lbl = lv_label_create(ui_MainScreen);
     lv_label_set_text(wifi_lbl, LV_SYMBOL_WIFI " --");
@@ -221,7 +221,7 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_obj_align(pwr_val, LV_ALIGN_TOP_RIGHT, -5, 90);
     ch_pwr_lbl[_ch] = pwr_val;
 
-    // CC/CV Mode Badge — below power row
+    // CC/CV Mode Badge - below power row
     lv_obj_t *mode_badge = lv_label_create(parent);
     lv_label_set_text(mode_badge, "CC");
     lv_obj_set_style_text_font(mode_badge, &lv_font_montserrat_14, 0);
@@ -231,7 +231,7 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_obj_align(mode_badge, LV_ALIGN_TOP_LEFT, 5, 112);
     ch_mode_badge[_ch] = mode_badge;
 
-    // Setpoint summary — same row as mode badge
+    // Setpoint summary - same row as mode badge
     lv_obj_t *sp_lbl = lv_label_create(parent);
     lv_label_set_text(sp_lbl, "");
     lv_obj_set_style_text_font(sp_lbl, &lv_font_montserrat_14, 0);

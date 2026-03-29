@@ -28,7 +28,7 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION 1
 #define configTOTAL_HEAP_SIZE (1024 * 1024) /* 1 MB */
 
-/* Hook functions — all off for simulation */
+/* Hook functions - all off for simulation */
 #define configUSE_IDLE_HOOK 0
 #define configUSE_TICK_HOOK 0
 #define configUSE_MALLOC_FAILED_HOOK 1

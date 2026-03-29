@@ -1,4 +1,4 @@
-/* PC Simulator entry point — SDL2 + Windows + FreeRTOS (MSVC port)
+/* PC Simulator entry point - SDL2 + Windows + FreeRTOS (MSVC port)
  * Compiled only for the desktop build; excluded from ESP-IDF. */
 
 #include <SDL2/SDL.h>
@@ -42,7 +42,7 @@ void vApplicationMallocFailedHook(void) {
 }
 
 /* FreeRTOS scheduler runs in a background Windows thread so the main thread
-   keeps ownership of SDL — SDL2 requires all rendering on the thread that
+   keeps ownership of SDL - SDL2 requires all rendering on the thread that
    created the window. App logic tasks go here. */
 static DWORD WINAPI freertos_scheduler_thread(LPVOID param) {
     (void)param;
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 
     lv_init();
 
-    // Initialize the HAL (display, input devices, tick) — stays on main thread
+    // Initialize the HAL (display, input devices, tick) - stays on main thread
     sdl_init();
 
     static lv_disp_draw_buf_t disp_buf1;

@@ -45,7 +45,7 @@ static void scpi_process_line(const char *line) {
     int result = scpi_decode(line, &msg);
 
     if (result == 0) {
-        /* Successful parse — publish to bus */
+        /* Successful parse - publish to bus */
         msg.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
         app_bus_publish(&msg);
         // TODO: in the future, send response back to client

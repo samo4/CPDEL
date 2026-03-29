@@ -212,7 +212,7 @@ void display_init(void) {
     ESP_ERROR_CHECK(gpio_set_level(TFT_BK_LIGHT, TFT_BK_LIGHT_ON_LEVEL));
     ESP_LOGI(TAG, "Backlight enabled on GPIO %d", TFT_BK_LIGHT);
 
-    /* SPI bus — MOSI/MISO/SCLK on FSPI native pins */
+    /* SPI bus - MOSI/MISO/SCLK on FSPI native pins */
     spi_bus_config_t buscfg = {
         .mosi_io_num = TFT_MOSI,
         .miso_io_num = TFT_MISO,
@@ -257,7 +257,7 @@ void display_init(void) {
 
     ESP_LOGI(TAG, "ILI9341 panel ready (%dx%d)", DISP_HOR_RES, DISP_VER_RES);
 
-    /* LVGL tick — 1 ms esp_timer keeps lv_tick_get() accurate */
+    /* LVGL tick - 1 ms esp_timer keeps lv_tick_get() accurate */
     esp_timer_handle_t lv_tick_timer;
     const esp_timer_create_args_t timer_args = {
         .callback = lv_tick_timer_cb,

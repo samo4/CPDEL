@@ -1,4 +1,4 @@
-/* ESP32 entry point — ESP-IDF / FreeRTOS
+/* ESP32 entry point - ESP-IDF / FreeRTOS
  * Compiled only for the ESP target; excluded from the PC simulator build. */
 
 #include <stdio.h>
@@ -29,7 +29,7 @@ static TaskHandle_t s_lvgl_task_handle = NULL;
 
 #define HEARTBEAT_GPIO GPIO_NUM_40
 
-/* FreeRTOS is already running when app_main is called — no vTaskStartScheduler().
+/* FreeRTOS is already running when app_main is called - no vTaskStartScheduler().
    The display flush callback writes over SPI instead of SDL, but ui_init() and
    all task logic are identical to the simulator. */
 

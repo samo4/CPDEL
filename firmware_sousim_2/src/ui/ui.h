@@ -36,7 +36,7 @@ typedef struct {
     double measured_current;
     double measured_power;
     bool output_enabled;
-    uint8_t mode; /* 0=CV 1=CC 2=CP 3=CR — matches dc_load_mode_t */
+    uint8_t mode; /* 0=CV 1=CC 2=CP 3=CR - matches dc_load_mode_t */
     bool lv_cutoff_enabled;
     double lv_cutoff_threshold;
 } channel_data_t;

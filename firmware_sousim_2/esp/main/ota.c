@@ -1,9 +1,12 @@
 #include "ota.h"
 
+#include <string.h>
 #include "app_runtime.h"
+#include "esp_app_desc.h"
 #include "esp_crt_bundle.h"
 #include "esp_https_ota.h"
 #include "esp_log.h"
+#include "esp_ota_ops.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -71,6 +74,33 @@ static void ota_task(void *arg) {
 }
 
 bool ota_is_in_progress(void) { return s_in_progress; }
+
+bool ota_is_image_confirmed(void) {
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_img_states_t state;
+    if (esp_ota_get_state_partition(running, &state) != ESP_OK) return true;
+    return state != ESP_OTA_IMG_PENDING_VERIFY;
+}
+
+void ota_confirm_image(void) { esp_ota_mark_app_valid_cancel_rollback(); }
+
+void ota_get_image_info(ota_image_info_t *out) {
+    const esp_app_desc_t *desc = esp_app_get_description();
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
+    esp_ota_get_state_partition(running, &state);
+
+    strncpy(out->version, desc->version, sizeof(out->version) - 1);
+    out->version[sizeof(out->version) - 1] = '\0';
+    strncpy(out->slot, running->label, sizeof(out->slot) - 1);
+    out->slot[sizeof(out->slot) - 1] = '\0';
+    out->address = running->address;
+    out->confirmed = (state != ESP_OTA_IMG_PENDING_VERIFY);
+    out->state = (state == ESP_OTA_IMG_VALID)            ? "confirmed"
+                 : (state == ESP_OTA_IMG_PENDING_VERIFY) ? "pending confirm"
+                 : (state == ESP_OTA_IMG_UNDEFINED)      ? "factory/no-state"
+                                                         : "other";
+}
 
 bool ota_go(void) {
     if (s_in_progress) return false;

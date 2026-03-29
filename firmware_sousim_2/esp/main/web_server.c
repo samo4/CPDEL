@@ -6,6 +6,10 @@
 #include "esp_spiffs.h"
 #include "scpi.h"
 
+#ifndef CONFIG_HTTPD_WS_SUPPORT
+#error "WebSocket support is disabled in menuconfig (CONFIG_HTTPD_WS_SUPPORT)"
+#endif
+
 static const char *TAG = "WEB_SERVER";
 
 #define WEB_SCPI_MAX_LEN 256
@@ -285,8 +289,8 @@ static esp_err_t static_file_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-/* Simple write-only SCPI endpoint.
-   Body: plain SCPI command string, e.g. "SOUR1:CURR 0.5" */
+// Simple write-only SCPI endpoint.
+// Body: plain SCPI command string, e.g. "SOUR1:CURR 0.5"
 static esp_err_t scpi_command_handler(httpd_req_t *req) {
     if (req->content_len <= 0 || req->content_len >= WEB_SCPI_MAX_LEN) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid body length");
@@ -302,7 +306,7 @@ static esp_err_t scpi_command_handler(httpd_req_t *req) {
 
     cmd[received] = '\0';
 
-    /* Trim trailing line endings/whitespace for compatibility with curl/telnet-style payloads. */
+    // Trim trailing line endings/whitespace for compatibility with curl/telnet-style payloads.
     while (received > 0 && (cmd[received - 1] == '\r' || cmd[received - 1] == '\n' || cmd[received - 1] == ' ' ||
                             cmd[received - 1] == '\t')) {
         cmd[--received] = '\0';
@@ -344,8 +348,6 @@ void web_server_init(void) {
 
     if (httpd_start(&server, &config) == ESP_OK) {
         s_server = server;
-
-#ifdef CONFIG_HTTPD_WS_SUPPORT
         if (s_ws_clients_lock == NULL) {
             s_ws_clients_lock = xSemaphoreCreateMutex();
             if (s_ws_clients_lock != NULL) {
@@ -364,9 +366,6 @@ void web_server_init(void) {
         httpd_uri_t ws_uri = {
             .uri = "/ws", .method = HTTP_GET, .handler = websocket_handler, .user_ctx = NULL, .is_websocket = true};
         httpd_register_uri_handler(server, &ws_uri);
-#else
-        ESP_LOGW(TAG, "WebSocket support is disabled (CONFIG_HTTPD_WS_SUPPORT)");
-#endif
 
         httpd_uri_t scpi_uri = {
             .uri = "/api/scpi", .method = HTTP_POST, .handler = scpi_command_handler, .user_ctx = NULL};
@@ -384,10 +383,8 @@ void web_server_stop(void) {
         s_server = NULL;
     }
 
-#ifdef CONFIG_HTTPD_WS_SUPPORT
     if (s_web_ws_task_handle != NULL) {
         vTaskDelete(s_web_ws_task_handle);
         s_web_ws_task_handle = NULL;
     }
-#endif
 }

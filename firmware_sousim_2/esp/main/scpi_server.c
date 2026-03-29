@@ -35,25 +35,18 @@ typedef struct {
     size_t rx_len;
 } scpi_client_t;
 
-/* Handle incoming SCPI command line. */
 static void scpi_process_line(const char *line) {
     if (!line || *line == '\0') return;
-
     ESP_LOGI(TAG, "RX: %s", line);
-
     bus_msg_t msg;
     int result = scpi_decode(line, &msg);
-
     if (result == 0) {
-        /* Successful parse - publish to bus */
         msg.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
         app_bus_publish(&msg);
-        // TODO: in the future, send response back to client
+        // TODO: send response back to client ?
     }
-    /* On parse error (result == -1), silently drop the line (KISS) */
 }
 
-/* Strip trailing whitespace and telnet line endings. */
 static void scpi_normalize_line(char *line, size_t *len) {
     if (!line || !len) return;
 
@@ -65,8 +58,7 @@ static void scpi_normalize_line(char *line, size_t *len) {
     line[*len] = '\0';
 }
 
-/* Skip telnet IAC (Interpret As Command) sequences.
-   Returns the number of bytes to skip in buf. */
+// Skip telnet IAC (Interpret As Command) sequences. Returns the number of bytes to skip in buf.
 static size_t scpi_skip_telnet_iac(const uint8_t *buf, size_t buf_len) {
     if (buf_len < 1) return 0;
     if (buf[0] != 0xFF) return 0; /* Not IAC */
@@ -85,7 +77,6 @@ static size_t scpi_skip_telnet_iac(const uint8_t *buf, size_t buf_len) {
     return 2;
 }
 
-/* Client handler task: read SCPI commands and process them. */
 static void scpi_client_task(void *arg) {
     scpi_client_t *client = (scpi_client_t *)arg;
     int sock = client->socket;
@@ -95,27 +86,27 @@ static void scpi_client_task(void *arg) {
         ssize_t n = recv(sock, &byte_buf, 1, 0);
 
         if (n <= 0) {
-            /* Connection closed or error */
+            // Connection closed or error
             break;
         }
 
         uint8_t byte = (uint8_t)byte_buf;
 
-        /* Handle telnet IAC sequences */
+        // Handle telnet IAC sequences
         if (byte == 0xFF) {
-            /* Peek ahead for the next byte to determine IAC sequence length */
+            // Peek ahead for the next byte to determine IAC sequence length
             uint8_t peek_buf[2];
             ssize_t peek_n = recv(sock, peek_buf, 2, MSG_PEEK);
             if (peek_n >= 2) {
                 size_t skip_len = scpi_skip_telnet_iac((const uint8_t[]){0xFF, peek_buf[0], peek_buf[1]}, 3);
                 if (skip_len > 1) {
-                    recv(sock, peek_buf, skip_len - 1, 0); /* consume the skipped bytes */
+                    recv(sock, peek_buf, skip_len - 1, 0); // consume the skipped bytes
                 }
             }
             continue;
         }
 
-        /* Accumulate bytes into rx_buf until we get a newline */
+        // Accumulate bytes into rx_buf until we get a newline
         if (byte == '\n' || byte == '\r') {
             if (client->rx_len > 0) {
                 scpi_normalize_line(client->rx_buf, &client->rx_len);
@@ -123,12 +114,12 @@ static void scpi_client_task(void *arg) {
             }
             client->rx_len = 0;
         } else if (byte >= 32 && byte < 127) {
-            /* Printable ASCII */
+            // Printable ASCII
             if (client->rx_len < SCPI_RX_BUF_SIZE - 1) {
                 client->rx_buf[client->rx_len++] = (char)byte;
             }
         }
-        /* Silently drop other bytes (control chars, etc.) */
+        // Silently drop other bytes (control chars, etc.)
     }
 
     closesocket(sock);
@@ -136,7 +127,6 @@ static void scpi_client_task(void *arg) {
     vTaskDelete(NULL);
 }
 
-/* Server task: listen for incoming connections on port 5025. */
 static void scpi_server_task(void *arg) {
     (void)arg;
     s_server_running = true;
@@ -174,20 +164,20 @@ static void scpi_server_task(void *arg) {
         return;
     }
 
-    /* Accept incoming connections */
+    // Accept incoming connections
     while (s_server_running) {
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
 
         int client_sock = accept(listen_sock, (struct sockaddr *)&client_addr, &client_addr_len);
         if (client_sock < 0) {
-            /* During shutdown accept() can fail immediately; avoid tight-spin starving IDLE. */
+            // During shutdown accept() can fail immediately; avoid tight-spin starving IDLE.
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
 
         if (client_sock > 0) {
-            /* Allocate client state and spawn handler task */
+            // fork handler task
             scpi_client_t *client = (scpi_client_t *)pvPortMalloc(sizeof(scpi_client_t));
             if (client) {
                 client->socket = client_sock;

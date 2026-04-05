@@ -307,7 +307,9 @@ static void dc_load_controller_task(void *arg) {
                     ESP_LOGV(TAG, "Unknown SCPI command: %d", msg.cmd);
                     break;
             }
+            vTaskDelay(pdMS_TO_TICKS(200)); // prevents sending commands too fast
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

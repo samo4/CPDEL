@@ -130,7 +130,7 @@ void wireless_init(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
 
-    xTaskCreate(rssi_task, "rssi_task", 1536, NULL, 5, &s_rssi_task_handle);
+    xTaskCreate(rssi_task, "rssi_task", 1536, NULL, tskIDLE_PRIORITY + 1, &s_rssi_task_handle);
 }
 
 void wireless_pause_background(void) {

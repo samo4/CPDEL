@@ -5,13 +5,22 @@
 #ifdef ESP_PLATFORM
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "ota.h"
+
+#define OTA_MIN_UPTIME_MS (3u * 60u * 1000u) /* 3 minutes */
 
 static lv_obj_t *s_ver_label;
 static lv_obj_t *s_status_label;
 static lv_obj_t *s_confirm_section;
 static lv_obj_t *s_update_section;
 static char s_ver_buf[128];
+static lv_timer_t *s_refresh_timer;
+
+static bool ota_confirm_allowed(void) {
+    uint32_t uptime_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+    return uptime_ms >= OTA_MIN_UPTIME_MS && ui_is_wifi_connected();
+}
 
 static void ota_screen_refresh(void) {
     ota_image_info_t info;
@@ -26,16 +35,59 @@ static void ota_screen_refresh(void) {
         lv_obj_add_flag(s_confirm_section, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(s_update_section, LV_OBJ_FLAG_HIDDEN);
     } else {
-        lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
-                                          "Please verify everything works correctly, then press Confirm.");
+        uint32_t uptime_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+        bool wifi_ok = ui_is_wifi_connected();
+        bool uptime_ok = uptime_ms >= OTA_MIN_UPTIME_MS;
+
         lv_obj_clear_flag(s_confirm_section, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(s_update_section, LV_OBJ_FLAG_HIDDEN);
+
+        if (!uptime_ok && !wifi_ok) {
+            lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
+                                              "Confirm will be available after 3 minutes of uptime "
+                                              "and a wireless connection is established.");
+        } else if (!uptime_ok) {
+            uint32_t remaining_s = (OTA_MIN_UPTIME_MS - uptime_ms) / 1000u;
+            static char s_status_buf[160];
+            snprintf(s_status_buf, sizeof(s_status_buf),
+                     "This firmware has not been confirmed yet.\n"
+                     "Confirm will be available in %" PRIu32 " s.",
+                     remaining_s);
+            lv_label_set_text(s_status_label, s_status_buf);
+        } else if (!wifi_ok) {
+            lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
+                                              "Confirm requires a wireless connection. "
+                                              "Please connect to Wi-Fi first.");
+        } else {
+            lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
+                                              "Please verify everything works correctly, then press Confirm.");
+        }
+
+        if (ota_confirm_allowed()) {
+            lv_obj_clear_state(s_confirm_section, LV_STATE_DISABLED);
+        } else {
+            lv_obj_add_state(s_confirm_section, LV_STATE_DISABLED);
+        }
     }
+}
+
+static void ota_refresh_timer_cb(lv_timer_t *t) {
+    (void)t;
+    ota_screen_refresh();
 }
 
 static void ota_screen_loaded_cb(lv_event_t *e) {
     (void)e;
     ota_screen_refresh();
+    s_refresh_timer = lv_timer_create(ota_refresh_timer_cb, 1000, NULL);
+}
+
+static void ota_screen_unloaded_cb(lv_event_t *e) {
+    (void)e;
+    if (s_refresh_timer) {
+        lv_timer_del(s_refresh_timer);
+        s_refresh_timer = NULL;
+    }
 }
 
 static void ui_event_ota_update_github_pages(lv_event_t *e) {
@@ -49,6 +101,7 @@ static void ui_event_ota_update_github_pages(lv_event_t *e) {
 
 static void ui_event_ota_confirm(lv_event_t *e) {
     (void)e;
+    if (!ota_confirm_allowed()) return;
     ota_confirm_image();
     ui_open_modal("Update confirmed.\nThis firmware is now permanent.", true, ui_OtaScreen);
 }
@@ -116,6 +169,7 @@ void ui_create_ota_screen(void) {
     lv_obj_center(update_lbl);
 
     lv_obj_add_event_cb(ui_OtaScreen, ota_screen_loaded_cb, LV_EVENT_SCREEN_LOADED, NULL);
+    lv_obj_add_event_cb(ui_OtaScreen, ota_screen_unloaded_cb, LV_EVENT_SCREEN_UNLOADED, NULL);
 #else
     lv_label_set_text(status_label, "OTA is only available on ESP target.");
 

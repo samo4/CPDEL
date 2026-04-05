@@ -79,6 +79,8 @@ void ui_event_navigate_detail_back(lv_event_t *e);
 
 lv_obj_t *ui_create_screen_header(lv_obj_t *screen, lv_event_cb_t back_cb, const char *back_label);
 
+bool ui_is_wifi_connected(void);
+
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

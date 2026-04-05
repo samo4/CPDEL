@@ -12,6 +12,9 @@ lv_obj_t *ui_WirelessScreen;
 lv_obj_t *ui_OtaScreen;
 
 static QueueHandle_t queue_gui = NULL;
+static bool s_wifi_connected = false;
+
+bool ui_is_wifi_connected(void) { return s_wifi_connected; }
 
 channel_data_t channels[UI_CHANNEL_COUNT];
 int _ch = 0;
@@ -61,6 +64,9 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
                 channels[msg.payload.meas.channel].mode = (uint8_t)msg.payload.scalar.value; // TODO: validate!
                 ui_main_update_channel(msg.payload.meas.channel);
                 // ui_detail_update_channel(msg.payload.meas.channel);
+                break;
+            case APP_CMD_WIFI_STATUS:
+                s_wifi_connected = ((int)msg.payload.scalar.value == 2);
                 break;
             case APP_CMD_WIFI_RSSI: {
                 char ip_str[16] = "";

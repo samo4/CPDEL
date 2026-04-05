@@ -35,6 +35,7 @@ idf_component_register(
         mbedtls
         app_update
         spiffs
+        lwip
 )
 
 spiffs_create_partition_image(spiffs www FLASH_IN_PROJECT)

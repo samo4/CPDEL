@@ -35,7 +35,7 @@ static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
         data->point.x = x_cal;
         data->point.y = y_cal;
         data->state = LV_INDEV_STATE_PR;
-        // ESP_LOGI(TAG, "Touch: x=%d y=%d (raw y=%d) state=%d", data->point.x, data->point.y, point.y, data->state);
+        ESP_LOGI(TAG, "Touch: x=%d y=%d s=%d", data->point.x, data->point.y, data->state);
     } else {
         data->state = LV_INDEV_STATE_REL;
     }

@@ -13,6 +13,9 @@
 #define APP_BUS_IMPLEMENTATION
 #include "app_bus.h"
 
+#define UDP_LOG_IMPLEMENTATION
+#include "udp_log.h"
+
 #include "dc_load_controller.h"
 #include "display.h"
 // #include "rrd.h"
@@ -102,6 +105,7 @@ void app_main(void) {
     display_init();
     touch_init();
     wireless_init();
+    udp_log_start("192.168.88.177", 9999);
     dc_load_controller_init();
     // rrd_init();
 

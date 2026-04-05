@@ -17,9 +17,17 @@ static lv_obj_t *s_update_section;
 static char s_ver_buf[128];
 static lv_timer_t *s_refresh_timer;
 
-static bool ota_confirm_allowed(void) {
+typedef struct {
+    bool uptime_ok;
+    bool wifi_ok;
+    uint32_t remaining_s;
+} ota_confirm_status_t;
+
+static bool ota_confirm_allowed() {
     uint32_t uptime_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-    return uptime_ms >= OTA_MIN_UPTIME_MS && ui_is_wifi_connected();
+    bool uptime_ok = uptime_ms >= OTA_MIN_UPTIME_MS;
+    bool wifi_ok = ui_is_wifi_connected();
+    return uptime_ok && wifi_ok;
 }
 
 static void ota_screen_refresh(void) {
@@ -35,35 +43,20 @@ static void ota_screen_refresh(void) {
         lv_obj_add_flag(s_confirm_section, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(s_update_section, LV_OBJ_FLAG_HIDDEN);
     } else {
-        uint32_t uptime_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-        bool wifi_ok = ui_is_wifi_connected();
-        bool uptime_ok = uptime_ms >= OTA_MIN_UPTIME_MS;
+        bool allowed = ota_confirm_allowed();
 
         lv_obj_clear_flag(s_confirm_section, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(s_update_section, LV_OBJ_FLAG_HIDDEN);
 
-        if (!uptime_ok && !wifi_ok) {
+        if (!allowed) {
             lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
-                                              "Confirm will be available after 3 minutes of uptime "
-                                              "and a wireless connection is established.");
-        } else if (!uptime_ok) {
-            uint32_t remaining_s = (OTA_MIN_UPTIME_MS - uptime_ms) / 1000u;
-            static char s_status_buf[160];
-            snprintf(s_status_buf, sizeof(s_status_buf),
-                     "This firmware has not been confirmed yet.\n"
-                     "Confirm will be available in %" PRIu32 " s.",
-                     remaining_s);
-            lv_label_set_text(s_status_label, s_status_buf);
-        } else if (!wifi_ok) {
-            lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
-                                              "Confirm requires a wireless connection. "
-                                              "Please connect to Wi-Fi first.");
+                                              "Confirm requires 3 minutes of uptime and a Wi-Fi connection.");
         } else {
             lv_label_set_text(s_status_label, "This firmware has not been confirmed yet.\n"
                                               "Please verify everything works correctly, then press Confirm.");
         }
 
-        if (ota_confirm_allowed()) {
+        if (allowed) {
             lv_obj_clear_state(s_confirm_section, LV_STATE_DISABLED);
         } else {
             lv_obj_add_state(s_confirm_section, LV_STATE_DISABLED);

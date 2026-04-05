@@ -71,7 +71,7 @@ static void ota_refresh_timer_cb(lv_timer_t *t) {
 
 static void update_remote_ver_label(void *data) {
     (void)data;
-    if (s_remote_ver_label) {
+    if (lv_obj_is_valid(s_remote_ver_label)) {
         lv_label_set_text(s_remote_ver_label, s_remote_ver_buf);
     }
 }
@@ -103,7 +103,6 @@ static void ota_screen_unloaded_cb(lv_event_t *e) {
         lv_timer_del(s_refresh_timer);
         s_refresh_timer = NULL;
     }
-    s_remote_ver_label = NULL; /* guard against late async callback */
 }
 
 static void ui_event_ota_update_github_pages(lv_event_t *e) {

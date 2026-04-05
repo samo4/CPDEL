@@ -10,6 +10,7 @@ lv_obj_t *ui_NumpadScreen;
 lv_obj_t *ui_KeyboardScreen;
 lv_obj_t *ui_WirelessScreen;
 lv_obj_t *ui_OtaScreen;
+lv_obj_t *ui_TouchDebugScreen;
 
 static QueueHandle_t queue_gui = NULL;
 static bool s_wifi_connected = false;
@@ -118,6 +119,7 @@ void ui_init(void) {
     ui_create_keyboard_screen();
     ui_create_wireless_screen();
     ui_create_ota_screen();
+    ui_create_touch_debug_screen();
     ui_create_modal_screen();
     lv_disp_load_scr(ui_MainScreen);
 
@@ -140,6 +142,8 @@ void ui_event_navigate_graph(lv_event_t *e) { lv_scr_load(ui_GraphScreen); }
 void ui_event_navigate_wireless(lv_event_t *e) { lv_scr_load(ui_WirelessScreen); }
 
 void ui_event_navigate_ota(lv_event_t *e) { lv_scr_load(ui_OtaScreen); }
+
+void ui_event_navigate_touch_debug(lv_event_t *e) { lv_scr_load(ui_TouchDebugScreen); }
 
 void ui_event_navigate_back(lv_event_t *e) { lv_scr_load(ui_MainScreen); }
 

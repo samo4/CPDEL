@@ -25,6 +25,7 @@ extern lv_obj_t *ui_NumpadScreen;
 extern lv_obj_t *ui_KeyboardScreen;
 extern lv_obj_t *ui_WirelessScreen;
 extern lv_obj_t *ui_OtaScreen;
+extern lv_obj_t *ui_TouchDebugScreen;
 extern lv_obj_t *ui_ModalScreen;
 
 typedef struct {
@@ -54,6 +55,7 @@ void ui_create_numpad_screen(void);
 void ui_create_keyboard_screen(void);
 void ui_create_wireless_screen(void);
 void ui_create_ota_screen(void);
+void ui_create_touch_debug_screen(void);
 void ui_create_modal_screen(void);
 
 void ui_main_update_channel(int channel);
@@ -74,6 +76,7 @@ void ui_event_navigate_settings(lv_event_t *e);
 void ui_event_navigate_graph(lv_event_t *e);
 void ui_event_navigate_wireless(lv_event_t *e);
 void ui_event_navigate_ota(lv_event_t *e);
+void ui_event_navigate_touch_debug(lv_event_t *e);
 void ui_event_navigate_back(lv_event_t *e);
 void ui_event_navigate_detail_back(lv_event_t *e);
 

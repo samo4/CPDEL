@@ -16,8 +16,16 @@ static const char *TAG = "touch";
 static esp_lcd_touch_handle_t touch_handle = NULL;
 static lv_indev_drv_t indev_drv;
 
+static int16_t s_last_raw_x = 0;
+static int16_t s_last_raw_y = 0;
+
 #define Y_OFFSET (-80)
 #define X_OFFSET (0)
+
+void touch_get_last_point(int16_t *x, int16_t *y) {
+    *x = s_last_raw_x;
+    *y = s_last_raw_y;
+}
 
 static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     (void)drv;
@@ -35,7 +43,10 @@ static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
         data->point.x = x_cal;
         data->point.y = y_cal;
         data->state = LV_INDEV_STATE_PR;
-        ESP_LOGI(TAG, "Touch: x=%d y=%d s=%d", data->point.x, data->point.y, data->state);
+
+        s_last_raw_x = x_cal;
+        s_last_raw_y = y_cal;
+        // ESP_LOGI(TAG, "Touch: x=%d y=%d s=%d", data->point.x, data->point.y, data->state);
     } else {
         data->state = LV_INDEV_STATE_REL;
     }

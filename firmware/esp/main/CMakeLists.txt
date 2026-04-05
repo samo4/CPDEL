@@ -10,6 +10,7 @@ idf_component_register(
         "../../src/ui/ui_wireless.c"
         "../../src/ui/ui_modal.c"
         "../../src/ui/ui_ota.c"
+        "../../src/ui/ui_touch_debug.c"
         "display.c"
         "touch.c"
         "ota.c"

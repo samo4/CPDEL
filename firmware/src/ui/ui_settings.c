@@ -25,4 +25,7 @@ void ui_create_settings_screen(void) {
 
     lv_obj_t *ota_btn = lv_list_add_btn(list, LV_SYMBOL_DOWNLOAD, "Update");
     lv_obj_add_event_cb(ota_btn, ui_event_navigate_ota, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *touch_btn = lv_list_add_btn(list, LV_SYMBOL_EDIT, "Touch Debug");
+    lv_obj_add_event_cb(touch_btn, ui_event_navigate_touch_debug, LV_EVENT_CLICKED, NULL);
 }

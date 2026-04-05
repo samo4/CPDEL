@@ -141,7 +141,7 @@ void ui_create_main_screen(void) {
     lv_obj_set_size(cont, LV_PCT(100), LV_PCT(80));
     lv_obj_align(cont, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW); // Side by side
-    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_bg_color(cont, lv_palette_main(LV_PALETTE_BLUE), 0);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(cont, 0, 0);
@@ -150,13 +150,40 @@ void ui_create_main_screen(void) {
     lv_obj_set_style_radius(cont, 0, 0);
     lv_obj_t *ch1_panel = lv_obj_create(cont);
     lv_obj_clear_flag(ch1_panel, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(ch1_panel, 140, 180); // Roughly half width minus padding
+    lv_obj_set_size(ch1_panel, 140, 155); // Roughly half width minus padding
     create_channel_panel(ch1_panel, 0);
 
     lv_obj_t *ch2_panel = lv_obj_create(cont);
     lv_obj_clear_flag(ch2_panel, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(ch2_panel, 140, 180);
+    lv_obj_set_size(ch2_panel, 140, 155);
     create_channel_panel(ch2_panel, 1);
+
+    // Output switches: floating siblings of the panels so switch clicks don't reach the panel
+    lv_obj_t *sw0 = lv_switch_create(cont);
+    lv_obj_set_size(sw0, 40, 20);
+    lv_obj_add_flag(sw0, LV_OBJ_FLAG_FLOATING);
+    lv_obj_set_style_bg_color(sw0, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(sw0, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_add_event_cb(sw0, event_output_toggle, LV_EVENT_VALUE_CHANGED, (void *)(intptr_t)0);
+    lv_obj_align_to(sw0, ch1_panel, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+    ch_output_sw[0] = sw0;
+    lv_obj_t *sw0_lbl = lv_label_create(cont);
+    lv_obj_add_flag(sw0_lbl, LV_OBJ_FLAG_FLOATING);
+    lv_label_set_text(sw0_lbl, "Output");
+    lv_obj_align_to(sw0_lbl, sw0, LV_ALIGN_OUT_LEFT_MID, -4, 0);
+
+    lv_obj_t *sw1 = lv_switch_create(cont);
+    lv_obj_set_size(sw1, 40, 20);
+    lv_obj_add_flag(sw1, LV_OBJ_FLAG_FLOATING);
+    lv_obj_set_style_bg_color(sw1, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(sw1, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_add_event_cb(sw1, event_output_toggle, LV_EVENT_VALUE_CHANGED, (void *)(intptr_t)1);
+    lv_obj_align_to(sw1, ch2_panel, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+    ch_output_sw[1] = sw1;
+    lv_obj_t *sw1_lbl = lv_label_create(cont);
+    lv_obj_add_flag(sw1_lbl, LV_OBJ_FLAG_FLOATING);
+    lv_label_set_text(sw1_lbl, "Output");
+    lv_obj_align_to(sw1_lbl, sw1, LV_ALIGN_OUT_LEFT_MID, -4, 0);
 
     /*
     // Top-left (0,0)
@@ -203,16 +230,12 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_label_set_text(volt_val, "0.00 V");
     lv_obj_set_style_text_font(volt_val, &lv_font_montserrat_20, 0);
     lv_obj_align(volt_val, LV_ALIGN_TOP_RIGHT, -5, 30);
-    lv_obj_add_flag(volt_val, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(volt_val, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)_ch);
     ch_volt_lbl[_ch] = volt_val;
 
     lv_obj_t *curr_val = lv_label_create(parent);
     lv_label_set_text(curr_val, "0.000 A");
     lv_obj_set_style_text_font(curr_val, &lv_font_montserrat_20, 0);
     lv_obj_align(curr_val, LV_ALIGN_TOP_RIGHT, -5, 60);
-    lv_obj_add_flag(curr_val, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(curr_val, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)_ch);
     ch_curr_lbl[_ch] = curr_val;
 
     lv_obj_t *pwr_val = lv_label_create(parent);
@@ -238,17 +261,7 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_obj_align_to(sp_lbl, mode_badge, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
     ch_sp_lbl[_ch] = sp_lbl;
 
-    // ON/OFF Switch (small)
-    lv_obj_t *sw = lv_switch_create(parent);
-    lv_obj_set_size(sw, 40, 20);
-    lv_obj_align(sw, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
-    lv_obj_set_style_bg_color(sw, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(sw, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_PART_INDICATOR | LV_STATE_CHECKED);
-    lv_obj_add_event_cb(sw, event_output_toggle, LV_EVENT_VALUE_CHANGED, (void *)(intptr_t)_ch);
-    ch_output_sw[_ch] = sw;
-
-    // Static text "ON" helper
-    lv_obj_t *sw_label = lv_label_create(parent);
-    lv_label_set_text(sw_label, "Output");
-    lv_obj_align_to(sw_label, sw, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+    // Make entire panel clickable for channel select
+    lv_obj_add_flag(parent, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(parent, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)_ch);
 }

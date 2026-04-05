@@ -7,7 +7,7 @@ on:
       - "v*"
 
 env:
-  PROJECT_DIR: firmware_sousim_2
+  PROJECT_DIR: firmware
   ESP_IDF_VERSION: v6.0
 
 jobs:

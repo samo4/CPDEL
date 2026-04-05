@@ -59,9 +59,4 @@ Other than `./esp.ps1 flash-monitor`, you can also update the firmware OTA via t
 - check if everything is working (especially if you don't have console access)
 - confirm the update in Settings -> Firmware Update
 
-There's also the build task with github actions, which builds if you tag the commit `v*`. But github pages are only for public repos.
-
-```
-git tag v0.0.x
-git push --tags
-```
+There's also the build task with github actions, which builds if you tag the commit `v*`. But github pages are only for public repos. And we have a script to increase version, commit, tag, push: `./release.sh `.

@@ -72,7 +72,9 @@
         "C:/esp/v6.0/esp-idf/components/lwip/lwip/src/include",
         "C:/esp/v6.0/esp-idf/components/lwip/port/include",
         "C:/esp/v6.0/esp-idf/components/esp_https_ota/include",
-        "C:/esp/v6.0/esp-idf/components/mbedtls/esp_crt_bundle/include"
+        "C:/esp/v6.0/esp-idf/components/mbedtls/esp_crt_bundle/include",
+        "C:/esp/v6.0/esp-idf/components/app_update/include",
+        "C:/esp/v6.0/esp-idf/components/esp_app_format/include"
       ],
       "defines": [
         "ESP_PLATFORM",

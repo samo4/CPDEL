@@ -36,7 +36,7 @@ static lv_disp_drv_t disp_drv;
 #define DISP_SPI_HOST SPI2_HOST
 // orignal SPI: 26MHz
 // at 80Mhz we sometimes get pixel corruption
-#define DISP_SPI_CLK_HZ (60 * 1000 * 1000)
+#define DISP_SPI_CLK_HZ (40 * 1000 * 1000)
 #define DISP_DRAW_BUF_LINES 10 /* lines in the intermediate LVGL draw buffer */
 
 #define LV_TICK_PERIOD_MS 1

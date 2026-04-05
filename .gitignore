@@ -23,6 +23,7 @@ fp-info-cache
 # Exported BOM files
 *.xml
 *.csv
+!firmware/esp/partitions.csv
 
 UniversalControlPanel-backups
 #auto_saved_files#

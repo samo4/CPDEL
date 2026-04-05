@@ -8,7 +8,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 - [x] connect to modbus
 - [x] rethink queues
 - [ ] rrdtool-like graph [where do we put it?](MEMORY.md)
-- [x] OTA
+- [x] OTA.
 
 ### Ideas
 

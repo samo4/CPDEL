@@ -31,7 +31,7 @@ static void ota_task(void *arg) {
 
     esp_http_client_config_t http_cfg = {
         .url = OTA_GH_PAGES_BIN_URL,
-        // .crt_bundle_attach = esp_crt_bundle_attach,
+        .crt_bundle_attach = esp_crt_bundle_attach,
         .timeout_ms = 30000,
         .max_redirection_count = 5,
     };

@@ -45,10 +45,18 @@ static int udp_log_vprintf(const char *fmt, va_list args) {
 
     if (s_udp_sock >= 0 && !s_udp_busy) {
         s_udp_busy = true;
+#ifdef UDP_LOG_SYSLOG
+        uint32_t uptime_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+        int hlen = snprintf(buf, sizeof(buf), "<134>esp32[%u]: ", (unsigned int)uptime_ms);
+        len = vsnprintf(buf + hlen, sizeof(buf) - hlen, fmt, args);
+        if (len < 0) len = 0;
+        if (len >= (int)sizeof(buf) - hlen) len = (int)sizeof(buf) - hlen - 1;
+        sendto(s_udp_sock, buf, hlen + len, MSG_DONTWAIT, (struct sockaddr *)&s_udp_dest, sizeof(s_udp_dest));
+#else
         sendto(s_udp_sock, buf, (size_t)len, MSG_DONTWAIT, (struct sockaddr *)&s_udp_dest, sizeof(s_udp_dest));
+#endif
         s_udp_busy = false;
     }
-
     return len;
 }
 

@@ -12,6 +12,7 @@ typedef struct {
 } ota_image_info_t;
 
 void ota_get_image_info(ota_image_info_t *out);
+bool ota_fetch_remote_version(char *buf, size_t len);
 
 bool ota_go(void);
 bool ota_is_in_progress(void);

@@ -4,6 +4,7 @@
 #include "app_runtime.h"
 #include "esp_app_desc.h"
 #include "esp_crt_bundle.h"
+#include "esp_http_client.h"
 #include "esp_https_ota.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
@@ -14,6 +15,7 @@
 static const char *TAG = "OTA";
 
 static const char *OTA_GH_PAGES_BIN_URL = "http://wrathful-fight.surge.sh/sousim2.bin";
+static const char *OTA_GH_PAGES_VERSION_URL = "http://wrathful-fight.surge.sh/version.txt";
 
 static volatile bool s_in_progress = false;
 
@@ -71,6 +73,36 @@ static void ota_task(void *arg) {
     ESP_ERROR_CHECK(esp_https_ota_finish(handle));
     ESP_LOGW(TAG, "OTA complete! Restarting...");
     esp_restart();
+}
+
+bool ota_fetch_remote_version(char *buf, size_t len) {
+    char body[256] = {0};
+    int body_len = 0;
+
+    esp_http_client_config_t cfg = {
+        .url = OTA_GH_PAGES_VERSION_URL,
+        .timeout_ms = 5000,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    if (!client) return false;
+
+    if (esp_http_client_open(client, 0) == ESP_OK) {
+        esp_http_client_fetch_headers(client);
+        body_len = esp_http_client_read(client, body, sizeof(body) - 1);
+    }
+    esp_http_client_cleanup(client);
+
+    if (body_len <= 0 || body_len >= len) return false;
+
+    /* Strip any trailing whitespace/newline */
+    while (body_len > 0 && (body[body_len - 1] == '\n' || body[body_len - 1] == '\r' || body[body_len - 1] == ' ')) {
+        body_len--;
+    }
+    if (body_len == 0) return false;
+    if ((size_t)body_len >= len) body_len = (int)len - 1;
+    memcpy(buf, body, body_len);
+    buf[body_len] = '\0';
+    return true;
 }
 
 bool ota_is_in_progress(void) { return s_in_progress; }

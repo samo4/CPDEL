@@ -1,4 +1,3 @@
-#include <inttypes.h>
 #include <stdio.h>
 #include "ui.h"
 
@@ -11,10 +10,11 @@
 #define OTA_MIN_UPTIME_MS (3u * 60u * 1000u) /* 3 minutes */
 
 static lv_obj_t *s_ver_label;
+static lv_obj_t *s_remote_ver_label;
 static lv_obj_t *s_status_label;
 static lv_obj_t *s_confirm_section;
 static lv_obj_t *s_update_section;
-static char s_ver_buf[128];
+static char s_remote_ver_buf[64];
 static lv_timer_t *s_refresh_timer;
 
 typedef struct {
@@ -34,9 +34,9 @@ static void ota_screen_refresh(void) {
     ota_image_info_t info;
     ota_get_image_info(&info);
 
-    snprintf(s_ver_buf, sizeof(s_ver_buf), "Version: %s\nSlot: %s  Addr: 0x%06" PRIx32 "\nState: %s", info.version,
-             info.slot, info.address, info.state);
-    lv_label_set_text(s_ver_label, s_ver_buf);
+    char ver_buf[48];
+    snprintf(ver_buf, sizeof(ver_buf), "Current: %s  [%s]", info.version, info.state);
+    lv_label_set_text(s_ver_label, ver_buf);
 
     if (info.confirmed) {
         lv_label_set_text(s_status_label, "Ready to update from the cloud.");
@@ -69,10 +69,32 @@ static void ota_refresh_timer_cb(lv_timer_t *t) {
     ota_screen_refresh();
 }
 
+static void update_remote_ver_label(void *data) {
+    (void)data;
+    if (s_remote_ver_label) {
+        lv_label_set_text(s_remote_ver_label, s_remote_ver_buf);
+    }
+}
+
+static void ota_fetch_version_task(void *arg) {
+    (void)arg;
+    char ver[32];
+    if (ota_fetch_remote_version(ver, sizeof(ver))) {
+        snprintf(s_remote_ver_buf, sizeof(s_remote_ver_buf), "Available: %s", ver);
+    } else {
+        snprintf(s_remote_ver_buf, sizeof(s_remote_ver_buf), "Available: (fetch failed)");
+    }
+    lv_async_call(update_remote_ver_label, NULL);
+    vTaskDelete(NULL);
+}
+
 static void ota_screen_loaded_cb(lv_event_t *e) {
     (void)e;
+    snprintf(s_remote_ver_buf, sizeof(s_remote_ver_buf), "Available: checking...");
+    lv_label_set_text(s_remote_ver_label, s_remote_ver_buf);
     ota_screen_refresh();
     s_refresh_timer = lv_timer_create(ota_refresh_timer_cb, 1000, NULL);
+    xTaskCreate(ota_fetch_version_task, "ota_ver", 4096, NULL, 2, NULL);
 }
 
 static void ota_screen_unloaded_cb(lv_event_t *e) {
@@ -81,6 +103,7 @@ static void ota_screen_unloaded_cb(lv_event_t *e) {
         lv_timer_del(s_refresh_timer);
         s_refresh_timer = NULL;
     }
+    s_remote_ver_label = NULL; /* guard against late async callback */
 }
 
 static void ui_event_ota_update_github_pages(lv_event_t *e) {
@@ -133,7 +156,18 @@ void ui_create_ota_screen(void) {
     s_ver_label = ver_label;
     lv_label_set_text(ver_label, ""); // populated on SCREEN_LOADED
 #else
-    lv_label_set_text(ver_label, "Version: (simulator)");
+    lv_label_set_text(ver_label, "Current: (simulator)");
+#endif
+
+    // Remote (available) firmware version
+    lv_obj_t *remote_ver_label = lv_label_create(cont);
+    lv_label_set_long_mode(remote_ver_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(remote_ver_label, LV_PCT(100));
+#ifdef ESP_PLATFORM
+    s_remote_ver_label = remote_ver_label;
+    lv_label_set_text(remote_ver_label, ""); // populated on SCREEN_LOADED
+#else
+    lv_label_set_text(remote_ver_label, "Available: (simulator)");
 #endif
 
     // Status label

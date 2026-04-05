@@ -19,9 +19,12 @@ switch ($action) {
         if (-not (Test-Path "build\sousim2.bin")) {
             Write-Error "build\sousim2.bin not found - run: .\esp.ps1 build"; exit 1
         }
+        $tag = git describe --tags --abbrev=0 2>$null
+        if (-not $tag) { $tag = "unknown" }
         $s = New-Item -ItemType Directory -Path (Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()))
         Copy-Item "build\sousim2.bin" "$s\sousim2.bin"
         Set-Content "$s\index.html" "sousim2 OTA firmware"
+        [System.IO.File]::WriteAllText("$s\version.txt", $tag)
         surge $s wrathful-fight.surge.sh
         Remove-Item -Recurse -Force $s
     }

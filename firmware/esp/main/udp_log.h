@@ -8,7 +8,8 @@
  *   ...
  *   udp_log_start("192.168.88.177", 9999);
  *
- * Receive logs with:  nc -lu <port>
+ * Receive logs with:  socat -u UDP-RECV:9999 STDOUT
+ *                 or:  nc -lu 9999  (may drop packets after board reboot)
  */
 
 #include <stdint.h>

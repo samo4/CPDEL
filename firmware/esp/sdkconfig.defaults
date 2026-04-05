@@ -69,3 +69,5 @@ CONFIG_ESP_TASK_WDT_TIMEOUT_S=30
 # Keep task WDT enabled, but stop monitoring IDLE during OTA-heavy runtime.
 # (We still manually feed/reset from OTA task loop.)
 # CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0 is not set
+
+CONFIG_LOG_COLORS=y

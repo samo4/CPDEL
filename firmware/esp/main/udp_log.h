@@ -60,7 +60,7 @@ void udp_log_start(const char *host, uint16_t port) {
     s_udp_dest.sin_port = htons(port);
     inet_pton(AF_INET, host, &s_udp_dest.sin_addr);
 
-    esp_log_set_vprintf(udp_log_vprintf);
+    esp_log_set_vprintf(udp_log_vprintf); // redirect
 }
 
 void udp_log_stop(void) {

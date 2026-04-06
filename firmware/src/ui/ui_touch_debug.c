@@ -29,7 +29,7 @@ void ui_create_touch_debug_screen(void) {
 
     lv_obj_t *back_btn = lv_btn_create(ui_TouchDebugScreen);
     lv_obj_set_size(back_btn, 60, 30);
-    lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
+    lv_obj_align(back_btn, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(back_btn, ui_event_navigate_back, LV_EVENT_CLICKED, NULL);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
     lv_label_set_text(back_lbl, "Back");

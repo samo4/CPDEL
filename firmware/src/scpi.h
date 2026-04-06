@@ -2,39 +2,13 @@
 
 #include <app_bus.h>
 
-/* Encode msg to a SCPI string.  Returns chars written (excl. NUL),
-   or -1 on unknown command.  Safe with buf_size == 0. */
-int scpi_encode(const bus_msg_t *msg, char *buf, size_t buf_size);
-
-/* Decode a SCPI string into *out.  Returns 0 on success, -1 on parse error.
-   out->source defaults to SRC_LXI (strings typically originate from network). */
 int scpi_decode(const char *str, bus_msg_t *out);
 
 #ifdef SCPI_IMPLEMENTATION
 
-int scpi_encode(const bus_msg_t *msg, char *buf, size_t buf_size) {
-    unsigned ch = (unsigned)msg->payload.meas.channel + 1u; /* 1-based for SCPI */
-
-    //  TODO someday
-
-    switch (msg->cmd) {
-        case APP_CMD_OUTPUT_STATE:
-            return snprintf(buf, buf_size, "OUTP%u:STAT %s", ch, (msg->payload.scalar.value != 0.0f) ? "ON" : "OFF");
-
-        case APP_CMD_IDN:
-            return snprintf(buf, buf_size, "*IDN?");
-
-        case APP_CMD_ERROR:
-            return snprintf(buf, buf_size, "SYST:ERR?");
-
-        default:
-            return snprintf(buf, buf_size, "UNKNOWN");
-    }
-}
-
 int scpi_decode(const char *str, bus_msg_t *out) {
     memset(out, 0, sizeof(*out));
-    out->source = SRC_LXI; /* strings typically come from a network/LXI interface */
+    out->source = SRC_LXI;
 
     if (strcmp(str, "*IDN?") == 0) {
         out->cmd = APP_CMD_IDN;
@@ -46,7 +20,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         return 0;
     }
 
-    /* OUTPut%u:STATe %d */
+    // OUTPut%u:STATe %d
     {
         unsigned ch = 0;
         char onoff[4] = {0};
@@ -58,7 +32,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* SOUR<ch>:FUNC VOLT|CURR|POW|RES */
+    // SOUR<ch>:FUNC VOLT|CURR|POW|RES
     {
         unsigned ch = 0;
         int consumed = 0;
@@ -84,7 +58,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* SOUR<ch>:VOLT <val> */
+    // SOUR<ch>:VOLT <val>
     {
         unsigned ch = 0;
         float val = 0.0f;
@@ -96,7 +70,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* SOUR<ch>:CURR <val> */
+    // SOUR<ch>:CURR <val>
     {
         unsigned ch = 0;
         float val = 0.0f;
@@ -108,7 +82,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* SOUR<ch>:POW <val> */
+    // SOUR<ch>:POW <val>
     {
         unsigned ch = 0;
         float val = 0.0f;
@@ -120,7 +94,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* SOUR<ch>:RES <val> */
+    // SOUR<ch>:RES <val>
     {
         unsigned ch = 0;
         float val = 0.0f;
@@ -132,7 +106,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* BATT<ch>:LVP <val> */
+    // BATT<ch>:LVP <val>
     {
         unsigned ch = 0;
         float val = 0.0f;
@@ -144,7 +118,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* MEAS:VOLT:CONT ON|OFF (@ch) - must be checked before MEAS:VOLT? */
+    // MEAS:VOLT:CONT ON|OFF (@ch) - must be checked before MEAS:VOLT?
     {
         unsigned ch = 0;
         char onoff[4] = {0};
@@ -154,7 +128,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
-        /* legacy query form - treat as ON */
+        // legacy query form - treat as ON
         if (sscanf(str, "MEAS:VOLT:CONT? (@%u)", &ch) == 1) {
             out->cmd = APP_CMD_MEAS_VOLT_CONT;
             out->payload.scalar.channel = (uint8_t)(ch - 1u);
@@ -163,7 +137,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* MEAS:CURR:CONT ON|OFF (@ch) */
+    // MEAS:CURR:CONT ON|OFF (@ch)
     {
         unsigned ch = 0;
         char onoff[4] = {0};
@@ -173,7 +147,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
-        /* legacy query form - treat as ON */
+        // legacy query form - treat as ON
         if (sscanf(str, "MEAS:CURR:CONT? (@%u)", &ch) == 1) {
             out->cmd = APP_CMD_MEAS_CURR_CONT;
             out->payload.scalar.channel = (uint8_t)(ch - 1u);
@@ -182,7 +156,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* MEAS:VOLT? (@ch) */
+    // MEAS:VOLT? (@ch)
     {
         unsigned ch = 0;
         if (sscanf(str, "MEAS:VOLT? (@%u)", &ch) == 1) {
@@ -192,7 +166,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    /* MEAS:CURR? (@ch) */
+    // MEAS:CURR? (@ch)
     {
         unsigned ch = 0;
         if (sscanf(str, "MEAS:CURR? (@%u)", &ch) == 1) {
@@ -202,7 +176,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    return -1; /* unknown / unrecognised */
+    return -1;
 }
 
 #endif /* SCPI_IMPLEMENTATION */

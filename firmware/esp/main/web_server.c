@@ -17,7 +17,7 @@ static const char *TAG = "WEB_SERVER";
 #define WEB_WS_JSON_MAX_LEN 256
 
 static httpd_handle_t s_server = NULL;
-#ifdef CONFIG_HTTPD_WS_SUPPORT
+
 static int s_ws_clients[WEB_WS_MAX_CLIENTS];
 static SemaphoreHandle_t s_ws_clients_lock;
 static QueueHandle_t s_web_bus_queue;
@@ -35,53 +35,6 @@ static const char *mode_name_from_value(int mode) {
             return "CR";
         default:
             return "--";
-    }
-}
-
-static const char *cmd_name(bus_cmd_t cmd) {
-    switch (cmd) {
-        case APP_CMD_OUTPUT_STATE:
-            return "OUTPUT_STATE";
-        case APP_CMD_SET_MODE:
-            return "SET_MODE";
-        case APP_CMD_SET_CURRENT:
-            return "SET_CURRENT";
-        case APP_CMD_SET_VOLTAGE:
-            return "SET_VOLTAGE";
-        case APP_CMD_SET_POWER:
-            return "SET_POWER";
-        case APP_CMD_SET_RESISTANCE:
-            return "SET_RESISTANCE";
-        case APP_CMD_SET_LOW_VOLTAGE_PROTECTION:
-            return "SET_LOW_VOLTAGE_PROTECTION";
-        case APP_CMD_MEAS_VOLT:
-            return "MEAS_VOLT";
-        case APP_CMD_MEAS_CURR:
-            return "MEAS_CURR";
-        case APP_CMD_MEAS_VOLT_CONT:
-            return "MEAS_VOLT_CONT";
-        case APP_CMD_MEAS_CURR_CONT:
-            return "MEAS_CURR_CONT";
-        case APP_CMD_SOUR_VOLT:
-            return "SOUR_VOLT";
-        case APP_CMD_SOUR_CURR:
-            return "SOUR_CURR";
-        case APP_CMD_SOUR_MODE:
-            return "SOUR_MODE";
-        case APP_CMD_WIFI_STATUS:
-            return "WIFI_STATUS";
-        case APP_CMD_WIFI_RSSI:
-            return "WIFI_RSSI";
-        case APP_CMD_SELECT_CHANNEL:
-            return "SELECT_CHANNEL";
-        case APP_CMD_IDN:
-            return "IDN";
-        case APP_CMD_ERROR:
-            return "ERROR";
-        case SCPI_MEASUREMENTS:
-            return "SCPI_MEASUREMENTS";
-        default:
-            return "UNKNOWN";
     }
 }
 
@@ -165,8 +118,8 @@ static size_t ws_json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_l
                 out, out_len,
                 "{\"type\":\"measurement\",\"source\":\"%s\",\"cmd\":\"%s\",\"channel\":%u,\"voltage\":%.4f,"
                 "\"current\":%.4f,\"power\":%.4f,\"mode\":%d,\"modeName\":\"%s\",\"outputEnabled\":%d,\"error\":%d}",
-                app_bus_source_str((bus_source_t)msg->source), cmd_name((bus_cmd_t)msg->cmd), channel, voltage, current,
-                power, mode, mode_name_from_value(mode), enabled, error);
+                bus_source_to_cstring((bus_source_t)msg->source), bus_cmd_to_cstring((bus_cmd_t)msg->cmd), channel,
+                voltage, current, power, mode, mode_name_from_value(mode), enabled, error);
         }
         case APP_CMD_OUTPUT_STATE:
         case APP_CMD_SET_MODE:
@@ -184,7 +137,7 @@ static size_t ws_json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_l
         case APP_CMD_SOUR_MODE:
             return (size_t)snprintf(
                 out, out_len, "{\"type\":\"state\",\"source\":\"%s\",\"cmd\":\"%s\",\"channel\":%u,\"value\":%.6f}",
-                app_bus_source_str((bus_source_t)msg->source), cmd_name((bus_cmd_t)msg->cmd), channel,
+                bus_source_to_cstring((bus_source_t)msg->source), bus_cmd_to_cstring((bus_cmd_t)msg->cmd), channel,
                 (double)msg->payload.scalar.value);
         default:
             break;
@@ -234,7 +187,6 @@ static esp_err_t websocket_handler(httpd_req_t *req) {
 
     return ESP_OK;
 }
-#endif
 
 static const char *content_type_from_uri(const char *uri) {
     const char *dot = strrchr(uri, '.');

@@ -1,7 +1,6 @@
 #include "ota.h"
 
 #include <string.h>
-#include "app_runtime.h"
 #include "esp_app_desc.h"
 #include "esp_crt_bundle.h"
 #include "esp_http_client.h"
@@ -11,6 +10,7 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "main.h"
 
 static const char *TAG = "OTA";
 

@@ -87,14 +87,15 @@ _Static_assert(sizeof(bus_msg_t) <= 24, "bus_msg_t grew unexpectedly; queue RAM 
 void app_bus_subscribe(QueueHandle_t q);
 void app_bus_publish(const bus_msg_t *msg);
 
-const char *app_bus_source_str(bus_source_t s);
+const char *bus_source_to_cstring(bus_source_t s);
+const char *bus_cmd_to_cstring(bus_cmd_t cmd);
 
 void respond_measurement(bus_source_t dest, uint8_t ch, float current, float voltage, bool is_enabled, uint8_t mode,
                          bool is_error);
 
 #ifdef APP_BUS_IMPLEMENTATION
 
-const char *app_bus_source_str(bus_source_t s) {
+const char *bus_source_to_cstring(bus_source_t s) {
     switch (s) {
         case SRC_GUI:
             return "GUI";
@@ -106,6 +107,53 @@ const char *app_bus_source_str(bus_source_t s) {
             return "CTRL";
         default:
             return "???";
+    }
+}
+
+const char *bus_cmd_to_cstring(bus_cmd_t cmd) {
+    switch (cmd) {
+        case APP_CMD_OUTPUT_STATE:
+            return "OUTPUT_STATE";
+        case APP_CMD_SET_MODE:
+            return "SET_MODE";
+        case APP_CMD_SET_CURRENT:
+            return "SET_CURRENT";
+        case APP_CMD_SET_VOLTAGE:
+            return "SET_VOLTAGE";
+        case APP_CMD_SET_POWER:
+            return "SET_POWER";
+        case APP_CMD_SET_RESISTANCE:
+            return "SET_RESISTANCE";
+        case APP_CMD_SET_LOW_VOLTAGE_PROTECTION:
+            return "SET_LOW_VOLTAGE_PROTECTION";
+        case APP_CMD_MEAS_VOLT:
+            return "MEAS_VOLT";
+        case APP_CMD_MEAS_CURR:
+            return "MEAS_CURR";
+        case APP_CMD_MEAS_VOLT_CONT:
+            return "MEAS_VOLT_CONT";
+        case APP_CMD_MEAS_CURR_CONT:
+            return "MEAS_CURR_CONT";
+        case APP_CMD_SOUR_VOLT:
+            return "SOUR_VOLT";
+        case APP_CMD_SOUR_CURR:
+            return "SOUR_CURR";
+        case APP_CMD_SOUR_MODE:
+            return "SOUR_MODE";
+        case APP_CMD_WIFI_STATUS:
+            return "WIFI_STATUS";
+        case APP_CMD_WIFI_RSSI:
+            return "WIFI_RSSI";
+        case APP_CMD_SELECT_CHANNEL:
+            return "SELECT_CHANNEL";
+        case APP_CMD_IDN:
+            return "IDN";
+        case APP_CMD_ERROR:
+            return "ERROR";
+        case SCPI_MEASUREMENTS:
+            return "SCPI_MEASUREMENTS";
+        default:
+            return "UNKNOWN";
     }
 }
 

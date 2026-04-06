@@ -48,7 +48,7 @@ void sim_controller_task(void *param) {
         /* Block up to STREAM_TICK_MS so we can service continuous streams on timeout */
         if (xQueueReceive(queue_sim, &msg, pdMS_TO_TICKS(STREAM_TICK_MS)) == pdTRUE) {
             scpi_encode(&msg, buf, sizeof(buf));
-            printf("[ctrl %s] %s\n", app_bus_source_str(msg.source), buf);
+            printf("[ctrl %s] %s\n", bus_source_to_cstring(msg.source), buf);
             fflush(stdout);
 
             switch (msg.cmd) {
@@ -105,7 +105,7 @@ void sim_controller_task(void *param) {
                     else
                         stream_volt[msg.payload.meas.channel] &= ~bit;
                     printf("[ctrl] stream VOLT ch%u %s for %s\n", (unsigned)msg.payload.meas.channel + 1u,
-                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", app_bus_source_str(msg.source));
+                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", bus_source_to_cstring(msg.source));
                     fflush(stdout);
                     break;
                 }
@@ -116,7 +116,7 @@ void sim_controller_task(void *param) {
                     else
                         stream_curr[msg.payload.meas.channel] &= ~bit;
                     printf("[ctrl] stream CURR ch%u %s for %s\n", (unsigned)msg.payload.meas.channel + 1u,
-                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", app_bus_source_str(msg.source));
+                           (msg.payload.scalar.value != 0.0f) ? "ON" : "OFF", bus_source_to_cstring(msg.source));
                     fflush(stdout);
                     break;
                 }

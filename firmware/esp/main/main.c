@@ -24,7 +24,7 @@
 #include "web_server.h"
 #include "wireless_controller.h"
 
-#include "app_runtime.h"
+#include "main.h"
 #include "ui/ui.h"
 
 static const char *TAG = __FILE_NAME__;

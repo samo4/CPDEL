@@ -10,8 +10,8 @@ CONFIG_LV_USE_LOG=y
 
 
 # CONFIG_LV_MEM_CUSTOM is not set  # use fixed pool, not system malloc
-# LVGL memory pool (was 32 KB default, 37 is really all we have - until we dynamically create/destroy views)
-CONFIG_LV_MEM_SIZE_KILOBYTES=37
+# LVGL memory pool (was 32 KB default, 37 was needed until we dynamically created num/key)
+CONFIG_LV_MEM_SIZE_KILOBYTES=36
 
 # FreeRTOS tick rate: 1000 Hz = 1 ms per tick so pdMS_TO_TICKS() has 1 ms resolution
 # Without this, the default 100 Hz (10 ms/tick) makes pdMS_TO_TICKS(5)=0 which turns

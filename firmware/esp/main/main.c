@@ -75,7 +75,8 @@ void vApplicationMallocFailedHook(void) {
 }
 
 static void malloc_failed_cb(size_t size, uint32_t caps, const char *function_name) {
-    ESP_LOGE(TAG, "Failed to allocate %zu bytes (caps: 0x%08" PRIx32 ") in %s", size, caps, function_name);
+    ESP_LOGE(TAG, "Failed to allocate %zu bytes (caps: 0x%08" PRIx32 ") in %s — free: %u, largest: %u", size, caps,
+             function_name, (unsigned)heap_caps_get_free_size(caps), (unsigned)heap_caps_get_largest_free_block(caps));
 }
 
 void app_main(void) {

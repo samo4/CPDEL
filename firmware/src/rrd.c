@@ -100,7 +100,7 @@ void rrd_task(void *param) {
     bus_msg_t msg;
     TickType_t last_report_tick = xTaskGetTickCount();
 
-    for (;;) {
+    while (1) {
         if (xQueueReceive(queue_rrd, &msg, pdMS_TO_TICKS(200)) == pdTRUE) {
             if (msg.cmd == SCPI_MEASUREMENTS) {
                 if (s_rrd_lock && xSemaphoreTake(s_rrd_lock, portMAX_DELAY) == pdTRUE) {

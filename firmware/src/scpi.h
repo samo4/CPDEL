@@ -15,12 +15,12 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         return 0;
     }
 
+    // not implemented yet
     if (strcmp(str, "SYST:ERR?") == 0) {
         out->cmd = APP_CMD_ERROR;
         return 0;
     }
 
-    // OUTPut%u:STATe %d
     {
         unsigned ch = 0;
         char onoff[4] = {0};
@@ -31,8 +31,6 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             return 0;
         }
     }
-
-    // SOUR<ch>:FUNC VOLT|CURR|POW|RES
     {
         unsigned ch = 0;
         int consumed = 0;
@@ -56,11 +54,23 @@ int scpi_decode(const char *str, bus_msg_t *out) {
                 return 0;
             }
         }
+        int fn = 0;
+        if (sscanf(str, "SOUR%u:FUNC?%n", &ch, &fn) == 1 && fn > 0) {
+            out->cmd = APP_CMD_SOUR_MODE;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            return 0;
+        }
     }
 
-    // SOUR<ch>:VOLT <val>
+    // SOUR<ch>:VOLT <val>  /  SOUR<ch>:VOLT?
     {
         unsigned ch = 0;
+        int vn = 0;
+        if (sscanf(str, "SOUR%u:VOLT?%n", &ch, &vn) == 1 && vn > 0) {
+            out->cmd = APP_CMD_SOUR_VOLT;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            return 0;
+        }
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:VOLT %f", &ch, &val) == 2) {
             out->cmd = APP_CMD_SET_VOLTAGE;
@@ -69,10 +79,15 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             return 0;
         }
     }
-
-    // SOUR<ch>:CURR <val>
+    // SOUR<ch>:CURR <val>  /  SOUR<ch>:CURR?
     {
         unsigned ch = 0;
+        int cn = 0;
+        if (sscanf(str, "SOUR%u:CURR?%n", &ch, &cn) == 1 && cn > 0) {
+            out->cmd = APP_CMD_SOUR_CURR;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            return 0;
+        }
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:CURR %f", &ch, &val) == 2) {
             out->cmd = APP_CMD_SET_CURRENT;
@@ -82,9 +97,15 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    // SOUR<ch>:POW <val>
+    // SOUR<ch>:POW <val>  /  SOUR<ch>:POW?
     {
         unsigned ch = 0;
+        int pn = 0;
+        if (sscanf(str, "SOUR%u:POW?%n", &ch, &pn) == 1 && pn > 0) {
+            out->cmd = APP_CMD_SOUR_POW;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            return 0;
+        }
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:POW %f", &ch, &val) == 2) {
             out->cmd = APP_CMD_SET_POWER;
@@ -94,9 +115,15 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    // SOUR<ch>:RES <val>
+    // SOUR<ch>:RES <val>  /  SOUR<ch>:RES?
     {
         unsigned ch = 0;
+        int rn = 0;
+        if (sscanf(str, "SOUR%u:RES?%n", &ch, &rn) == 1 && rn > 0) {
+            out->cmd = APP_CMD_SOUR_RES;
+            out->payload.scalar.channel = (uint8_t)(ch - 1u);
+            return 0;
+        }
         float val = 0.0f;
         if (sscanf(str, "SOUR%u:RES %f", &ch, &val) == 2) {
             out->cmd = APP_CMD_SET_RESISTANCE;
@@ -118,7 +145,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
         }
     }
 
-    // MEAS:VOLT:CONT ON|OFF (@ch) - must be checked before MEAS:VOLT?
+    // must be checked before MEAS:VOLT?
     {
         unsigned ch = 0;
         char onoff[4] = {0};
@@ -128,16 +155,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
-        // legacy query form - treat as ON
-        if (sscanf(str, "MEAS:VOLT:CONT? (@%u)", &ch) == 1) {
-            out->cmd = APP_CMD_MEAS_VOLT_CONT;
-            out->payload.scalar.channel = (uint8_t)(ch - 1u);
-            out->payload.scalar.value = 1.0f;
-            return 0;
-        }
     }
-
-    // MEAS:CURR:CONT ON|OFF (@ch)
     {
         unsigned ch = 0;
         char onoff[4] = {0};
@@ -147,16 +165,7 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             out->payload.scalar.value = (strcmp(onoff, "ON") == 0) ? 1.0f : 0.0f;
             return 0;
         }
-        // legacy query form - treat as ON
-        if (sscanf(str, "MEAS:CURR:CONT? (@%u)", &ch) == 1) {
-            out->cmd = APP_CMD_MEAS_CURR_CONT;
-            out->payload.scalar.channel = (uint8_t)(ch - 1u);
-            out->payload.scalar.value = 1.0f;
-            return 0;
-        }
     }
-
-    // MEAS:VOLT? (@ch)
     {
         unsigned ch = 0;
         if (sscanf(str, "MEAS:VOLT? (@%u)", &ch) == 1) {
@@ -165,8 +174,6 @@ int scpi_decode(const char *str, bus_msg_t *out) {
             return 0;
         }
     }
-
-    // MEAS:CURR? (@ch)
     {
         unsigned ch = 0;
         if (sscanf(str, "MEAS:CURR? (@%u)", &ch) == 1) {

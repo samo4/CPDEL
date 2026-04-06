@@ -13,6 +13,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 ### Ideas
 
 - Implement testing, perhaps with [Unity](https://github.com/ThrowTheSwitch/Unity)
+- consider using a [real SCPI parser](https://www.jaybee.cz/scpi-parser/basic/instrument/)
 
 ## Development
 
@@ -39,7 +40,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 
 ### Test
 
-Install `pip install -U pytest`. 
+Install `pip install -U pytest`.
 Run with `pytest tests/ --host 192.168.88.117`
 
 #### Development notes

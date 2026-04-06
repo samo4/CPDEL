@@ -10,6 +10,7 @@
 #include "freertos_includes.h"
 
 typedef enum {
+    // SET commands
     APP_CMD_OUTPUT_STATE,
     APP_CMD_SET_MODE,
     APP_CMD_SET_CURRENT,
@@ -17,18 +18,22 @@ typedef enum {
     APP_CMD_SET_POWER,                  /* args[0] = power setpoint in Watts */
     APP_CMD_SET_RESISTANCE,             /* args[0] = resistance setpoint in Ohms */
     APP_CMD_SET_LOW_VOLTAGE_PROTECTION, /* args[0] = LVP setpoint in Volts */
-    SCPI_MEASUREMENTS,                  // continous measurements (U,I) from controller
+    // MEAS commands
+    SCPI_MEASUREMENTS, // continous measurements (U,I) from controller
     APP_CMD_MEAS_VOLT,
     APP_CMD_MEAS_CURR,
     APP_CMD_MEAS_VOLT_CONT,
     APP_CMD_MEAS_CURR_CONT,
-    /* Source (setpoint / mode) - one-shot query; response reuses the same cmd with source=SRC_CTRL */
-    APP_CMD_SOUR_VOLT,   /* request: no payload; response: scalar.value = voltage setpoint */
-    APP_CMD_SOUR_CURR,   /* request: no payload; response: scalar.value = current setpoint */
-    APP_CMD_SOUR_MODE,   /* request: no payload; response: scalar.value = mode */
+    // GET commands
+    APP_CMD_SOUR_VOLT,
+    APP_CMD_SOUR_CURR,
+    APP_CMD_SOUR_POW,
+    APP_CMD_SOUR_RES,
+    APP_CMD_SOUR_MODE,
+    // WIFI
     APP_CMD_WIFI_STATUS, /* scalar.value: 0=disconnected, 1=connecting, 2=connected */
     APP_CMD_WIFI_RSSI,   /* wifi.rssi + wifi.ip */
-    APP_CMD_SELECT_CHANNEL,
+    // Misc SCPI
     APP_CMD_IDN,
     APP_CMD_ERROR,
 } bus_cmd_t;
@@ -78,7 +83,6 @@ typedef struct {
     app_payload_t payload;
     uint8_t cmd;    // bus_cmd_t, but keep as uint8_t for compactness
     uint8_t source; // bus_source_t, but keep as uint8_t for compactness
-    /* 2 bytes implicit trailing padding; struct alignment = 4 */
 } bus_msg_t;
 
 _Static_assert(offsetof(bus_msg_t, payload) == 4, "payload offset changed unexpectedly");
@@ -144,8 +148,6 @@ const char *bus_cmd_to_cstring(bus_cmd_t cmd) {
             return "WIFI_STATUS";
         case APP_CMD_WIFI_RSSI:
             return "WIFI_RSSI";
-        case APP_CMD_SELECT_CHANNEL:
-            return "SELECT_CHANNEL";
         case APP_CMD_IDN:
             return "IDN";
         case APP_CMD_ERROR:

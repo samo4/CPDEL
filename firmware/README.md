@@ -47,6 +47,20 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 Install `pip install -U pytest`.
 Run with `pytest tests/ --host 192.168.88.117`
 
+Some SCPI commands to run:
+
+```
+*IDN?
+OUTP1:STAT ON
+OUTP1:STAT OFF
+SOUR1:FUNC POW
+SOUR1:FUNC VOLT
+SOUR1:FUNC CURR
+SOUR1:FUNC?
+SOUR1:VOLT 2.2
+SOUR1:VOLT?
+```
+
 #### Development notes
 
 To make sure `sdkconfig.default` is really used:

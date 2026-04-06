@@ -45,7 +45,7 @@ static void lvgl_task(void *param) {
         uint32_t now = xTaskGetTickCount();
         if (now - hwm_tick >= pdMS_TO_TICKS(10000)) {
             hwm_tick = now;
-            ESP_LOGW("LVGL", "free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+            ESP_LOGI(TAG, "free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
                      (unsigned)uxTaskGetStackHighWaterMark(NULL));
         }
     }
@@ -57,7 +57,7 @@ static void heartbeat_task(void *param) {
     for (;;) {
         level = !level;
         ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, level));
-        ESP_LOGW(TAG, "[heartbeat] free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+        ESP_LOGI(TAG, "[heartbeat] free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
                  (unsigned)uxTaskGetStackHighWaterMark(NULL));
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
@@ -75,8 +75,10 @@ void vApplicationMallocFailedHook(void) {
 }
 
 static void malloc_failed_cb(size_t size, uint32_t caps, const char *function_name) {
-    ESP_LOGE(TAG, "Failed to allocate %zu bytes (caps: 0x%08" PRIx32 ") in %s — free: %u, largest: %u", size, caps,
-             function_name, (unsigned)heap_caps_get_free_size(caps), (unsigned)heap_caps_get_largest_free_block(caps));
+    ESP_LOGE(TAG,
+             "(could be anywhere) Failed to allocate %zu bytes (caps: 0x%08" PRIx32 ") in %s — free: %u, largest: %u",
+             size, caps, function_name, (unsigned)heap_caps_get_free_size(caps),
+             (unsigned)heap_caps_get_largest_free_block(caps));
 }
 
 void app_main(void) {

@@ -9,6 +9,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 - [x] rethink queues
 - [ ] rrdtool-like graph [where do we put it?](MEMORY.md)
 - [x] OTA.
+- [ ] read SCPI_FLAG_ERROR and display in UI and react on SCPI
 
 ### Ideas
 

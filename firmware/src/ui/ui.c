@@ -10,7 +10,9 @@ lv_obj_t *ui_NumpadScreen;
 lv_obj_t *ui_KeyboardScreen;
 lv_obj_t *ui_WirelessScreen;
 lv_obj_t *ui_OtaScreen;
+#ifdef TOUCH_DEBUG_SCREEN
 lv_obj_t *ui_TouchDebugScreen;
+#endif
 
 static QueueHandle_t queue_gui = NULL;
 static bool s_wifi_connected = false;
@@ -115,9 +117,10 @@ void ui_init(void) {
     ui_create_channel_detail_screen();
     ui_create_graph_screen();
     ui_create_settings_screen();
-    ui_create_wireless_screen();
     ui_create_ota_screen();
+#ifdef TOUCH_DEBUG_SCREEN
     ui_create_touch_debug_screen();
+#endif
     ui_create_modal_screen();
     lv_disp_load_scr(ui_MainScreen);
     // numpad and keyboard are created on demand
@@ -138,11 +141,17 @@ void ui_event_navigate_settings(lv_event_t *e) { lv_scr_load(ui_SettingsScreen);
 
 void ui_event_navigate_graph(lv_event_t *e) { lv_scr_load(ui_GraphScreen); }
 
-void ui_event_navigate_wireless(lv_event_t *e) { lv_scr_load(ui_WirelessScreen); }
+void ui_event_navigate_wireless(lv_event_t *e) {
+    (void)e;
+    ui_create_wireless_screen();
+    lv_scr_load(ui_WirelessScreen);
+}
 
 void ui_event_navigate_ota(lv_event_t *e) { lv_scr_load(ui_OtaScreen); }
 
+#ifdef TOUCH_DEBUG_SCREEN
 void ui_event_navigate_touch_debug(lv_event_t *e) { lv_scr_load(ui_TouchDebugScreen); }
+#endif
 
 void ui_event_navigate_back(lv_event_t *e) { lv_scr_load(ui_MainScreen); }
 

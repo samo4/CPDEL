@@ -38,6 +38,20 @@ static void wireless_set_password(const char *text) {
     update_save_button_state();
 }
 
+static void wireless_destroy(void) {
+    ssid_ta = NULL;
+    pwd_ta = NULL;
+    save_btn = NULL;
+    lv_obj_del_async(ui_WirelessScreen);
+    ui_WirelessScreen = NULL;
+}
+
+static void wireless_back_event_cb(lv_event_t *e) {
+    (void)e;
+    wireless_destroy();
+    lv_scr_load(ui_MainScreen);
+}
+
 static void save_reboot_event_cb(lv_event_t *e) {
     (void)e;
 
@@ -49,7 +63,8 @@ static void save_reboot_event_cb(lv_event_t *e) {
     }
 #endif
 
-    ui_event_navigate_back(e);
+    wireless_destroy();
+    lv_scr_load(ui_MainScreen);
 }
 
 static void ssid_edit_event_cb(lv_event_t *e) {
@@ -76,7 +91,7 @@ void ui_create_wireless_screen(void) {
     lv_obj_t *back_btn = lv_btn_create(ui_WirelessScreen);
     lv_obj_set_size(back_btn, 60, 30);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-    lv_obj_add_event_cb(back_btn, ui_event_navigate_back, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(back_btn, wireless_back_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
     lv_label_set_text(back_lbl, "Back");
     lv_obj_center(back_lbl);

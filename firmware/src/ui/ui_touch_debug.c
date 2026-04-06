@@ -1,3 +1,5 @@
+#ifdef TOUCH_DEBUG_SCREEN
+
 #include "ui.h"
 
 #ifdef ESP_PLATFORM
@@ -68,3 +70,5 @@ void ui_create_touch_debug_screen(void) {
     lv_obj_align(note, LV_ALIGN_CENTER, 0, 0);
 #endif
 }
+
+#endif

@@ -19,7 +19,7 @@ static lv_indev_drv_t indev_drv;
 static int16_t s_last_raw_x = 0;
 static int16_t s_last_raw_y = 0;
 
-#define Y_OFFSET (-80)
+#define Y_OFFSET (-90)
 #define X_OFFSET (0)
 
 void touch_get_last_point(int16_t *x, int16_t *y) {

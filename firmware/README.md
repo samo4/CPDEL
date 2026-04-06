@@ -37,6 +37,11 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 - `+` on terminal to add ESP-IDF PowerShell terminal
   - `./esp.ps1 flash-monitor`
 
+### Test
+
+Install `pip install -U pytest`. 
+Run with `pytest tests/ --host 192.168.88.117`
+
 #### Development notes
 
 To make sure `sdkconfig.default` is really used:

@@ -78,3 +78,10 @@ esp/main/idf_component.yml.lock
 eim_config.toml
 
 sim/build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/

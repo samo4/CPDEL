@@ -107,24 +107,6 @@ static size_t ws_json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_l
                 bus_source_to_cstring((bus_source_t)msg->source), bus_cmd_to_cstring((bus_cmd_t)msg->cmd), channel,
                 voltage, current, power, mode, load_mode_to_cstring((load_mode_t)mode), enabled, error);
         }
-        case APP_CMD_OUTPUT_STATE:
-        case APP_CMD_SET_MODE:
-        case APP_CMD_SET_VOLTAGE:
-        case APP_CMD_SET_CURRENT:
-        case APP_CMD_SET_POWER:
-        case APP_CMD_SET_RESISTANCE:
-        case APP_CMD_SET_LOW_VOLTAGE_PROTECTION:
-        case APP_CMD_MEAS_VOLT:
-        case APP_CMD_MEAS_CURR:
-        case APP_CMD_MEAS_VOLT_CONT:
-        case APP_CMD_MEAS_CURR_CONT:
-        case APP_CMD_SOUR_VOLT:
-        case APP_CMD_SOUR_CURR:
-        case APP_CMD_SOUR_MODE:
-            return (size_t)snprintf(
-                out, out_len, "{\"type\":\"state\",\"source\":\"%s\",\"cmd\":\"%s\",\"channel\":%u,\"value\":%.6f}",
-                bus_source_to_cstring((bus_source_t)msg->source), bus_cmd_to_cstring((bus_cmd_t)msg->cmd), channel,
-                (double)msg->payload.scalar.value);
         default:
             break;
     }

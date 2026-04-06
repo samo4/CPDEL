@@ -93,7 +93,14 @@ static void btn_backspace_event(lv_event_t *e) {
     numpad_update_display();
 }
 
-static void btn_cancel_event(lv_event_t *e) { lv_scr_load(numpad_return_screen); }
+static void btn_cancel_event(lv_event_t *e) {
+    lv_scr_load(numpad_return_screen);
+    lv_obj_del_async(ui_NumpadScreen);
+    ui_NumpadScreen = NULL;
+    numpad_title_label = NULL;
+    entry_label = NULL;
+    range_label = NULL;
+}
 
 static void btn_ok_event(lv_event_t *e) {
     double value = atof(input_buf);
@@ -101,6 +108,11 @@ static void btn_ok_event(lv_event_t *e) {
     if (value > numpad_max) value = numpad_max;
     if (numpad_confirm_cb) numpad_confirm_cb(value);
     lv_scr_load(numpad_return_screen);
+    lv_obj_del_async(ui_NumpadScreen);
+    ui_NumpadScreen = NULL;
+    numpad_title_label = NULL;
+    entry_label = NULL;
+    range_label = NULL;
 }
 
 // ── Helper: create a single numpad row ───────────────────────────────────────
@@ -210,7 +222,7 @@ void ui_open_numpad(const char *title, double current_value, double min, double 
     numpad_confirm_cb = confirm_cb;
     numpad_return_screen = return_screen;
 
-    // Seed the input buffer from the current value, stripping trailing zeros
+    ui_create_numpad_screen();
     snprintf(input_buf, sizeof(input_buf), "%.4f", current_value);
     int len = (int)strlen(input_buf);
     while (len > 1 && input_buf[len - 1] == '0') len--;

@@ -115,13 +115,12 @@ void ui_init(void) {
     ui_create_channel_detail_screen();
     ui_create_graph_screen();
     ui_create_settings_screen();
-    ui_create_numpad_screen();
-    ui_create_keyboard_screen();
     ui_create_wireless_screen();
     ui_create_ota_screen();
     ui_create_touch_debug_screen();
     ui_create_modal_screen();
     lv_disp_load_scr(ui_MainScreen);
+    // numpad and keyboard are created on demand
 
     /* LVGL timer: drain queue_gui every 100 ms (runs on LVGL thread, no mutex needed) */
     lv_timer_create(gui_queue_timer_cb, 100, NULL);

@@ -14,11 +14,13 @@ static void keyboard_close(bool confirm) {
     if (confirm && keyboard_confirm_cb != NULL) {
         keyboard_confirm_cb(lv_textarea_get_text(keyboard_textarea));
     }
-    if (lv_obj_is_valid(keyboard_return_screen)) {
-        lv_scr_load(keyboard_return_screen);
-        return;
-    }
-    lv_scr_load(ui_MainScreen);
+    lv_obj_t *target = lv_obj_is_valid(keyboard_return_screen) ? keyboard_return_screen : ui_MainScreen;
+    lv_scr_load(target);
+    lv_obj_del_async(ui_KeyboardScreen);
+    ui_KeyboardScreen = NULL;
+    keyboard_title_label = NULL;
+    keyboard_textarea = NULL;
+    keyboard_widget = NULL;
 }
 
 static void keyboard_cancel_event_cb(lv_event_t *e) {
@@ -99,6 +101,8 @@ void ui_create_keyboard_screen(void) {
 void ui_open_keyboard(const char *title, const char *current_value, bool password_mode,
                       void (*confirm_cb)(const char *text), lv_obj_t *return_screen) {
     static char text_buf[UI_KEYBOARD_BUF_SIZE];
+
+    ui_create_keyboard_screen();
 
     keyboard_confirm_cb = confirm_cb;
     keyboard_return_screen = return_screen;

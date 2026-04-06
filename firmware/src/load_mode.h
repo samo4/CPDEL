@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#define DC_LOAD_DEVICE_COUNT 2
+
 typedef enum {
     LOAD_MODE_CV = 0,
     LOAD_MODE_CC = 1,

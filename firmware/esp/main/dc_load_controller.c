@@ -323,11 +323,8 @@ void dc_load_controller_init(void) {
         return;
     }
     queue_dc_load = xQueueCreate(16, sizeof(bus_msg_t));
-    if (queue_dc_load == NULL) {
-        // die hard?
-        ESP_LOGE(TAG, "Failed to create dc load command queue");
-        return;
-    }
+    assert(queue_dc_load != NULL);
+
     app_bus_subscribe(queue_dc_load);
 
     for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
@@ -352,6 +349,24 @@ void dc_load_controller_init(void) {
 
     ESP_ERROR_CHECK(uart_set_pin(MODBUS_UART_PORT, MODBUS_TX_PIN, MODBUS_RX_PIN, MODBUS_DIR_PIN, UART_PIN_NO_CHANGE));
     ESP_ERROR_CHECK(uart_set_mode(MODBUS_UART_PORT, UART_MODE_RS485_HALF_DUPLEX));
+
+    // TODO: do we really need this?
+    // Newer esp-modbus requires at least one descriptor entry before mbc_master_start().
+    // This firmware uses mbc_master_send_request() directly, so a single placeholder satisfies the check.
+    static const mb_parameter_descriptor_t s_dummy_descriptor = {
+        .cid = 0,
+        .param_key = "dummy",
+        .param_units = "",
+        .mb_slave_addr = 1,
+        .mb_param_type = MB_PARAM_HOLDING,
+        .mb_reg_start = 0,
+        .mb_size = 1,
+        .param_offset = 0,
+        .param_type = PARAM_TYPE_U16,
+        .param_size = sizeof(uint16_t),
+        .access = PAR_PERMS_READ_WRITE,
+    };
+    ESP_ERROR_CHECK(mbc_master_set_descriptor(s_dc_load_state.mbm_handle, &s_dummy_descriptor, 1));
 
     ESP_ERROR_CHECK(mbc_master_start(s_dc_load_state.mbm_handle));
 

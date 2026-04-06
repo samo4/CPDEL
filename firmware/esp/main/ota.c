@@ -52,7 +52,7 @@ static void ota_task(void *arg) {
         err = esp_https_ota_perform(handle);
         int written = esp_https_ota_get_image_len_read(handle);
         if (written - last_reported >= 16384) {
-            ESP_LOGW(TAG, "OTA progress: %d bytes written", written);
+            ESP_LOGI(TAG, "OTA progress: %d bytes written", written);
             last_reported = written;
         }
         if (err == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {

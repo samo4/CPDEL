@@ -81,8 +81,9 @@ _Static_assert(sizeof(app_payload_t) <= 16, "app_payload_t grew unexpectedly");
 typedef struct {
     uint32_t timestamp_ms; /* Monotonic time since boot, in milliseconds */
     app_payload_t payload;
-    uint8_t cmd;    // bus_cmd_t, but keep as uint8_t for compactness
-    uint8_t source; // bus_source_t, but keep as uint8_t for compactness
+    uint8_t cmd;              // bus_cmd_t, but keep as uint8_t for compactness
+    uint8_t source;           // bus_source_t, but keep as uint8_t for compactness
+    int16_t reply_socket;     // socket to reply to (-1 = none); fits in former padding
 } bus_msg_t;
 
 _Static_assert(offsetof(bus_msg_t, payload) == 4, "payload offset changed unexpectedly");

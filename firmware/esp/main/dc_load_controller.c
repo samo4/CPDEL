@@ -268,6 +268,7 @@ static void dc_load_controller_task(void *arg) {
                         .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
                         .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].voltage,
+                        .reply_socket = msg.reply_socket,
                     });
                     break;
                 case APP_CMD_MEAS_CURR:
@@ -277,6 +278,7 @@ static void dc_load_controller_task(void *arg) {
                         .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
                         .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].current,
+                        .reply_socket = msg.reply_socket,
                     });
                     break;
                 case APP_CMD_SOUR_VOLT:
@@ -288,6 +290,7 @@ static void dc_load_controller_task(void *arg) {
                         .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
                         .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].command_voltage,
+                        .reply_socket = msg.reply_socket,
                     });
                     break;
                 case APP_CMD_SOUR_CURR:
@@ -297,6 +300,7 @@ static void dc_load_controller_task(void *arg) {
                         .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
                         .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].command_current,
+                        .reply_socket = msg.reply_socket,
                     });
                     break;
                 case APP_CMD_SOUR_MODE:
@@ -306,6 +310,7 @@ static void dc_load_controller_task(void *arg) {
                         .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
                         .payload.scalar.value = (float)s_dc_load_state.devices[msg.payload.meas.channel].mode,
+                        .reply_socket = msg.reply_socket,
                     });
                     break;
                 default:

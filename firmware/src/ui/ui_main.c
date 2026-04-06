@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "app_bus.h"
+#include "load_mode.h"
 #include "ui.h"
 
 static void create_channel_panel(lv_obj_t *parent, int _ch);
@@ -11,21 +12,6 @@ static lv_obj_t *ch_pwr_lbl[UI_CHANNEL_COUNT];
 static lv_obj_t *ch_mode_badge[UI_CHANNEL_COUNT];
 static lv_obj_t *ch_sp_lbl[UI_CHANNEL_COUNT];
 static lv_obj_t *ch_output_sw[UI_CHANNEL_COUNT];
-
-static const char *ui_mode_badge_text(uint8_t mode) {
-    switch (mode) {
-        case 0:
-            return "CV";
-        case 1:
-            return "CC";
-        case 2:
-            return "CP";
-        case 3:
-            return "CR";
-        default:
-            return "--";
-    }
-}
 
 static void event_output_toggle(lv_event_t *e) {
     int ch = (int)(intptr_t)lv_event_get_user_data(e);
@@ -73,7 +59,7 @@ void ui_main_update_channel(int _ch) {
     lv_label_set_text_fmt(ch_volt_lbl[_ch], "%.2f V", c->measured_voltage);
     lv_label_set_text_fmt(ch_curr_lbl[_ch], "%.3f A", c->measured_current);
     lv_label_set_text_fmt(ch_pwr_lbl[_ch], "%.2f W", c->measured_power);
-    lv_label_set_text(ch_mode_badge[_ch], ui_mode_badge_text(c->mode));
+    lv_label_set_text(ch_mode_badge[_ch], load_mode_to_cstring((load_mode_t)c->mode));
     switch (c->mode) {
         case 0:
             lv_label_set_text_fmt(ch_sp_lbl[_ch], "%.2fV", c->voltage_setpoint);

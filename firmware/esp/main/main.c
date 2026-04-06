@@ -116,7 +116,7 @@ void app_main(void) {
 
     xTaskCreate(lvgl_task, "LVGL", 8192, NULL, 5, &s_lvgl_task_handle);
     // heartbeat_task will die if the system is starved of memory or time:
-    xTaskCreate(heartbeat_task, "Heartbeat", 1536, NULL, 2, NULL);
+    xTaskCreate(heartbeat_task, "Heartbeat", 1536, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 
 void app_prepare_for_ota(void) {

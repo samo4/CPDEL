@@ -42,6 +42,7 @@ static void scpi_process_line(const char *line) {
     int result = scpi_decode(line, &msg);
     if (result == 0) {
         msg.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+        msg.source = SRC_LXI;
         app_bus_publish(&msg);
         // TODO: send response back to client ?
     }
@@ -86,18 +87,16 @@ static void scpi_client_task(void *arg) {
         ssize_t n = recv(sock, &byte_buf, 1, 0);
 
         if (n <= 0) {
-            // Connection closed or error
-            break;
+            break; // Connection closed or error
         }
 
         uint8_t byte = (uint8_t)byte_buf;
 
         // Handle telnet IAC sequences
         if (byte == 0xFF) {
-            // Peek ahead for the next byte to determine IAC sequence length
             uint8_t peek_buf[2];
             ssize_t peek_n = recv(sock, peek_buf, 2, MSG_PEEK);
-            if (peek_n >= 2) {
+            if (peek_n >= 2) { // Peek ahead for the next byte to determine IAC sequence length
                 size_t skip_len = scpi_skip_telnet_iac((const uint8_t[]){0xFF, peek_buf[0], peek_buf[1]}, 3);
                 if (skip_len > 1) {
                     recv(sock, peek_buf, skip_len - 1, 0); // consume the skipped bytes

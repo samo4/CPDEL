@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "app_bus.h"
+#include "load_mode.h"
 #include "ui.h"
 
 #ifdef ESP_PLATFORM
@@ -49,8 +50,6 @@ static void update_setpoint_view(uint8_t mode) {
     }
 }
 
-static const char *const MODE_NAMES[] = {"CV", "CC", "CP", "CR"};
-
 static void event_mode_change(lv_event_t *e) {
     uint8_t mode = (uint8_t)lv_dropdown_get_selected(mode_dd);
     channels[_ch].mode = mode;
@@ -63,7 +62,7 @@ static void event_mode_change(lv_event_t *e) {
     };
     msg.payload.scalar.value = (float)mode;
 #ifdef ESP_PLATFORM
-    ESP_LOGI(TAG, "Set CH%u mode to %s", _ch + 1, MODE_NAMES[mode]);
+    ESP_LOGI(TAG, "Set CH%u mode to %s", _ch + 1, load_mode_to_cstring((load_mode_t)mode));
 #endif
     app_bus_publish(&msg);
 }
@@ -75,22 +74,22 @@ static void event_cutoff_toggle(lv_event_t *e) {
 }
 
 static void on_setpoint_confirmed(double value) {
-    uint8_t mode = channels[_ch].mode;
+    load_mode_t mode = (load_mode_t)channels[_ch].mode;
     bus_cmd_t cmd;
     switch (mode) {
-        case 0:
+        case LOAD_MODE_CV:
             channels[_ch].voltage_setpoint = value;
             cmd = APP_CMD_SET_VOLTAGE;
             break;
-        case 1:
+        case LOAD_MODE_CC:
             channels[_ch].current_setpoint = value;
             cmd = APP_CMD_SET_CURRENT;
             break;
-        case 2:
+        case LOAD_MODE_CP:
             channels[_ch].power_setpoint = value;
             cmd = APP_CMD_SET_POWER;
             break;
-        case 3:
+        case LOAD_MODE_CR:
             channels[_ch].resistance_setpoint = value;
             cmd = APP_CMD_SET_RESISTANCE;
             break;
@@ -105,7 +104,7 @@ static void on_setpoint_confirmed(double value) {
         .source = SRC_GUI,
     };
     msg.payload.scalar.value = (float)value;
-    UI_LOG("CHANNEL_DETAIL", "Sending CH%u %s set to %.3f", _ch + 1, MODE_NAMES[mode], value);
+    UI_LOG("CHANNEL_DETAIL", "Sending CH%u %s set to %.3f", _ch + 1, load_mode_to_cstring(mode), value);
     app_bus_publish(&msg);
 }
 

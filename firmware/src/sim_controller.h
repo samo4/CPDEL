@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "app_bus.h"
 #include "freertos_includes.h"
+#include "load_mode.h"
 #include "ui/ui.h"
 
 #include "app_bus.h"
@@ -83,11 +84,7 @@ void sim_controller_task(void *param) {
                 case APP_CMD_SET_MODE:
                     ctrl_mode[msg.payload.meas.channel] = (uint8_t)msg.payload.scalar.value;
                     printf("[ctrl] SET MODE ch%u = %s\n", (unsigned)msg.payload.meas.channel + 1u,
-                           (ctrl_mode[msg.payload.meas.channel] == 0)   ? "CV"
-                           : (ctrl_mode[msg.payload.meas.channel] == 1) ? "CC"
-                           : (ctrl_mode[msg.payload.meas.channel] == 2) ? "CP"
-                           : (ctrl_mode[msg.payload.meas.channel] == 3) ? "CR"
-                                                                        : "UNK");
+                           load_mode_to_cstring((load_mode_t)ctrl_mode[msg.payload.meas.channel]));
                     fflush(stdout);
                     break;
 

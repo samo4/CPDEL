@@ -10,6 +10,7 @@
 #include "freertos/task.h"
 
 #include "app_bus.h"
+#include "load_mode.h"
 
 static const char *TAG = "DC_LOAD";
 
@@ -22,34 +23,9 @@ static const int MODBUS_DIR_PIN = 16; // 485_DIR (DE/RE)
 
 static QueueHandle_t queue_dc_load = NULL;
 
-typedef enum {
-    DC_LOAD_MODE_VOLTAGE = 0,
-    DC_LOAD_MODE_CURRENT = 1,
-    DC_LOAD_MODE_POWER = 2,
-    DC_LOAD_MODE_RESISTANCE = 3,
-    DC_LOAD_MODE_VOLTAGE_CURRENT = 4
-} dc_load_mode_t;
-
-static const char *dc_load_mode_abbrev(dc_load_mode_t mode) {
-    switch (mode) {
-        case DC_LOAD_MODE_VOLTAGE:
-            return "CV";
-        case DC_LOAD_MODE_CURRENT:
-            return "CC";
-        case DC_LOAD_MODE_POWER:
-            return "CP";
-        case DC_LOAD_MODE_RESISTANCE:
-            return "CR";
-        case DC_LOAD_MODE_VOLTAGE_CURRENT:
-            return "CVCC";
-        default:
-            return "UNK";
-    }
-}
-
 typedef struct {
     uint8_t address;
-    dc_load_mode_t mode;
+    load_mode_t mode;
     bool is_enabled;
     float command_current;
     float command_voltage;
@@ -107,9 +83,9 @@ static esp_err_t modbus_send_enable(const dc_load_device_t *device, bool enable)
     return mbc_master_send_request(s_dc_load_state.mbm_handle, &req, &value);
 }
 
-static esp_err_t modbus_send_mode(const dc_load_device_t *device, dc_load_mode_t mode) {
+static esp_err_t modbus_send_mode(const dc_load_device_t *device, load_mode_t mode) {
     uint16_t value = (uint16_t)mode;
-    ESP_LOGW(TAG, "dev @%u mode to %s (%u)", device->address, dc_load_mode_abbrev(mode), value);
+    ESP_LOGW(TAG, "dev @%u mode to %s (%u)", device->address, load_mode_to_cstring(mode), value);
     mb_param_request_t req = {
         .slave_addr = device->address,
         .command = MB_FUNC_WRITE_HOLD_REG,
@@ -231,7 +207,7 @@ static void dc_load_controller_task(void *arg) {
                          s_dc_load_state.devices[i].address, s_dc_load_state.devices[i].voltage,
                          s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].power,
                          s_dc_load_state.devices[i].is_enabled ? "Yes" : "No",
-                         dc_load_mode_abbrev(s_dc_load_state.devices[i].mode));
+                         load_mode_to_cstring(s_dc_load_state.devices[i].mode));
             }
             s_last_status_log = xTaskGetTickCount();
         }
@@ -253,13 +229,13 @@ static void dc_load_controller_task(void *arg) {
                                                                      msg.payload.scalar.value != 0.0f));
                     break;
                 case APP_CMD_SET_MODE:
-                    ESP_LOGI(TAG, "mode to %s", dc_load_mode_abbrev((uint8_t)msg.payload.scalar.value));
-                    if ((uint8_t)msg.payload.scalar.value > DC_LOAD_MODE_VOLTAGE_CURRENT) {
+                    ESP_LOGI(TAG, "mode to %s", load_mode_to_cstring((load_mode_t)(uint8_t)msg.payload.scalar.value));
+                    if ((uint8_t)msg.payload.scalar.value > LOAD_MODE_CVCC) {
                         ESP_LOGE(TAG, "Invalid mode %u", (uint8_t)msg.payload.scalar.value);
                         break;
                     }
                     ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_mode(&s_dc_load_state.devices[msg.payload.meas.channel],
-                                                                   (dc_load_mode_t)(uint8_t)msg.payload.scalar.value));
+                                                                   (load_mode_t)(uint8_t)msg.payload.scalar.value));
                     break;
                 case APP_CMD_SET_VOLTAGE:
                     ESP_LOGI(TAG, "voltage setpoint to %.2f V", (double)msg.payload.scalar.value);
@@ -327,7 +303,7 @@ void dc_load_controller_init(void) {
 
     for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
         s_dc_load_state.devices[i].address = i + 1;
-        s_dc_load_state.devices[i].mode = DC_LOAD_MODE_CURRENT;
+        s_dc_load_state.devices[i].mode = LOAD_MODE_CC;
         s_dc_load_state.devices[i].lv_cutoff_threshold = 999.0f;
     }
 

@@ -9,4 +9,4 @@
 - don't use http servers for OTA that you don't fully control, because you have no control over TLS chain.. updates to chain can break your OTA
 - don't use SPI display if you want full screen animations, it's too slow
 - don't use single pole switches for mains...
-  .
+- keep LVGL memory as low as possible, to crash early when we have a leak?

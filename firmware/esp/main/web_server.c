@@ -4,6 +4,7 @@
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
+#include "load_mode.h"
 #include "scpi.h"
 
 #ifndef CONFIG_HTTPD_WS_SUPPORT
@@ -22,21 +23,6 @@ static int s_ws_clients[WEB_WS_MAX_CLIENTS];
 static SemaphoreHandle_t s_ws_clients_lock;
 static QueueHandle_t s_web_bus_queue;
 static TaskHandle_t s_web_ws_task_handle;
-
-static const char *mode_name_from_value(int mode) {
-    switch (mode) {
-        case 0:
-            return "CV";
-        case 1:
-            return "CC";
-        case 2:
-            return "CP";
-        case 3:
-            return "CR";
-        default:
-            return "--";
-    }
-}
 
 static void ws_add_client(int fd) {
     if (s_ws_clients_lock == NULL) return;
@@ -119,7 +105,7 @@ static size_t ws_json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_l
                 "{\"type\":\"measurement\",\"source\":\"%s\",\"cmd\":\"%s\",\"channel\":%u,\"voltage\":%.4f,"
                 "\"current\":%.4f,\"power\":%.4f,\"mode\":%d,\"modeName\":\"%s\",\"outputEnabled\":%d,\"error\":%d}",
                 bus_source_to_cstring((bus_source_t)msg->source), bus_cmd_to_cstring((bus_cmd_t)msg->cmd), channel,
-                voltage, current, power, mode, mode_name_from_value(mode), enabled, error);
+                voltage, current, power, mode, load_mode_to_cstring((load_mode_t)mode), enabled, error);
         }
         case APP_CMD_OUTPUT_STATE:
         case APP_CMD_SET_MODE:

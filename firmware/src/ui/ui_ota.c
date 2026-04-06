@@ -122,6 +122,13 @@ static void ui_event_ota_confirm(lv_event_t *e) {
 }
 #endif
 
+static void ota_back_cb(lv_event_t *e) {
+    (void)e;
+    lv_obj_del_async(ui_OtaScreen);
+    ui_OtaScreen = NULL;
+    lv_scr_load(ui_SettingsScreen);
+}
+
 void ui_create_ota_screen(void) {
     ui_OtaScreen = lv_obj_create(NULL);
     lv_obj_clear_flag(ui_OtaScreen, LV_OBJ_FLAG_SCROLLABLE);
@@ -130,7 +137,7 @@ void ui_create_ota_screen(void) {
     lv_obj_t *back_btn = lv_btn_create(ui_OtaScreen);
     lv_obj_set_size(back_btn, 60, 30);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-    lv_obj_add_event_cb(back_btn, ui_event_navigate_back, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(back_btn, ota_back_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
     lv_label_set_text(back_lbl, "Back");
     lv_obj_center(back_lbl);

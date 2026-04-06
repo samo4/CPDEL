@@ -350,7 +350,6 @@ void dc_load_controller_init(void) {
     ESP_ERROR_CHECK(uart_set_pin(MODBUS_UART_PORT, MODBUS_TX_PIN, MODBUS_RX_PIN, MODBUS_DIR_PIN, UART_PIN_NO_CHANGE));
     ESP_ERROR_CHECK(uart_set_mode(MODBUS_UART_PORT, UART_MODE_RS485_HALF_DUPLEX));
 
-    // TODO: do we really need this?
     // Newer esp-modbus requires at least one descriptor entry before mbc_master_start().
     // This firmware uses mbc_master_send_request() directly, so a single placeholder satisfies the check.
     static const mb_parameter_descriptor_t s_dummy_descriptor = {

@@ -12,7 +12,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 - [ ] read SCPI_FLAG_ERROR and display in UI and react on SCPI
 - [ ] crashes if you go back from OTA screen
 - [ ] prevent OTA until fetch is happy
-- [ ] heap fragmentation prevents webserver to start
+- [ ] heap fragmentation prevents webserver to start, even after restart: E (4260) main.c: (could be anywhere) Failed to allocate 1626 bytes (caps: 0x0000080c) in heap_caps_malloc — free: 2212, largest: 1216
 
 ### Ideas
 

@@ -31,7 +31,6 @@ typedef struct {
     float command_voltage;
     float voltage;
     float current;
-    float power;
     float lv_cutoff_threshold;
 } dc_load_device_t;
 
@@ -171,7 +170,7 @@ static esp_err_t modbus_request_data_blocking(uint8_t index) {
     s_dc_load_state.devices[index].is_enabled = values[2] != 0;
     s_dc_load_state.devices[index].voltage = (float)values[6] / 100.0f;
     s_dc_load_state.devices[index].current = (float)values[7] / 1000.0f;
-    s_dc_load_state.devices[index].power = (float)values[8] / 1000.0f;
+    // s_dc_load_state.devices[index].power = (float)values[8] / 1000.0f;
 
     return ESP_OK;
 }
@@ -203,9 +202,8 @@ static void dc_load_controller_task(void *arg) {
 
         if (xTaskGetTickCount() - s_last_status_log >= pdMS_TO_TICKS(30000)) {
             for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
-                ESP_LOGI(TAG, "Dev %u: U=%.2f V, I=%.3f A, P=%.2f W, Enabled=%s, Mode=%s",
-                         s_dc_load_state.devices[i].address, s_dc_load_state.devices[i].voltage,
-                         s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].power,
+                ESP_LOGI(TAG, "Dev %u: U=%.2f V, I=%.3f A, Enabled=%s, Mode=%s", s_dc_load_state.devices[i].address,
+                         s_dc_load_state.devices[i].voltage, s_dc_load_state.devices[i].current,
                          s_dc_load_state.devices[i].is_enabled ? "Yes" : "No",
                          load_mode_to_cstring(s_dc_load_state.devices[i].mode));
             }
@@ -239,11 +237,13 @@ static void dc_load_controller_task(void *arg) {
                     break;
                 case APP_CMD_SET_VOLTAGE:
                     ESP_LOGI(TAG, "voltage setpoint to %.2f V", (double)msg.payload.scalar.value);
+                    s_dc_load_state.devices[msg.payload.meas.channel].command_voltage = msg.payload.scalar.value;
                     ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_command_voltage(
                         &s_dc_load_state.devices[msg.payload.meas.channel], msg.payload.scalar.value));
                     break;
                 case APP_CMD_SET_CURRENT:
                     ESP_LOGI(TAG, "current setpoint to %.3f A", (double)msg.payload.scalar.value);
+                    s_dc_load_state.devices[msg.payload.meas.channel].command_current = msg.payload.scalar.value;
                     ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_send_command_current(
                         &s_dc_load_state.devices[msg.payload.meas.channel], msg.payload.scalar.value));
                     break;
@@ -277,6 +277,35 @@ static void dc_load_controller_task(void *arg) {
                         .payload.scalar.channel = msg.payload.meas.channel,
                         .source = SRC_CTRL,
                         .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].current,
+                    });
+                    break;
+                case APP_CMD_SOUR_VOLT:
+                    // we already have it. TODO: check if it's not stale
+                    ESP_LOGW(TAG, "replying to SOUR? with %.2f V",
+                             (double)s_dc_load_state.devices[msg.payload.meas.channel].command_voltage);
+                    app_bus_publish(&(bus_msg_t){
+                        .cmd = APP_CMD_SOUR_VOLT,
+                        .payload.scalar.channel = msg.payload.meas.channel,
+                        .source = SRC_CTRL,
+                        .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].command_voltage,
+                    });
+                    break;
+                case APP_CMD_SOUR_CURR:
+                    // we already have it. TODO: check if it's not stale
+                    app_bus_publish(&(bus_msg_t){
+                        .cmd = APP_CMD_SOUR_CURR,
+                        .payload.scalar.channel = msg.payload.meas.channel,
+                        .source = SRC_CTRL,
+                        .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].command_current,
+                    });
+                    break;
+                case APP_CMD_SOUR_MODE:
+                    // we already have it. TODO: check if it's not stale
+                    app_bus_publish(&(bus_msg_t){
+                        .cmd = APP_CMD_SOUR_MODE,
+                        .payload.scalar.channel = msg.payload.meas.channel,
+                        .source = SRC_CTRL,
+                        .payload.scalar.value = (float)s_dc_load_state.devices[msg.payload.meas.channel].mode,
                     });
                     break;
                 default:

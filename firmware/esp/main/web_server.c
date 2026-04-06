@@ -21,7 +21,7 @@ static httpd_handle_t s_server = NULL;
 
 static int s_ws_clients[WEB_WS_MAX_CLIENTS];
 static SemaphoreHandle_t s_ws_clients_lock;
-static QueueHandle_t s_web_bus_queue;
+static QueueHandle_t queue_web_server;
 static TaskHandle_t s_web_ws_task_handle;
 
 static void ws_add_client(int fd) {
@@ -138,7 +138,7 @@ static void web_ws_broadcast_task(void *arg) {
     char json[WEB_WS_JSON_MAX_LEN];
 
     while (1) {
-        if (xQueueReceive(s_web_bus_queue, &msg, portMAX_DELAY) != pdTRUE) continue;
+        if (xQueueReceive(queue_web_server, &msg, portMAX_DELAY) != pdTRUE) continue;
 
         size_t len = ws_json_from_bus_msg(&msg, json, sizeof(json));
         if (len == 0 || len >= sizeof(json)) continue;
@@ -293,10 +293,10 @@ void web_server_init(void) {
             }
         }
 
-        if (s_web_bus_queue == NULL) {
-            s_web_bus_queue = xQueueCreate(8, sizeof(bus_msg_t));
-            if (s_web_bus_queue != NULL) {
-                app_bus_subscribe(s_web_bus_queue);
+        if (queue_web_server == NULL) {
+            queue_web_server = xQueueCreate(8, sizeof(bus_msg_t));
+            if (queue_web_server != NULL) {
+                app_bus_subscribe(queue_web_server);
                 xTaskCreate(web_ws_broadcast_task, "web_ws_bus", 2048, NULL, 4, &s_web_ws_task_handle);
             }
         }

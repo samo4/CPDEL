@@ -371,13 +371,11 @@ static void scpi_measurements_task(void *arg) {
     }
 }
 
-void scpi_server_start(void) {
-    // will/should die horibly if called more then once (without stop)
+void scpi_server_init(void) {
+    assert(queue_scpi == NULL);
     queue_scpi = xQueueCreate(8, sizeof(bus_msg_t));
-    if (queue_scpi == NULL) {
-        // die hard?
-        return;
-    }
+    assert(queue_scpi != NULL);
+
     app_bus_subscribe(queue_scpi);
 
     for (int i = 0; i < DC_LOAD_DEVICE_COUNT; i++) s_pending_meas[i].socket = -1;

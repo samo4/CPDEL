@@ -319,9 +319,7 @@ static void dc_load_controller_task(void *arg) {
 }
 
 void dc_load_controller_init(void) {
-    if (queue_dc_load != NULL) {
-        return;
-    }
+    assert(queue_dc_load == NULL); // called me twice?
     queue_dc_load = xQueueCreate(16, sizeof(bus_msg_t));
     assert(queue_dc_load != NULL);
 

@@ -250,6 +250,10 @@ static esp_err_t scpi_command_handler(httpd_req_t *req) {
 }
 
 void web_server_init(void) {
+    // my interpretation is that init can only be called once:
+    assert(s_ws_clients_lock == NULL);
+    assert(queue_web_server == NULL);
+
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs", .partition_label = NULL, .max_files = 5, .format_if_mount_failed = true};
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
@@ -266,35 +270,28 @@ void web_server_init(void) {
     config.max_uri_handlers = 6;
     config.lru_purge_enable = true;
 
-    if (httpd_start(&server, &config) == ESP_OK) {
-        s_server = server;
-        if (s_ws_clients_lock == NULL) {
-            s_ws_clients_lock = xSemaphoreCreateMutex();
-            if (s_ws_clients_lock != NULL) {
-                for (int i = 0; i < WEB_WS_MAX_CLIENTS; i++) s_ws_clients[i] = -1;
-            }
-        }
+    ESP_ERROR_CHECK(httpd_start(&server, &config));
 
-        if (queue_web_server == NULL) {
-            queue_web_server = xQueueCreate(8, sizeof(bus_msg_t));
-            if (queue_web_server != NULL) {
-                app_bus_subscribe(queue_web_server);
-                xTaskCreate(web_ws_broadcast_task, "web_ws_bus", 2048, NULL, 4, &s_web_ws_task_handle);
-            }
-        }
+    s_server = server;
+    s_ws_clients_lock = xSemaphoreCreateMutex();
+    assert(s_ws_clients_lock != NULL);
+    for (int i = 0; i < WEB_WS_MAX_CLIENTS; i++) s_ws_clients[i] = -1;
 
-        httpd_uri_t ws_uri = {
-            .uri = "/ws", .method = HTTP_GET, .handler = websocket_handler, .user_ctx = NULL, .is_websocket = true};
-        httpd_register_uri_handler(server, &ws_uri);
+    queue_web_server = xQueueCreate(8, sizeof(bus_msg_t));
+    assert(queue_web_server != NULL);
+    app_bus_subscribe(queue_web_server);
+    xTaskCreate(web_ws_broadcast_task, "web_ws_bus", 2048, NULL, 4, &s_web_ws_task_handle);
 
-        httpd_uri_t scpi_uri = {
-            .uri = "/api/scpi", .method = HTTP_POST, .handler = scpi_command_handler, .user_ctx = NULL};
-        httpd_register_uri_handler(server, &scpi_uri);
+    httpd_uri_t ws_uri = {
+        .uri = "/ws", .method = HTTP_GET, .handler = websocket_handler, .user_ctx = NULL, .is_websocket = true};
+    httpd_register_uri_handler(server, &ws_uri);
 
-        httpd_uri_t file_uri = {.uri = "/*", .method = HTTP_GET, .handler = static_file_handler, .user_ctx = NULL};
-        httpd_register_uri_handler(server, &file_uri);
-        ESP_LOGI(TAG, "Web server started on port 80");
-    }
+    httpd_uri_t scpi_uri = {.uri = "/api/scpi", .method = HTTP_POST, .handler = scpi_command_handler, .user_ctx = NULL};
+    httpd_register_uri_handler(server, &scpi_uri);
+
+    httpd_uri_t file_uri = {.uri = "/*", .method = HTTP_GET, .handler = static_file_handler, .user_ctx = NULL};
+    httpd_register_uri_handler(server, &file_uri);
+    ESP_LOGI(TAG, "Web server started on port 80");
 }
 
 void web_server_stop(void) {

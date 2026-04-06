@@ -115,7 +115,7 @@ void app_main(void) {
     // run after all queues are initialized!
     ui_init();
     web_server_init();
-    scpi_server_start();
+    scpi_server_init();
 
     xTaskCreate(lvgl_task, "LVGL", 8192, NULL, 5, &s_lvgl_task_handle);
     // heartbeat_task will die if the system is starved of memory or time:

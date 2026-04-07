@@ -9,11 +9,18 @@ RECV_TIMEOUT = 2.0
 MAX_CLIENTS = 2
 
 
-def _connect(host: str, port: int) -> socket.socket:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(RECV_TIMEOUT)
-    s.connect((host, port))
-    return s
+def _connect(host: str, port: int, retries: int = 3) -> socket.socket:
+    for attempt in range(retries):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(RECV_TIMEOUT)
+        try:
+            s.connect((host, port))
+            return s
+        except OSError:
+            s.close()
+            if attempt == retries - 1:
+                raise
+            time.sleep(0.2)
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +49,7 @@ def test_client_limit(scpi_addr):
     finally:
         for s in held:
             s.close()
+        time.sleep(0.3)  # let server process disconnects before next test
 
 # ---------------------------------------------------------------------------
 # test_volt_cont

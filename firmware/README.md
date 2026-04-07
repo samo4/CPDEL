@@ -45,7 +45,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 ### Test
 
 Install `pip install -U pytest`.
-Run with `pytest tests/ --host 192.168.88.117`
+Run with `pytest tests/ --host 192.168.88.117 -q`
 
 Some SCPI commands to run:
 

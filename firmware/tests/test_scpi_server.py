@@ -19,7 +19,7 @@ def _connect(host: str, port: int) -> socket.socket:
 # ---------------------------------------------------------------------------
 # test_client_limit
 # ---------------------------------------------------------------------------
-'''
+
 def test_client_limit(scpi_addr):
     """The server must close the (MAX_CLIENTS + 1)-th connection immediately."""
     host, port = scpi_addr
@@ -43,7 +43,6 @@ def test_client_limit(scpi_addr):
         for s in held:
             s.close()
 
-'''
 # ---------------------------------------------------------------------------
 # test_volt_cont
 # ---------------------------------------------------------------------------
@@ -82,7 +81,8 @@ def _assert_numeric(lines: list[str], label: str) -> None:
 def _run_cont_cycle(s: socket.socket, cmd_on: bytes, cmd_off: bytes, label: str) -> None:
     """Generic ON/OFF continuous measurement cycle: arm, collect 3 readings, disarm."""
     s.sendall(cmd_on)
-    lines = _recv_lines(s, 3)
+    time.sleep(3.0)
+    lines = _recv_lines(s, 3, 8.0)
     assert len(lines) == 3, f"Expected 3 continuous {label} readings, got {len(lines)}: {lines}"
     _assert_numeric(lines, label)
 

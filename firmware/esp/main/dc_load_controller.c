@@ -201,12 +201,10 @@ static void dc_load_controller_task(void *arg) {
         }
 
         if (xTaskGetTickCount() - s_last_status_log >= pdMS_TO_TICKS(30000)) {
-            for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
-                ESP_LOGI(TAG, "Dev %u: U=%.2f V, I=%.3f A, Enabled=%s, Mode=%s", s_dc_load_state.devices[i].address,
-                         s_dc_load_state.devices[i].voltage, s_dc_load_state.devices[i].current,
-                         s_dc_load_state.devices[i].is_enabled ? "Yes" : "No",
-                         load_mode_to_cstring(s_dc_load_state.devices[i].mode));
-            }
+            ESP_LOGI(TAG, "Dev %u: U=%.2f V, I=%.3f A, En=%s, Mode=%s", s_dc_load_state.devices[0].address,
+                     s_dc_load_state.devices[0].voltage, s_dc_load_state.devices[0].current,
+                     s_dc_load_state.devices[0].is_enabled ? "Yes" : "No",
+                     load_mode_to_cstring(s_dc_load_state.devices[0].mode));
             s_last_status_log = xTaskGetTickCount();
         }
 

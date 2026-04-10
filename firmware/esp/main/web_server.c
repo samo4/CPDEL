@@ -14,7 +14,7 @@
 static const char *TAG = "WEB_SERVER";
 
 #define WEB_SCPI_MAX_LEN 256
-#define WEB_WS_MAX_CLIENTS 3
+#define WEB_WS_MAX_CLIENTS 2
 #define WEB_WS_JSON_MAX_LEN 256
 
 static httpd_handle_t s_server = NULL;
@@ -118,7 +118,6 @@ static void web_ws_broadcast_task(void *arg) {
     (void)arg;
     bus_msg_t msg;
     char json[WEB_WS_JSON_MAX_LEN];
-    int dbg_counter = 0;
 
     while (1) {
         if (xQueueReceive(queue_web_server, &msg, pdMS_TO_TICKS(30000)) == pdTRUE) {
@@ -126,9 +125,10 @@ static void web_ws_broadcast_task(void *arg) {
             if (len > 0 && len < sizeof(json)) ws_broadcast_text(json);
         }
 
-        if (++dbg_counter >= 100) {
-            dbg_counter = 0;
+        static int s_tick_counter = 0;
+        if (xTaskGetTickCount() - s_tick_counter >= pdMS_TO_TICKS(60000)) {
             ESP_LOGI(TAG, "ws_bus HWM: %u", uxTaskGetStackHighWaterMark(NULL));
+            s_tick_counter = xTaskGetTickCount();
         }
     }
 }

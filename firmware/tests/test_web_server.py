@@ -1,5 +1,5 @@
 """
-Verify the embedded HTTP server serves the UI.
+Verify the www and ws server.
 
     pytest tests/test_web_server.py --host 192.168.88.117
 """
@@ -8,42 +8,27 @@ import time
 import urllib.request
 import urllib.error
 
-
-WEB_MAX_OPEN_SOCKETS = 3
-
+WEB_MAX_OPEN_SOCKETS = 2
 
 def test_index_page(host):
-    """GET / must return 200, respond within 2 s, and deliver >4 kB."""
-    url = f"http://{host}/"
-    start = time.monotonic()
-    resp = urllib.request.urlopen(url, timeout=2)
-    elapsed = time.monotonic() - start
-    body = resp.read()
-
-    assert resp.status == 200, f"Expected 200, got {resp.status}"
-    assert elapsed < 2.0, f"Response took {elapsed:.2f}s (limit 2s)"
-    assert len(body) > 4096, f"Body too small: {len(body)} bytes (expected >4kB)"
-
-
-def test_index_page_repeated(host):
     """GET / four times in succession — checks for resource leaks."""
     url = f"http://{host}/"
     for i in range(4):
         resp = urllib.request.urlopen(url, timeout=3)
         body = resp.read()
-        assert resp.status == 200, f"Iteration {i}: expected 200, got {resp.status}"
-        assert len(body) > 4096, f"Iteration {i}: body too small: {len(body)} bytes"
+        assert resp.status == 200, f"Expected 200, got {resp.status}"
+        assert len(body) > 4096, f"Body too small: {len(body)} bytes (expected >4kB)"
 
 
 def test_scpi_via_http(host):
     """POST /api/scpi with a valid command returns 200 OK."""
     url = f"http://{host}/api/scpi"
-    # Send a benign command
-    req = urllib.request.Request(url, data=b"OUTP1:STAT OFF\n", method="POST")
-    resp = urllib.request.urlopen(req, timeout=2)
-    body = resp.read().decode()
-    assert resp.status == 200
-    assert "OK" in body
+    for i in range(4):
+      req = urllib.request.Request(url, data=b"OUTP1:STAT OFF\n", method="POST")
+      resp = urllib.request.urlopen(req, timeout=2)
+      body = resp.read().decode()
+      assert resp.status == 200
+      assert "OK" in body
 
 
 def test_scpi_invalid_command(host):

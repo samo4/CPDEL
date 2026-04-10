@@ -183,11 +183,11 @@ static void scpi_server_task(void *arg) {
         int ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
         if (ret < 0) break;
 
-        static int dbg_counter = 0;
-        if (++dbg_counter >= 600) { // ~30s at 50ms intervals
-            dbg_counter = 0;
-            ESP_LOGI(TAG, "server HWM: %u  reply HWM: %u", uxTaskGetStackHighWaterMark(NULL),
-                     uxTaskGetStackHighWaterMark(s_measurements_task_handle));
+        static int s_tick_counter = 0;
+        if (xTaskGetTickCount() - s_tick_counter >= pdMS_TO_TICKS(60000)) {
+            ESP_LOGI(TAG, "scpi_server_task HWM: %u, s_measurements_task_handle HWM: %u",
+                     uxTaskGetStackHighWaterMark(NULL), uxTaskGetStackHighWaterMark(s_measurements_task_handle));
+            s_tick_counter = xTaskGetTickCount();
         }
 
         if (ret == 0) continue;

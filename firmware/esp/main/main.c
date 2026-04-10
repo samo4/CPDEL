@@ -44,22 +44,13 @@ static void lvgl_task(void *param) {
         vTaskDelay(pdMS_TO_TICKS(5));
         uint32_t now = xTaskGetTickCount();
         if (now - hwm_tick >= pdMS_TO_TICKS(10000)) {
+            // static int s_level = 0;
+            // s_level = !s_level;
+            // ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, s_level));
             hwm_tick = now;
-            ESP_LOGI(TAG, "free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+            ESP_LOGI(TAG, "[lvgl] free heap: %u  stack HWM: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
                      (unsigned)uxTaskGetStackHighWaterMark(NULL));
         }
-    }
-}
-
-static void heartbeat_task(void *param) {
-    (void)param;
-    int level = 0;
-    for (;;) {
-        level = !level;
-        ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, level));
-        ESP_LOGI(TAG, "[heartbeat] free heap: %u  stack hwm: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
-                 (unsigned)uxTaskGetStackHighWaterMark(NULL));
-        vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
 
@@ -118,8 +109,6 @@ void app_main(void) {
     scpi_server_init();
 
     xTaskCreate(lvgl_task, "LVGL", 8192, NULL, 5, &s_lvgl_task_handle);
-    // heartbeat_task will die if the system is starved of memory or time:
-    // xTaskCreate(heartbeat_task, "Heartbeat", 1536, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 
 void app_prepare_for_ota(void) {

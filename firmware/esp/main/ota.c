@@ -10,6 +10,7 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos_includes.h"
 #include "main.h"
 
 static const char *TAG = "OTA";
@@ -67,7 +68,7 @@ static void ota_task(void *arg) {
     ESP_ERROR_CHECK(err);
     if (!esp_https_ota_is_complete_data_received(handle)) {
         ESP_LOGE(TAG, "OTA image not fully received");
-        abort();
+        configASSERT(0);
     }
 
     ESP_ERROR_CHECK(esp_https_ota_finish(handle));

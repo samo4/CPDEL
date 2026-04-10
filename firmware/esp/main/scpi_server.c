@@ -14,6 +14,7 @@
 
 #include "load_mode.h"
 #include "ota.h"
+#include "utils.h"
 
 #include "esp_log.h"
 static const char *TAG = "SCPI";
@@ -104,13 +105,7 @@ static void scpi_process_line(const char *line, scpi_client_t *client) {
 
 static void scpi_normalize_line(char *line, size_t *len) {
     if (!line || !len) return;
-
-    /* Remove trailing \r, \n, spaces, tabs */
-    while (*len > 0 &&
-           (line[*len - 1] == '\r' || line[*len - 1] == '\n' || line[*len - 1] == ' ' || line[*len - 1] == '\t')) {
-        (*len)--;
-    }
-    line[*len] = '\0';
+    *len = rtrim(line, *len);
 }
 
 static size_t scpi_skip_telnet_iac(const uint8_t *buf, size_t buf_len) {

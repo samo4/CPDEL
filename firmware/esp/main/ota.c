@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "freertos_includes.h"
 #include "main.h"
+#include "utils.h"
 
 static const char *TAG = "OTA";
 
@@ -95,10 +96,7 @@ bool ota_fetch_remote_version(char *buf, size_t len) {
 
     if (body_len <= 0 || body_len >= len) return false;
 
-    /* Strip any trailing whitespace/newline */
-    while (body_len > 0 && (body[body_len - 1] == '\n' || body[body_len - 1] == '\r' || body[body_len - 1] == ' ')) {
-        body_len--;
-    }
+    body_len = (int)rtrim(body, body_len);
     if (body_len == 0) return false;
     if ((size_t)body_len >= len) body_len = (int)len - 1;
     memcpy(buf, body, body_len);

@@ -6,6 +6,7 @@
 #include "esp_spiffs.h"
 #include "load_mode.h"
 #include "scpi.h"
+#include "utils.h"
 
 #ifndef CONFIG_HTTPD_WS_SUPPORT
 #error "WebSocket support is disabled in menuconfig (CONFIG_HTTPD_WS_SUPPORT)"
@@ -231,12 +232,7 @@ static esp_err_t scpi_command_handler(httpd_req_t *req) {
     }
 
     cmd[received] = '\0';
-
-    // Trim trailing line endings/whitespace for compatibility with curl/telnet-style payloads.
-    while (received > 0 && (cmd[received - 1] == '\r' || cmd[received - 1] == '\n' || cmd[received - 1] == ' ' ||
-                            cmd[received - 1] == '\t')) {
-        cmd[--received] = '\0';
-    }
+    received = (int)rtrim(cmd, received);
 
     ESP_LOGI(TAG, "HTTP SCPI RX: %s", cmd);
 

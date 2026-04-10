@@ -14,7 +14,7 @@
 static const char *TAG = "WEB_SERVER";
 
 #define WEB_SCPI_MAX_LEN 256
-#define WEB_WS_MAX_CLIENTS 2
+#define WEB_WS_MAX_CLIENTS 3
 #define WEB_WS_JSON_MAX_LEN 256
 
 static httpd_handle_t s_server = NULL;
@@ -118,13 +118,18 @@ static void web_ws_broadcast_task(void *arg) {
     (void)arg;
     bus_msg_t msg;
     char json[WEB_WS_JSON_MAX_LEN];
+    int dbg_counter = 0;
 
     while (1) {
-        if (xQueueReceive(queue_web_server, &msg, portMAX_DELAY) != pdTRUE) continue;
+        if (xQueueReceive(queue_web_server, &msg, pdMS_TO_TICKS(30000)) == pdTRUE) {
+            size_t len = ws_json_from_bus_msg(&msg, json, sizeof(json));
+            if (len > 0 && len < sizeof(json)) ws_broadcast_text(json);
+        }
 
-        size_t len = ws_json_from_bus_msg(&msg, json, sizeof(json));
-        if (len == 0 || len >= sizeof(json)) continue;
-        ws_broadcast_text(json);
+        if (++dbg_counter >= 100) {
+            dbg_counter = 0;
+            ESP_LOGI(TAG, "ws_bus HWM: %u", uxTaskGetStackHighWaterMark(NULL));
+        }
     }
 }
 
@@ -199,13 +204,14 @@ static esp_err_t static_file_handler(httpd_req_t *req) {
         return ESP_OK;
     }
 
-    char buffer[1024];
+    char buffer[512];
     size_t read_bytes;
     while ((read_bytes = fread(buffer, 1, sizeof(buffer), f)) > 0) {
         httpd_resp_send_chunk(req, buffer, read_bytes);
     }
     fclose(f);
     httpd_resp_send_chunk(req, NULL, 0);
+    ESP_LOGI(TAG, "httpd HWM: %u", uxTaskGetStackHighWaterMark(NULL));
     return ESP_OK;
 }
 

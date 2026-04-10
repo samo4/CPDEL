@@ -182,6 +182,14 @@ static void scpi_server_task(void *arg) {
         struct timeval tv = {.tv_sec = 0, .tv_usec = 50000}; // 50 ms — allows clean shutdown
         int ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
         if (ret < 0) break;
+
+        static int dbg_counter = 0;
+        if (++dbg_counter >= 600) { // ~30s at 50ms intervals
+            dbg_counter = 0;
+            ESP_LOGI(TAG, "server HWM: %u  reply HWM: %u", uxTaskGetStackHighWaterMark(NULL),
+                     uxTaskGetStackHighWaterMark(s_measurements_task_handle));
+        }
+
         if (ret == 0) continue;
 
         // New connection?
@@ -246,7 +254,7 @@ static void scpi_server_task(void *arg) {
             // Silently drop other bytes (control chars, etc.)
         }
     }
-
+    ESP_LOGW(TAG, "scpi_server_task shutting down");
     closesocket(s_listen_sock);
     s_listen_sock = -1;
     s_server_running = false;
@@ -309,8 +317,8 @@ void scpi_server_init(void) {
         s_cont_curr[i] = -1;
     }
 
-    xTaskCreate(scpi_server_task, "scpi_server", 3072, NULL, 5, &s_scpi_server_task_handle);
-    xTaskCreate(scpi_reply_task, "scpi_reply_task", 3072, NULL, 5, &s_measurements_task_handle);
+    xTaskCreate(scpi_server_task, "scpi_server", 2048, NULL, 5, &s_scpi_server_task_handle);
+    xTaskCreate(scpi_reply_task, "scpi_reply_task", 1536, NULL, 5, &s_measurements_task_handle);
 }
 
 void scpi_server_stop(void) {
@@ -326,6 +334,4 @@ void scpi_server_stop(void) {
         vTaskDelete(s_measurements_task_handle);
         s_measurements_task_handle = NULL;
     }
-    // app_bus_unsubscribe?
-    // delete queue_scpi?
 }

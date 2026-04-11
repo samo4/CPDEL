@@ -133,10 +133,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Deploy to surge.sh
+        run: |
+          npm install -g surge
+          VERSION="${{ github.ref_name }}"
+          ARTIFACT_DIR="${{ env.PROJECT_DIR }}/ota-artifacts/${VERSION}"
+          echo "sousim2 OTA firmware ${VERSION}" > "${ARTIFACT_DIR}/index.html"
+          printf '%s' "${VERSION}" > "${ARTIFACT_DIR}/version.txt"
+          rm -f "${ARTIFACT_DIR}/update-info.json"
+          surge "${ARTIFACT_DIR}" wrathful-fight.surge.sh
+        env:
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+
       - name: Post-deploy status
         if: success()
         run: |
           echo "✅ OTA build and deploy successful!"
           echo "📦 Version: ${{ github.ref_name }}"
-          echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
-          echo "📝 Firmware SHA256: ${{ env.FIRMWARE_SHA256 }}"

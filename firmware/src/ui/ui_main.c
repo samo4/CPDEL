@@ -63,7 +63,7 @@ void ui_main_update_channel(int _ch) {
     } else {
         lv_label_set_text_fmt(ch_volt_lbl[_ch], "%.2f V", c->measured_voltage);
         lv_label_set_text_fmt(ch_curr_lbl[_ch], "%.3f A", c->measured_current);
-        lv_label_set_text_fmt(ch_pwr_lbl[_ch], "%.2f W", c->measured_power);
+        lv_label_set_text_fmt(ch_pwr_lbl[_ch], "%.2f W", c->measured_voltage * c->measured_current);
     }
     lv_label_set_text(ch_mode_badge[_ch], load_mode_to_cstring((load_mode_t)c->mode));
     switch (c->mode) {

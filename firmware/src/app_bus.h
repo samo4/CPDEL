@@ -57,7 +57,7 @@ typedef union {
         uint8_t flags;
         uint8_t _pad[2];
         float value;
-    } scalar; /* 8 bytes */
+    } scalar;
 
     struct {
         uint8_t channel;
@@ -66,18 +66,19 @@ typedef union {
         uint8_t _pad;
         float voltage;
         float current;
-    } meas; /* 12 bytes */
+    } meas;
 
     struct {
+        uint8_t _pad[4];
         int32_t rssi;
         uint32_t ip; // ESP-IDF style
     } wifi;
-} app_payload_t; /* 12 bytes; channel is accessible via either variant (CIS) */
+} app_payload_t;
 
 _Static_assert(offsetof(app_payload_t, scalar.channel) == 0, "scalar.channel must stay at offset 0");
 _Static_assert(offsetof(app_payload_t, meas.channel) == 0, "meas.channel must stay at offset 0");
 _Static_assert(sizeof(((app_payload_t *)0)->scalar) <= 8, "scalar payload grew unexpectedly");
-_Static_assert(sizeof(((app_payload_t *)0)->wifi) <= 8, "wifi payload grew unexpectedly");
+_Static_assert(sizeof(((app_payload_t *)0)->wifi) <= 16, "wifi payload grew unexpectedly");
 _Static_assert(sizeof(app_payload_t) <= 16, "app_payload_t grew unexpectedly");
 
 typedef struct {

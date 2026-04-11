@@ -40,9 +40,6 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
                 if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
                 channels[msg.payload.meas.channel].measured_current = msg.payload.meas.current;
                 channels[msg.payload.meas.channel].measured_voltage = msg.payload.meas.voltage;
-                channels[msg.payload.meas.channel].measured_power =
-                    channels[msg.payload.meas.channel].measured_voltage *
-                    channels[msg.payload.meas.channel].measured_current;
                 channels[msg.payload.meas.channel].meas_flags = msg.payload.meas.flags;
                 if (xTaskGetTickCount() >= s_output_inhibit_until[msg.payload.meas.channel]) {
                     channels[msg.payload.meas.channel].output_enabled =
@@ -56,18 +53,18 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
             case APP_CMD_SOUR_VOLT:
                 if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
                 channels[msg.payload.meas.channel].voltage_setpoint = msg.payload.scalar.value;
-                // ui_detail_update_channel(msg.payload.meas.channel);
+                ui_main_update_channel(msg.payload.meas.channel);
                 break;
             case APP_CMD_SOUR_CURR:
                 if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
                 channels[msg.payload.meas.channel].current_setpoint = msg.payload.scalar.value;
-                // ui_detail_update_channel(msg.payload.meas.channel);
+                ui_main_update_channel(msg.payload.meas.channel);
                 break;
             case APP_CMD_SOUR_MODE:
                 if (msg.payload.meas.channel >= UI_CHANNEL_COUNT) break;
                 channels[msg.payload.meas.channel].mode = (uint8_t)msg.payload.scalar.value; // TODO: validate!
                 ui_main_update_channel(msg.payload.meas.channel);
-                // ui_detail_update_channel(msg.payload.meas.channel);
+                // not calling ui_detail_update_channel for a reason
                 break;
             case APP_CMD_WIFI_STATUS:
                 s_wifi_connected = ((int)msg.payload.scalar.value == 2);
@@ -103,7 +100,6 @@ void ui_init(void) {
         channels[i].current_setpoint = 0.0;
         channels[i].measured_voltage = 0.0;
         channels[i].measured_current = 0.0;
-        channels[i].measured_power = 0.0;
         channels[i].output_enabled = false;
         channels[i].mode = 0;
         channels[i].lv_cutoff_enabled = false;

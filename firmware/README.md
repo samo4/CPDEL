@@ -10,7 +10,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 - [ ] rrdtool-like graph [where do we put it?](MEMORY.md)
 - [x] OTA.
 - [x] read SCPI_FLAG_ERROR and display in UI and react on SCPI; `SYST:ERR?`
-- [ ] crashes if you go back from OTA screen
+- [x] crashes if you go back from OTA screen
 - [x] prevent OTA until fetch is happy
 - [x] heap fragmentation prevents webserver to start
 - [x] setpoints don't update on display if changed trough network

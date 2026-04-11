@@ -114,13 +114,12 @@ void ui_init(void) {
     ui_create_channel_detail_screen();
     ui_create_graph_screen();
     ui_create_settings_screen();
-    ui_create_ota_screen();
 #ifdef TOUCH_DEBUG_SCREEN
     ui_create_touch_debug_screen();
 #endif
     ui_create_modal_screen();
     lv_disp_load_scr(ui_MainScreen);
-    // numpad and keyboard are created on demand
+    // ota, numpad and keyboard are created on demand
 
     /* LVGL timer: drain queue_gui every 100 ms (runs on LVGL thread, no mutex needed) */
     lv_timer_create(gui_queue_timer_cb, 100, NULL);
@@ -140,11 +139,19 @@ void ui_event_navigate_graph(lv_event_t *e) { lv_scr_load(ui_GraphScreen); }
 
 void ui_event_navigate_wireless(lv_event_t *e) {
     (void)e;
-    ui_create_wireless_screen();
+    if (ui_WirelessScreen == NULL) {
+        ui_create_wireless_screen();
+    }
     lv_scr_load(ui_WirelessScreen);
 }
 
-void ui_event_navigate_ota(lv_event_t *e) { lv_scr_load(ui_OtaScreen); }
+void ui_event_navigate_ota(lv_event_t *e) {
+    (void)e;
+    if (ui_OtaScreen == NULL) {
+        ui_create_ota_screen();
+    }
+    lv_scr_load(ui_OtaScreen);
+}
 
 #ifdef TOUCH_DEBUG_SCREEN
 void ui_event_navigate_touch_debug(lv_event_t *e) { lv_scr_load(ui_TouchDebugScreen); }

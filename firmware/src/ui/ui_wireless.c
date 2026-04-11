@@ -38,17 +38,13 @@ static void wireless_set_password(const char *text) {
     update_save_button_state();
 }
 
-static void wireless_destroy(void) {
+static void wireless_back_event_cb(lv_event_t *e) {
+    (void)e;
     ssid_ta = NULL;
     pwd_ta = NULL;
     save_btn = NULL;
     lv_obj_del_async(ui_WirelessScreen);
     ui_WirelessScreen = NULL;
-}
-
-static void wireless_back_event_cb(lv_event_t *e) {
-    (void)e;
-    wireless_destroy();
     lv_scr_load(ui_MainScreen);
 }
 
@@ -63,8 +59,7 @@ static void save_reboot_event_cb(lv_event_t *e) {
     }
 #endif
 
-    wireless_destroy();
-    lv_scr_load(ui_MainScreen);
+    wireless_back_event_cb(NULL);
 }
 
 static void ssid_edit_event_cb(lv_event_t *e) {

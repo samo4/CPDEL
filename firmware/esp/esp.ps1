@@ -15,6 +15,8 @@ switch ($action) {
     "build-size"      { idf.py build; idf.py size; idf.py size-components }
 
     "ota" {
+        # Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build
+        idf.py build
         # Prerequisites: npm install -g surge  +  surge login
         if (-not (Test-Path "build\sousim2.bin")) {
             Write-Error "build\sousim2.bin not found - run: .\esp.ps1 build"; exit 1

@@ -140,6 +140,7 @@ jobs:
           ARTIFACT_DIR="${{ env.PROJECT_DIR }}/ota-artifacts/${VERSION}"
           echo "sousim2 OTA firmware ${VERSION}" > "${ARTIFACT_DIR}/index.html"
           printf '%s' "${VERSION}" > "${ARTIFACT_DIR}/version.txt"
+          cp "${ARTIFACT_DIR}/firmware.bin" "${ARTIFACT_DIR}/sousim2.bin"
           rm -f "${ARTIFACT_DIR}/update-info.json"
           surge "${ARTIFACT_DIR}" wrathful-fight.surge.sh
         env:

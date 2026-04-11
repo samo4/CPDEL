@@ -4,6 +4,20 @@
 
 > This a 2-channel DC electronic load, built from [cheap chinese DC load modbus modules](./firmware/SOUSIM.md).
 
+Features:
+
+- 2 channels: 200V, 10A
+- 4 modes (CC, CV, CR, CP) + battery discharge mode
+- Control:
+  - 2.8" SPI display with capacitive touch
+  - telnet SCPI interface (port 5025)
+  - REST SCPI interface (port 80)
+  - responsive web interface (with sockets)
+- rudimentary charting
+- OTA updates with CI/CD integration
+- not-unreasonable level of test coverage
+- UDP logging for debugging
+
 ![CPDEL final result](docs/images/front.jpg)
 
 ## Key takeaways

@@ -39,7 +39,7 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
   - `winget install Espressif.EIM-CLI`
   - `eim install` (in elevated cmd.exe, not bash)
 - `+` on terminal to add ESP-IDF PowerShell terminal
-  - `./esp.ps1 flash-monitor`
+  - `./esp.ps1 flash-monitor` or `socat -u UDP-RECV:9999 STDOUT`
 
 ### Test
 

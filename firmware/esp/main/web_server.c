@@ -14,16 +14,16 @@
 
 static const char *TAG = "WEB_SERVER";
 
-#define WEB_SCPI_MAX_LEN 256
+#define WEB_SCPI_MAX_LEN 64
 #define WEB_WS_MAX_CLIENTS 2
-#define WEB_WS_JSON_MAX_LEN 256
+#define WEB_WS_JSON_MAX_LEN 192
 
 static httpd_handle_t s_server = NULL;
 
 static int s_ws_clients[WEB_WS_MAX_CLIENTS];
 static SemaphoreHandle_t s_ws_clients_lock;
 static QueueHandle_t queue_web_server;
-static TaskHandle_t s_web_ws_task_handle;
+static TaskHandle_t s_ws_broadcast_task_handle;
 
 static void ws_add_client(int fd) {
     if (s_ws_clients_lock == NULL) return;
@@ -64,6 +64,7 @@ static void ws_remove_client(int fd) {
     xSemaphoreGive(s_ws_clients_lock);
 }
 
+// oportunity for less memory: use binary frames.. no JSON
 static void ws_broadcast_text(const char *json) {
     if (s_server == NULL || json == NULL || json[0] == '\0' || s_ws_clients_lock == NULL) return;
 
@@ -89,7 +90,7 @@ static void ws_broadcast_text(const char *json) {
     }
 }
 
-static size_t ws_json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_len) {
+static size_t json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_len) {
     if (msg == NULL || out == NULL || out_len == 0) return 0;
 
     uint8_t channel = msg->payload.scalar.channel;
@@ -97,16 +98,14 @@ static size_t ws_json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_l
         case SCPI_MEASUREMENTS: {
             const float voltage = msg->payload.meas.voltage;
             const float current = msg->payload.meas.current;
-            const float power = voltage * current;
             const int mode = (int)msg->payload.meas.mode;
             const int enabled = (msg->payload.meas.flags & SCPI_FLAG_ENABLED) != 0;
             const int error = (msg->payload.meas.flags & SCPI_FLAG_ERROR) != 0;
-            return (size_t)snprintf(
-                out, out_len,
-                "{\"type\":\"measurement\",\"source\":\"%s\",\"cmd\":\"%s\",\"channel\":%u,\"voltage\":%.4f,"
-                "\"current\":%.4f,\"power\":%.4f,\"mode\":%d,\"modeName\":\"%s\",\"outputEnabled\":%d,\"error\":%d}",
-                bus_source_to_cstring((bus_source_t)msg->source), bus_cmd_to_cstring((bus_cmd_t)msg->cmd), channel,
-                voltage, current, power, mode, load_mode_to_cstring((load_mode_t)mode), enabled, error);
+            return (size_t)snprintf(out, out_len,
+                                    "{\"type\":\"msmt\",\"cmd\":\"%s\",\"channel\":%u,\"voltage\":%.4f,"
+                                    "\"current\":%.4f,\"mode\":%d,\"outputEnabled\":%d,\"error\":%d}",
+                                    bus_cmd_to_cstring((bus_cmd_t)msg->cmd), channel, voltage, current, mode, enabled,
+                                    error);
         }
         default:
             break;
@@ -115,22 +114,24 @@ static size_t ws_json_from_bus_msg(const bus_msg_t *msg, char *out, size_t out_l
     return 0;
 }
 
-static void web_ws_broadcast_task(void *arg) {
+static void ws_broadcast_task(void *arg) {
     (void)arg;
     bus_msg_t msg;
     char json[WEB_WS_JSON_MAX_LEN];
 
     while (1) {
         if (xQueueReceive(queue_web_server, &msg, pdMS_TO_TICKS(30000)) == pdTRUE) {
-            size_t len = ws_json_from_bus_msg(&msg, json, sizeof(json));
+            size_t len = json_from_bus_msg(&msg, json, sizeof(json));
             if (len > 0 && len < sizeof(json)) ws_broadcast_text(json);
         }
 
-        static int s_tick_counter = 0;
-        if (xTaskGetTickCount() - s_tick_counter >= pdMS_TO_TICKS(60000)) {
-            ESP_LOGI(TAG, "ws_bus HWM: %u", uxTaskGetStackHighWaterMark(NULL));
-            s_tick_counter = xTaskGetTickCount();
+#ifdef MEASURE_HWM
+        static int s_hwm_counter = 0;
+        if (xTaskGetTickCount() - s_hwm_counter >= pdMS_TO_TICKS(60000)) {
+            ESP_LOGI(TAG, "ws_broadcast HWM: %u", uxTaskGetStackHighWaterMark(NULL));
+            s_hwm_counter = xTaskGetTickCount();
         }
+#endif
     }
 }
 
@@ -146,6 +147,8 @@ static esp_err_t websocket_handler(httpd_req_t *req) {
     if (ret != ESP_OK) return ret;
 
     if (frame.len > 0) {
+        // shouldn't hit.. if it does, we need to do something better than heap eater
+        ESP_LOGW(TAG, "Discarding WS frame len=%d.", frame.len);
         uint8_t *buf = calloc(1, frame.len + 1);
         if (buf == NULL) return ESP_ERR_NO_MEM;
         frame.payload = buf;
@@ -216,8 +219,7 @@ static esp_err_t static_file_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Simple write-only SCPI endpoint.
-// Body: plain SCPI command string, e.g. "SOUR1:CURR 0.5"
+// Simple write-only SCPI endpoint: Body: plain SCPI command string, e.g. "SOUR1:CURR 0.5"
 static esp_err_t scpi_command_handler(httpd_req_t *req) {
     if (req->content_len <= 0 || req->content_len >= WEB_SCPI_MAX_LEN) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid body length");
@@ -251,10 +253,10 @@ static esp_err_t scpi_command_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+// not meant to be called multiple times
 void web_server_init(void) {
-    // my interpretation is that init can only be called once:
-    assert(s_ws_clients_lock == NULL);
-    assert(queue_web_server == NULL);
+    configASSERT(s_ws_clients_lock == NULL);
+    configASSERT(queue_web_server == NULL);
 
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs", .partition_label = NULL, .max_files = 5, .format_if_mount_failed = true};
@@ -262,7 +264,7 @@ void web_server_init(void) {
 
     size_t total = 0, used = 0;
     esp_spiffs_info(NULL, &total, &used);
-    ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+    ESP_LOGI(TAG, "spiffs total: %d, used: %d", total, used);
 
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -276,13 +278,13 @@ void web_server_init(void) {
 
     s_server = server;
     s_ws_clients_lock = xSemaphoreCreateMutex();
-    assert(s_ws_clients_lock != NULL);
+    configASSERT(s_ws_clients_lock != NULL);
     for (int i = 0; i < WEB_WS_MAX_CLIENTS; i++) s_ws_clients[i] = -1;
 
     queue_web_server = xQueueCreate(8, sizeof(bus_msg_t));
-    assert(queue_web_server != NULL);
+    configASSERT(queue_web_server != NULL);
     app_bus_subscribe(queue_web_server);
-    xTaskCreate(web_ws_broadcast_task, "web_ws_bus", 2048, NULL, 4, &s_web_ws_task_handle);
+    xTaskCreate(ws_broadcast_task, "ws_broadcast", 2048, NULL, 4, &s_ws_broadcast_task_handle);
 
     httpd_uri_t ws_uri = {
         .uri = "/ws", .method = HTTP_GET, .handler = websocket_handler, .user_ctx = NULL, .is_websocket = true};
@@ -302,8 +304,11 @@ void web_server_stop(void) {
         s_server = NULL;
     }
 
-    if (s_web_ws_task_handle != NULL) {
-        vTaskDelete(s_web_ws_task_handle);
-        s_web_ws_task_handle = NULL;
+    if (s_ws_broadcast_task_handle != NULL) {
+        vTaskDelete(s_ws_broadcast_task_handle);
+        s_ws_broadcast_task_handle = NULL;
     }
+
+    // we can't delete queue_web_server as it's referenced in app_bus
+    // but as this is meant only for OTA.. it doesn't matter
 }

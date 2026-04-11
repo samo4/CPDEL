@@ -21,7 +21,7 @@ static const char *TAG = "SCPI";
 
 #define SCPI_SERVER_PORT 5025
 #define SCPI_LISTEN_BACKLOG 4
-#define SCPI_RX_BUF_SIZE 256
+#define SCPI_RX_BUF_SIZE 64
 #define SCPI_MAX_CLIENTS 2
 #define SCPI_REPLY_MAX_LEN 64
 
@@ -31,8 +31,7 @@ static volatile bool s_server_running = false;
 static QueueHandle_t queue_scpi = NULL;
 static TaskHandle_t s_measurements_task_handle = NULL;
 
-/* Continuous-measurement subscriptions: socket or -1 if not subscribed */
-static int s_cont_volt[DC_LOAD_DEVICE_COUNT];
+static int s_cont_volt[DC_LOAD_DEVICE_COUNT]; // socket or -1 if not subscribed
 static int s_cont_curr[DC_LOAD_DEVICE_COUNT];
 
 typedef struct {
@@ -49,7 +48,6 @@ static void scpi_process_line(const char *line, scpi_client_t *client) {
     bus_msg_t msg;
     int result = scpi_decode(line, &msg);
     if (result != 0) {
-        ESP_LOGW(TAG, "MEAS?");
         send(client->socket, "-113,\"Undefined header\"\r\n", 24, 0);
         return;
     }
@@ -103,11 +101,6 @@ static void scpi_process_line(const char *line, scpi_client_t *client) {
     send(client->socket, "-102,\"Syntax error\"\r\n", 24, 0);
 }
 
-static void scpi_normalize_line(char *line, size_t *len) {
-    if (!line || !len) return;
-    *len = rtrim(line, *len);
-}
-
 static size_t scpi_skip_telnet_iac(const uint8_t *buf, size_t buf_len) {
     if (buf_len < 1) return 0;
     if (buf[0] != 0xFF) return 0; /* Not IAC */
@@ -132,7 +125,7 @@ static void scpi_client_disconnect(int i) {
         if (s_cont_volt[ch] == sock) s_cont_volt[ch] = -1;
         if (s_cont_curr[ch] == sock) s_cont_curr[ch] = -1;
     }
-    ESP_LOGW(TAG, "closing socket %d", sock);
+    ESP_LOGW(TAG, "closing %d", sock);
     closesocket(sock);
     s_clients[i].socket = -1;
     s_clients[i].rx_len = 0;
@@ -143,7 +136,7 @@ static void scpi_server_task(void *arg) {
     s_server_running = true;
 
     s_listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    assert(s_listen_sock >= 0);
+    configASSERT(s_listen_sock >= 0);
 
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -154,8 +147,8 @@ static void scpi_server_task(void *arg) {
     int opt = 1;
     setsockopt(s_listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    assert(bind(s_listen_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0);
-    assert(listen(s_listen_sock, SCPI_LISTEN_BACKLOG) == 0);
+    configASSERT(bind(s_listen_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0);
+    configASSERT(listen(s_listen_sock, SCPI_LISTEN_BACKLOG) == 0);
 
     for (int i = 0; i < SCPI_MAX_CLIENTS; i++) {
         s_clients[i].socket = -1;
@@ -178,12 +171,14 @@ static void scpi_server_task(void *arg) {
         int ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
         if (ret < 0) break;
 
-        static int s_tick_counter = 0;
-        if (xTaskGetTickCount() - s_tick_counter >= pdMS_TO_TICKS(60000)) {
+#ifdef MEASURE_HWM
+        static int s_hwm_counter = 0;
+        if (xTaskGetTickCount() - s_hwm_counter >= pdMS_TO_TICKS(60000)) {
             ESP_LOGI(TAG, "scpi_server_task HWM: %u, s_measurements_task_handle HWM: %u",
                      uxTaskGetStackHighWaterMark(NULL), uxTaskGetStackHighWaterMark(s_measurements_task_handle));
-            s_tick_counter = xTaskGetTickCount();
+            s_hwm_counter = xTaskGetTickCount();
         }
+#endif
 
         if (ret == 0) continue;
 
@@ -237,7 +232,7 @@ static void scpi_server_task(void *arg) {
             // Accumulate bytes into rx_buf until we get a newline
             if (byte == '\n' || byte == '\r') {
                 if (s_clients[i].rx_len > 0) {
-                    scpi_normalize_line(s_clients[i].rx_buf, &s_clients[i].rx_len);
+                    s_clients[i].rx_len = rtrim(s_clients[i].rx_buf, s_clients[i].rx_len);
                     scpi_process_line(s_clients[i].rx_buf, &s_clients[i]);
                 }
                 s_clients[i].rx_len = 0;
@@ -329,4 +324,7 @@ void scpi_server_stop(void) {
         vTaskDelete(s_measurements_task_handle);
         s_measurements_task_handle = NULL;
     }
+
+    // we can't delete queue_scpi as it's referenced in app_bus
+    // but as this is meant only for OTA.. it doesn't matter
 }

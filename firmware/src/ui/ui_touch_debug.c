@@ -13,14 +13,13 @@ static lv_obj_t *s_coord_label;
 
 static void on_touch(lv_event_t *e) {
     (void)e;
-    int16_t x, y;
-    touch_get_last_point(&x, &y);
+    point_t last = touch_get_last_raw();
 
-    lv_obj_set_pos(s_hline, 0, y - 1);
-    lv_obj_set_pos(s_vline, x - 1, 0);
+    lv_obj_set_pos(s_hline, 0, last.y - 1);
+    lv_obj_set_pos(s_vline, last.x - 1, 0);
 
     char buf[24];
-    snprintf(buf, sizeof(buf), "%d, %d", x, y);
+    snprintf(buf, sizeof(buf), "%d, %d", last.x, last.y);
     lv_label_set_text(s_coord_label, buf);
 }
 #endif

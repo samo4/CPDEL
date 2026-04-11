@@ -119,7 +119,7 @@ void ui_create_wireless_screen(void) {
 #ifdef ESP_PLATFORM
     {
         char configured_ssid[33] = {0};
-        if (wireless_get_configured_ssid(configured_ssid, sizeof(configured_ssid)) == ESP_OK) {
+        if (wireless_get_ssid(configured_ssid, sizeof(configured_ssid)) == ESP_OK) {
             lv_textarea_set_text(ssid_ta, configured_ssid);
         }
     }

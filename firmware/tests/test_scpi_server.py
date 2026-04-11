@@ -4,10 +4,10 @@
 
 import socket
 import time
+import pytest
 
 RECV_TIMEOUT = 2.0
 MAX_CLIENTS = 2
-
 
 def _connect(host: str, port: int, retries: int = 3) -> socket.socket:
     for attempt in range(retries):
@@ -21,11 +21,6 @@ def _connect(host: str, port: int, retries: int = 3) -> socket.socket:
             if attempt == retries - 1:
                 raise
             time.sleep(0.2)
-
-
-# ---------------------------------------------------------------------------
-# test_client_limit
-# ---------------------------------------------------------------------------
 
 def test_client_limit(scpi_addr):
     """The server must close the (MAX_CLIENTS + 1)-th connection immediately."""
@@ -50,10 +45,6 @@ def test_client_limit(scpi_addr):
         for s in held:
             s.close()
         time.sleep(0.3)  # let server process disconnects before next test
-
-# ---------------------------------------------------------------------------
-# test_volt_cont
-# ---------------------------------------------------------------------------
 
 def _recv_lines(sock: socket.socket, count: int, timeout: float = 5.0) -> list[str]:
     """Read exactly `count` CRLF-terminated lines from sock within timeout."""
@@ -124,11 +115,6 @@ def test_curr_cont(scpi_addr):
             _run_cont_cycle(s, b"MEAS:CURR:CONT ON (@1)\n", b"MEAS:CURR:CONT OFF (@1)\n", "current")
             time.sleep(0.1)
 
-
-# ---------------------------------------------------------------------------
-# Single-shot measurement tests
-# ---------------------------------------------------------------------------
-
 def _query(s: socket.socket, cmd: bytes) -> str:
     """Send a query and return the single response line (stripped)."""
     s.sendall(cmd)
@@ -151,13 +137,6 @@ def test_meas_curr(scpi_addr):
     with _connect(host, port) as s:
         val = float(_query(s, b"MEAS:CURR? (@1)\n"))
         assert val >= 0.0, f"Unexpected negative current: {val}"
-
-
-# ---------------------------------------------------------------------------
-# Setpoint / readback tests
-# ---------------------------------------------------------------------------
-
-import pytest
 
 @pytest.mark.parametrize("setpoint", [0.0, 1.5, 5.0, 12.0])
 def test_volt_setpoint_readback(scpi_addr, setpoint):

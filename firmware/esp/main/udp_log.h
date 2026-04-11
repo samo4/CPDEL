@@ -17,7 +17,6 @@
 void udp_log_start(const char *host, uint16_t port);
 void udp_log_stop(void);
 
-/* ------------------------------------------------------------------ */
 #ifdef UDP_LOG_IMPLEMENTATION
 
 #include <stdarg.h>

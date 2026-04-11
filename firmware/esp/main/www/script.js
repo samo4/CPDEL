@@ -134,58 +134,15 @@ createApp({
       const ch = this.channels[payload.channel];
       if (!ch) return;
 
-      if (payload.type === "measurement") {
+      if (payload.type === "msmt") {
         if (typeof payload.voltage === "number") ch.measuredVoltage = payload.voltage;
         if (typeof payload.current === "number") {
           ch.measuredCurrent = payload.current;
           this.pushGraph(payload.channel, ch.measuredVoltage, payload.current);
         }
-        if (typeof payload.power === "number") ch.measuredPower = payload.power;
         if (typeof payload.outputEnabled === "number") ch.outputEnabled = payload.outputEnabled !== 0;
         if (typeof payload.mode === "number") this.setModeAndRefreshSetpoint(ch, this.modeFromNumber(payload.mode));
         return;
-      }
-
-      if (payload.type !== "state") return;
-
-      const value = Number(payload.value);
-      switch (payload.cmd) {
-        case "OUTPUT_STATE":
-          ch.outputEnabled = value !== 0;
-          break;
-        case "SET_MODE":
-          this.setModeAndRefreshSetpoint(ch, this.modeFromNumber(Math.round(value)));
-          break;
-        case "SET_VOLTAGE":
-          ch.cvSetpoint = value;
-          if (ch.mode === "CV" && !this.editingSetpoint) ch.setpointValue = value;
-          break;
-        case "SET_CURRENT":
-          ch.ccSetpoint = value;
-          if (ch.mode === "CC" && !this.editingSetpoint) ch.setpointValue = value;
-          break;
-        case "SET_POWER":
-          ch.cpSetpoint = value;
-          if (ch.mode === "CP" && !this.editingSetpoint) ch.setpointValue = value;
-          break;
-        case "SET_RESISTANCE":
-          ch.crSetpoint = value;
-          if (ch.mode === "CR" && !this.editingSetpoint) ch.setpointValue = value;
-          break;
-        case "SET_LOW_VOLTAGE_PROTECTION":
-          ch.uvCutoffEnabled = value > 0 && value < 998;
-          if (ch.uvCutoffEnabled) ch.uvCutoffValue = value;
-          break;
-        case "MEAS_VOLT":
-          ch.measuredVoltage = value;
-          break;
-        case "MEAS_CURR":
-          ch.measuredCurrent = value;
-          ch.measuredPower = ch.measuredVoltage * ch.measuredCurrent;
-          this.pushGraph(payload.channel, ch.measuredVoltage, value);
-          break;
-        default:
-          break;
       }
     },
     async sendScpi(cmd) {

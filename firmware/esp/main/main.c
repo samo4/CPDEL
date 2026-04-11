@@ -38,19 +38,21 @@ static TaskHandle_t s_lvgl_task_handle = NULL;
 
 static void lvgl_task(void *param) {
     (void)param;
-    uint32_t hwm_tick = 0;
     for (;;) {
         lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(5));
-        uint32_t now = xTaskGetTickCount();
-        if (now - hwm_tick >= pdMS_TO_TICKS(10000)) {
+
+#ifdef MEASURE_HWM
+        static int s_hwm_counter = 0;
+        if (xTaskGetTickCount() - s_hwm_counter >= pdMS_TO_TICKS(60000)) {
             // static int s_level = 0;
             // s_level = !s_level;
             // ESP_ERROR_CHECK(gpio_set_level(HEARTBEAT_GPIO, s_level));
-            hwm_tick = now;
             ESP_LOGI(TAG, "[lvgl] free heap: %u  stack HWM: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
                      (unsigned)uxTaskGetStackHighWaterMark(NULL));
+            s_hwm_counter = xTaskGetTickCount();
         }
+#endif
     }
 }
 
@@ -117,7 +119,7 @@ void app_prepare_for_ota(void) {
     dc_load_controller_stop();
     web_server_stop();
     scpi_server_stop();
-    wireless_pause_background();
+    wireless_pause();
 
     if (s_lvgl_task_handle != NULL) {
         vTaskDelete(s_lvgl_task_handle);

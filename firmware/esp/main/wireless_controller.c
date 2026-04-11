@@ -11,7 +11,7 @@
 static const char *TAG = "WIRELESS";
 static TaskHandle_t s_rssi_task_handle = NULL;
 
-esp_err_t wireless_get_configured_ssid(char *ssid, size_t ssid_size) {
+esp_err_t wireless_get_ssid(char *ssid, size_t ssid_size) {
     if (ssid == NULL || ssid_size == 0) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -102,6 +102,13 @@ static void rssi_task(void *arg) {
             }
             app_bus_publish(&msg);
         }
+#ifdef MEASURE_HWM
+        static int s_hwm_counter = 0;
+        if (xTaskGetTickCount() - s_hwm_counter >= pdMS_TO_TICKS(60000)) {
+            ESP_LOGI(TAG, "rssi_task HWM: %u", uxTaskGetStackHighWaterMark(NULL));
+            s_hwm_counter = xTaskGetTickCount();
+        }
+#endif
         vTaskDelay(pdMS_TO_TICKS(2500));
     }
 }
@@ -130,10 +137,10 @@ void wireless_init(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
 
-    xTaskCreate(rssi_task, "rssi_task", 1536, NULL, tskIDLE_PRIORITY + 1, &s_rssi_task_handle);
+    xTaskCreate(rssi_task, "rssi_task", 1024, NULL, tskIDLE_PRIORITY + 1, &s_rssi_task_handle);
 }
 
-void wireless_pause_background(void) {
+void wireless_pause(void) {
     if (s_rssi_task_handle != NULL) {
         vTaskSuspend(s_rssi_task_handle);
     }

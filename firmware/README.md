@@ -9,15 +9,13 @@ This a firmeware for the control part of a 2-channel DC electronic load, built f
 - [x] rethink queues
 - [ ] rrdtool-like graph [where do we put it?](MEMORY.md)
 - [x] OTA.
-- [ ] read SCPI_FLAG_ERROR and display in UI and react on SCPI
+- [ ] read SCPI_FLAG_ERROR and display in UI and react on SCPI; `SYST:ERR?`
 - [ ] crashes if you go back from OTA screen
 - [x] prevent OTA until fetch is happy
 - [x] heap fragmentation prevents webserver to start
-
-### Ideas
-
-- Implement testing, perhaps with [Unity](https://github.com/ThrowTheSwitch/Unity)
-- consider using a [real SCPI parser](https://www.jaybee.cz/scpi-parser/basic/instrument/)
+- [ ] setpoints don't update on display if changed trough network
+- [x] implement testing
+- [ ] consider using a [real SCPI parser](https://www.jaybee.cz/scpi-parser/basic/instrument/)
 
 ## Development
 

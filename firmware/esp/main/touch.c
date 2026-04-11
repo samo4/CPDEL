@@ -16,16 +16,12 @@ static const char *TAG = "touch";
 static esp_lcd_touch_handle_t touch_handle = NULL;
 static lv_indev_drv_t indev_drv;
 
-static int16_t s_last_raw_x = 0;
-static int16_t s_last_raw_y = 0;
+static point_t s_last_raw;
 
 #define Y_OFFSET (-90)
 #define X_OFFSET (0)
 
-void touch_get_last_point(int16_t *x, int16_t *y) {
-    *x = s_last_raw_x;
-    *y = s_last_raw_y;
-}
+point_t touch_get_last_raw(void) { return s_last_raw; }
 
 static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     (void)drv;
@@ -33,20 +29,21 @@ static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     esp_lcd_touch_point_data_t point;
     uint8_t points = 0;
     if (esp_lcd_touch_get_data(touch_handle, &point, &points, 1) == ESP_OK && points > 0) {
-        int16_t x_cal = point.x + X_OFFSET;
-        int16_t y_cal = point.y + Y_OFFSET;
+        point_t cal = {
+            .x = point.x + X_OFFSET,
+            .y = point.y + Y_OFFSET,
+        };
 
-        if (x_cal < 0) x_cal = 0;
-        if (x_cal > DISP_HOR_RES - 1) x_cal = DISP_HOR_RES - 1;
-        if (y_cal < 0) y_cal = 0;
-        if (y_cal > DISP_VER_RES - 1) y_cal = DISP_VER_RES - 1;
-        data->point.x = x_cal;
-        data->point.y = y_cal;
+        if (cal.x < 0) cal.x = 0;
+        if (cal.x > DISP_HOR_RES - 1) cal.x = DISP_HOR_RES - 1;
+        if (cal.y < 0) cal.y = 0;
+        if (cal.y > DISP_VER_RES - 1) cal.y = DISP_VER_RES - 1;
+        data->point.x = cal.x;
+        data->point.y = cal.y;
         data->state = LV_INDEV_STATE_PR;
 
-        s_last_raw_x = x_cal;
-        s_last_raw_y = y_cal;
-        // ESP_LOGI(TAG, "Touch: x=%d y=%d s=%d", data->point.x, data->point.y, data->state);
+        s_last_raw.x = cal.x;
+        s_last_raw.y = cal.y;
     } else {
         data->state = LV_INDEV_STATE_REL;
     }

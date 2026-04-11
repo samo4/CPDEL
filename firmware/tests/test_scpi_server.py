@@ -160,3 +160,21 @@ def test_curr_setpoint_readback(scpi_addr, setpoint):
         assert readback == pytest.approx(setpoint, rel=1e-4), (
             f"Current readback {readback} != setpoint {setpoint}"
         )
+
+
+def test_syst_err_no_error(scpi_addr):
+    """SYST:ERR? returns 0,'No error' when no error has occurred."""
+    host, port = scpi_addr
+    with _connect(host, port) as s:
+        resp = _query(s, b"SYST:ERR?\n")
+        assert resp == '0,"No error"', f"Unexpected SYST:ERR? response: {resp!r}"
+
+
+def test_syst_err_clears_after_read(scpi_addr):
+    """SYST:ERR? clears the error register: second read returns 0,'No error'."""
+    host, port = scpi_addr
+    with _connect(host, port) as s:
+        # First read — may or may not have an error; second must be clear.
+        _query(s, b"SYST:ERR?\n")
+        resp = _query(s, b"SYST:ERR?\n")
+        assert resp == '0,"No error"', f"Error register not cleared after first read: {resp!r}"

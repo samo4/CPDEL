@@ -57,14 +57,14 @@ void sim_controller_task(void *param) {
                     respond_measurement(msg.source, msg.payload.meas.channel, ctrl_curr_sp[msg.payload.meas.channel],
                                         ctrl_volt_sp[msg.payload.meas.channel],
                                         ctrl_output_enabled[msg.payload.meas.channel] != 0,
-                                        ctrl_mode[msg.payload.meas.channel], false);
+                                        ctrl_mode[msg.payload.meas.channel], false, false);
                     break;
 
                 case APP_CMD_MEAS_CURR:
                     respond_measurement(msg.source, msg.payload.meas.channel, ctrl_curr_sp[msg.payload.meas.channel],
                                         ctrl_volt_sp[msg.payload.meas.channel],
                                         ctrl_output_enabled[msg.payload.meas.channel] != 0,
-                                        ctrl_mode[msg.payload.meas.channel], false);
+                                        ctrl_mode[msg.payload.meas.channel], false, false);
                     break;
 
                 case APP_CMD_SET_VOLTAGE:
@@ -147,7 +147,7 @@ void sim_controller_task(void *param) {
             for (int ch = 0; ch < 2; ch++) {
                 respond_measurement(SRC_GUI, (uint8_t)ch, fminf(sim_val, ctrl_curr_sp[ch]),
                                     fminf(sim_val, ctrl_volt_sp[ch]), ctrl_output_enabled[ch] != 0, ctrl_mode[ch],
-                                    false);
+                                    false, false);
             }
 
             /* Publish simulated RSSI every 2 s - slow sine between -85 and -55 dBm */

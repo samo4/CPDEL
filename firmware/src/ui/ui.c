@@ -43,6 +43,7 @@ static void gui_queue_timer_cb(lv_timer_t *t) {
                 channels[msg.payload.meas.channel].measured_power =
                     channels[msg.payload.meas.channel].measured_voltage *
                     channels[msg.payload.meas.channel].measured_current;
+                channels[msg.payload.meas.channel].meas_flags = msg.payload.meas.flags;
                 if (xTaskGetTickCount() >= s_output_inhibit_until[msg.payload.meas.channel]) {
                     channels[msg.payload.meas.channel].output_enabled =
                         (msg.payload.meas.flags & SCPI_FLAG_ENABLED) != 0;

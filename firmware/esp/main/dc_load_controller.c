@@ -14,6 +14,8 @@
 
 static const char *TAG = "DC_LOAD";
 
+#define MODBUS_STALE_TICKS pdMS_TO_TICKS(1000)
+
 static TaskHandle_t s_task_handle = NULL;
 
 static const uart_port_t MODBUS_UART_PORT = UART_NUM_1;
@@ -32,6 +34,7 @@ typedef struct {
     float voltage;
     float current;
     float lv_cutoff_threshold;
+    TickType_t last_success_tick;
 } dc_load_device_t;
 
 enum {
@@ -170,6 +173,7 @@ static esp_err_t modbus_request_data_blocking(uint8_t index) {
     s_dc_load_state.devices[index].is_enabled = values[2] != 0;
     s_dc_load_state.devices[index].voltage = (float)values[6] / 100.0f;
     s_dc_load_state.devices[index].current = (float)values[7] / 1000.0f;
+    s_dc_load_state.devices[index].last_success_tick = xTaskGetTickCount();
     return ESP_OK;
 }
 
@@ -188,23 +192,29 @@ static esp_err_t dc_load_handle_low_voltage_cutoff(const dc_load_device_t *devic
 
 static void dc_load_controller_task(void *arg) {
     (void)arg;
-    static TickType_t s_last_status_log = 0;
     while (true) {
         for (uint8_t i = 0; i < DC_LOAD_DEVICE_COUNT; i++) {
-            ESP_ERROR_CHECK_WITHOUT_ABORT(modbus_request_data_blocking(i));
+            esp_err_t mb_err = modbus_request_data_blocking(i);
+            if (mb_err != ESP_OK) ESP_LOGW(TAG, "Modbus read failed ch%u: %s", i, esp_err_to_name(mb_err));
             dc_load_handle_low_voltage_cutoff(&s_dc_load_state.devices[i]);
+            bool is_stale = (xTaskGetTickCount() - s_dc_load_state.devices[i].last_success_tick) > MODBUS_STALE_TICKS;
             respond_measurement(SRC_CTRL, i, s_dc_load_state.devices[i].current, s_dc_load_state.devices[i].voltage,
-                                s_dc_load_state.devices[i].is_enabled, (uint8_t)s_dc_load_state.devices[i].mode, false);
+                                s_dc_load_state.devices[i].is_enabled, (uint8_t)s_dc_load_state.devices[i].mode,
+                                mb_err != ESP_OK, is_stale);
             vTaskDelay(pdMS_TO_TICKS(200));
         }
 
-        if (xTaskGetTickCount() - s_last_status_log >= pdMS_TO_TICKS(30000)) {
+#ifdef MEASURE_HWM
+        static int s_hwm_counter = 0;
+        if (xTaskGetTickCount() - s_hwm_counter >= pdMS_TO_TICKS(60000)) {
             ESP_LOGI(TAG, "Dev %u: U=%.2f V, I=%.3f A, En=%s, Mode=%s", s_dc_load_state.devices[0].address,
                      s_dc_load_state.devices[0].voltage, s_dc_load_state.devices[0].current,
                      s_dc_load_state.devices[0].is_enabled ? "Yes" : "No",
                      load_mode_to_cstring(s_dc_load_state.devices[0].mode));
-            s_last_status_log = xTaskGetTickCount();
+            ESP_LOGI(TAG, "dc_load_controller_task stack HWM: %u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+            s_hwm_counter = xTaskGetTickCount();
         }
+#endif
 
         bus_msg_t msg;
         while (xQueueReceive(queue_dc_load, &msg, 0) == pdTRUE) {
@@ -258,29 +268,22 @@ static void dc_load_controller_task(void *arg) {
                     s_dc_load_state.devices[msg.payload.meas.channel].lv_cutoff_threshold = msg.payload.scalar.value;
                     break;
                 case APP_CMD_MEAS_VOLT:
-                    // we already have it. TODO: check if it's not stale
+                case APP_CMD_MEAS_CURR: {
+                    uint8_t ch = msg.payload.meas.channel;
+                    bool stale =
+                        (xTaskGetTickCount() - s_dc_load_state.devices[ch].last_success_tick) > MODBUS_STALE_TICKS;
                     app_bus_publish(&(bus_msg_t){
-                        .cmd = APP_CMD_MEAS_VOLT,
-                        .payload.scalar.channel = msg.payload.meas.channel,
+                        .cmd = msg.cmd,
+                        .payload.scalar.channel = ch,
+                        .payload.scalar.flags = stale ? SCPI_FLAG_STALE : 0,
                         .source = SRC_CTRL,
-                        .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].voltage,
+                        .payload.scalar.value = (msg.cmd == APP_CMD_MEAS_VOLT) ? s_dc_load_state.devices[ch].voltage
+                                                                               : s_dc_load_state.devices[ch].current,
                         .reply_socket = msg.reply_socket,
                     });
                     break;
-                case APP_CMD_MEAS_CURR:
-                    // we already have it. TODO: check if it's not stale
-                    app_bus_publish(&(bus_msg_t){
-                        .cmd = APP_CMD_MEAS_CURR,
-                        .payload.scalar.channel = msg.payload.meas.channel,
-                        .source = SRC_CTRL,
-                        .payload.scalar.value = s_dc_load_state.devices[msg.payload.meas.channel].current,
-                        .reply_socket = msg.reply_socket,
-                    });
-                    break;
+                }
                 case APP_CMD_SOUR_VOLT:
-                    // we already have it. TODO: check if it's not stale
-                    ESP_LOGW(TAG, "replying to SOUR? with %.2f V",
-                             (double)s_dc_load_state.devices[msg.payload.meas.channel].command_voltage);
                     app_bus_publish(&(bus_msg_t){
                         .cmd = APP_CMD_SOUR_VOLT,
                         .payload.scalar.channel = msg.payload.meas.channel,
@@ -290,7 +293,6 @@ static void dc_load_controller_task(void *arg) {
                     });
                     break;
                 case APP_CMD_SOUR_CURR:
-                    // we already have it. TODO: check if it's not stale
                     app_bus_publish(&(bus_msg_t){
                         .cmd = APP_CMD_SOUR_CURR,
                         .payload.scalar.channel = msg.payload.meas.channel,
@@ -300,7 +302,6 @@ static void dc_load_controller_task(void *arg) {
                     });
                     break;
                 case APP_CMD_SOUR_MODE:
-                    // we already have it. TODO: check if it's not stale
                     app_bus_publish(&(bus_msg_t){
                         .cmd = APP_CMD_SOUR_MODE,
                         .payload.scalar.channel = msg.payload.meas.channel,

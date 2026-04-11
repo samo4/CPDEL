@@ -48,17 +48,19 @@ typedef enum {
 typedef enum {
     SCPI_FLAG_ENABLED = 1u << 0,
     SCPI_FLAG_ERROR = 1u << 1,
+    SCPI_FLAG_STALE = 1u << 2,
 } scpi_flags_t;
 
 typedef union {
     struct {
-        uint8_t channel; /* 0-based channel index - common initial sequence with meas */
-        uint8_t _pad[3];
+        uint8_t channel;
+        uint8_t flags;
+        uint8_t _pad[2];
         float value;
     } scalar; /* 8 bytes */
 
     struct {
-        uint8_t channel; /* 0-based channel index - common initial sequence with scalar */
+        uint8_t channel;
         uint8_t mode;
         uint8_t flags;
         uint8_t _pad;
@@ -81,9 +83,9 @@ _Static_assert(sizeof(app_payload_t) <= 16, "app_payload_t grew unexpectedly");
 typedef struct {
     uint32_t timestamp_ms; /* Monotonic time since boot, in milliseconds */
     app_payload_t payload;
-    uint8_t cmd;              // bus_cmd_t, but keep as uint8_t for compactness
-    uint8_t source;           // bus_source_t, but keep as uint8_t for compactness
-    int16_t reply_socket;     // socket to reply to (-1 = none); fits in former padding
+    uint8_t cmd;          // bus_cmd_t, but keep as uint8_t for compactness
+    uint8_t source;       // bus_source_t, but keep as uint8_t for compactness
+    int16_t reply_socket; // socket to reply to (-1 = none); fits in former padding
 } bus_msg_t;
 
 _Static_assert(offsetof(bus_msg_t, payload) == 4, "payload offset changed unexpectedly");
@@ -96,7 +98,7 @@ const char *bus_source_to_cstring(bus_source_t s);
 const char *bus_cmd_to_cstring(bus_cmd_t cmd);
 
 void respond_measurement(bus_source_t dest, uint8_t ch, float current, float voltage, bool is_enabled, uint8_t mode,
-                         bool is_error);
+                         bool is_error, bool is_stale);
 
 #ifdef APP_BUS_IMPLEMENTATION
 
@@ -174,7 +176,7 @@ void app_bus_publish(const bus_msg_t *msg) {
 }
 
 void respond_measurement(bus_source_t dest, uint8_t ch, float current, float voltage, bool is_enabled, uint8_t mode,
-                         bool is_error) {
+                         bool is_error, bool is_stale) {
     (void)dest;
     bus_msg_t resp = {0};
     resp.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
@@ -184,7 +186,8 @@ void respond_measurement(bus_source_t dest, uint8_t ch, float current, float vol
     resp.payload.meas.voltage = voltage;
     resp.payload.meas.current = current;
     resp.payload.meas.mode = mode;
-    resp.payload.meas.flags = (is_enabled ? SCPI_FLAG_ENABLED : 0u) | (is_error ? SCPI_FLAG_ERROR : 0u);
+    resp.payload.meas.flags =
+        (is_enabled ? SCPI_FLAG_ENABLED : 0u) | (is_error ? SCPI_FLAG_ERROR : 0u) | (is_stale ? SCPI_FLAG_STALE : 0u);
     app_bus_publish(&resp);
 }
 

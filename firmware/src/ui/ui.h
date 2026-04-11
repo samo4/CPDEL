@@ -36,6 +36,7 @@ typedef struct {
     double measured_voltage;
     double measured_current;
     double measured_power;
+    uint8_t meas_flags;
     bool output_enabled;
     uint8_t mode; // see dc_load_mode_t
     bool lv_cutoff_enabled;

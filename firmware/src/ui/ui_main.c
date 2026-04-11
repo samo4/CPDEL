@@ -56,9 +56,15 @@ void ui_main_update_channel(int _ch) {
     if (ch_volt_lbl[_ch] == NULL || ch_curr_lbl[_ch] == NULL || ch_pwr_lbl[_ch] == NULL || ch_mode_badge[_ch] == NULL ||
         ch_sp_lbl[_ch] == NULL)
         return;
-    lv_label_set_text_fmt(ch_volt_lbl[_ch], "%.2f V", c->measured_voltage);
-    lv_label_set_text_fmt(ch_curr_lbl[_ch], "%.3f A", c->measured_current);
-    lv_label_set_text_fmt(ch_pwr_lbl[_ch], "%.2f W", c->measured_power);
+    if (c->meas_flags & SCPI_FLAG_STALE) {
+        lv_label_set_text(ch_volt_lbl[_ch], "-- V");
+        lv_label_set_text(ch_curr_lbl[_ch], "-- A");
+        lv_label_set_text(ch_pwr_lbl[_ch], "-- W");
+    } else {
+        lv_label_set_text_fmt(ch_volt_lbl[_ch], "%.2f V", c->measured_voltage);
+        lv_label_set_text_fmt(ch_curr_lbl[_ch], "%.3f A", c->measured_current);
+        lv_label_set_text_fmt(ch_pwr_lbl[_ch], "%.2f W", c->measured_power);
+    }
     lv_label_set_text(ch_mode_badge[_ch], load_mode_to_cstring((load_mode_t)c->mode));
     switch (c->mode) {
         case 0:
@@ -170,29 +176,6 @@ void ui_create_main_screen(void) {
     lv_obj_add_flag(sw1_lbl, LV_OBJ_FLAG_FLOATING);
     lv_label_set_text(sw1_lbl, "Output");
     lv_obj_align_to(sw1_lbl, sw1, LV_ALIGN_OUT_LEFT_MID, -4, 0);
-
-    /*
-    // Top-left (0,0)
-    lv_obj_t *corner_tl = lv_label_create(ui_MainScreen);
-    lv_label_set_text(corner_tl, "0,0");
-    lv_obj_set_pos(corner_tl, 0, 0);
-
-    // Top-right (319,0)
-    lv_obj_t *corner_tr = lv_label_create(ui_MainScreen);
-    lv_label_set_text(corner_tr, "319,0");
-    lv_obj_set_pos(corner_tr, 280, 0);
-
-    // Bottom-left (0,239)
-    lv_obj_t *corner_bl = lv_label_create(ui_MainScreen);
-    lv_label_set_text(corner_bl, "0,239");
-    lv_obj_set_pos(corner_bl, 0, 200);
-
-    // Bottom-right (319,239)
-    lv_obj_t *corner_br = lv_label_create(ui_MainScreen);
-    lv_label_set_text(corner_br, "319,239");
-    lv_obj_set_pos(corner_br, 280, 200);
-    // --- End corner markers ---
-    */
 }
 
 static void create_channel_panel(lv_obj_t *parent, int _ch) {
@@ -211,28 +194,27 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_label_set_text_fmt(title, "CH %d", _ch + 1);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 5, 5);
 
-    // Initial dummy values
     lv_obj_t *volt_val = lv_label_create(parent);
-    lv_label_set_text(volt_val, "0.00 V");
+    lv_label_set_text(volt_val, "-- V");
     lv_obj_set_style_text_font(volt_val, &lv_font_montserrat_20, 0);
     lv_obj_align(volt_val, LV_ALIGN_TOP_RIGHT, -5, 30);
     ch_volt_lbl[_ch] = volt_val;
 
     lv_obj_t *curr_val = lv_label_create(parent);
-    lv_label_set_text(curr_val, "0.000 A");
+    lv_label_set_text(curr_val, "-- A");
     lv_obj_set_style_text_font(curr_val, &lv_font_montserrat_20, 0);
     lv_obj_align(curr_val, LV_ALIGN_TOP_RIGHT, -5, 60);
     ch_curr_lbl[_ch] = curr_val;
 
     lv_obj_t *pwr_val = lv_label_create(parent);
-    lv_label_set_text(pwr_val, "0.00 W");
+    lv_label_set_text(pwr_val, "-- W");
     lv_obj_set_style_text_font(pwr_val, &lv_font_montserrat_14, 0);
     lv_obj_align(pwr_val, LV_ALIGN_TOP_RIGHT, -5, 90);
     ch_pwr_lbl[_ch] = pwr_val;
 
-    // CC/CV Mode Badge - below power row
+    // Mode Badge
     lv_obj_t *mode_badge = lv_label_create(parent);
-    lv_label_set_text(mode_badge, "CC");
+    lv_label_set_text(mode_badge, "--");
     lv_obj_set_style_text_font(mode_badge, &lv_font_montserrat_14, 0);
     lv_obj_set_style_bg_color(mode_badge, lv_palette_main(LV_PALETTE_ORANGE), 0);
     lv_obj_set_style_bg_opa(mode_badge, LV_OPA_COVER, 0);
@@ -240,14 +222,14 @@ static void create_channel_panel(lv_obj_t *parent, int _ch) {
     lv_obj_align(mode_badge, LV_ALIGN_TOP_LEFT, 5, 112);
     ch_mode_badge[_ch] = mode_badge;
 
-    // Setpoint summary - same row as mode badge
+    // Setpoint summary
     lv_obj_t *sp_lbl = lv_label_create(parent);
     lv_label_set_text(sp_lbl, "");
     lv_obj_set_style_text_font(sp_lbl, &lv_font_montserrat_14, 0);
-    lv_obj_align_to(sp_lbl, mode_badge, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
+    lv_obj_align(sp_lbl, LV_ALIGN_TOP_RIGHT, -5, 112);
     ch_sp_lbl[_ch] = sp_lbl;
 
-    // Make entire panel clickable for channel select
+    // Make entire panel clickable
     lv_obj_add_flag(parent, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(parent, ui_event_channel_select, LV_EVENT_CLICKED, (void *)(intptr_t)_ch);
 }

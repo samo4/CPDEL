@@ -170,8 +170,6 @@ static esp_err_t modbus_request_data_blocking(uint8_t index) {
     s_dc_load_state.devices[index].is_enabled = values[2] != 0;
     s_dc_load_state.devices[index].voltage = (float)values[6] / 100.0f;
     s_dc_load_state.devices[index].current = (float)values[7] / 1000.0f;
-    // s_dc_load_state.devices[index].power = (float)values[8] / 1000.0f;
-
     return ESP_OK;
 }
 

@@ -327,7 +327,7 @@ void scpi_server_init(void) {
     }
 
     xTaskCreate(scpi_server_task, "scpi_server", 2048, NULL, 5, &s_scpi_server_task_handle);
-    xTaskCreate(scpi_reply_task, "scpi_reply_task", 1536, NULL, 5, &s_scpi_reply_task_handle);
+    xTaskCreate(scpi_reply_task, "scpi_reply", 1536, NULL, 5, &s_scpi_reply_task_handle);
 }
 
 void scpi_server_stop(void) {

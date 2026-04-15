@@ -30,3 +30,5 @@ Features:
 ## LLM disclaimer
 
 Hardware and first few versions of software were created the old fashined way. It worked, but only the exact features that I needed at the time. With the help of LLM, the code was rewritten to use ESP-IDF (compared to original Arduino FreeRTOSnstein) directly and implement basicly all of the features that one might expect from a DC load instrument. LLM was used heavily especially in the UI, http/ws/socket server code and test writing.
+
+"Copilot Is For Entertainment Purposes Only" is written in the Copilot terms. Well, I was entertained.

@@ -24,6 +24,6 @@ fp-info-cache
 *.xml
 *.csv
 !firmware/esp/partitions.csv
-
+Hardware/.history
 UniversalControlPanel-backups
 #auto_saved_files#

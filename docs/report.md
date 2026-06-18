@@ -1,6 +1,6 @@
 ---
 title: "CPDEL: Completely Pointless DC Electronic Load"
-
+subtitle: ""
 date: "2026-06-17"
 header-includes:
 	- |

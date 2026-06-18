@@ -1,5 +1,6 @@
 ---
 title: "CPDEL: Completely Pointless DC Electronic Load"
+
 date: "2026-06-17"
 header-includes:
 	- |
@@ -16,7 +17,7 @@ header-includes:
 
 # Overview
 
-A while ago I noticed the availibility of cheap RS485 controllable DC load modules on Taobao. I had an appropriate instrument case availible and had occasional need of DC load for testing batteries. Packaging the modules in a small case with a nice user interface seemed like a good project to learn more about developing with ESP32 while beeing small enough to be actually finished.
+A while ago I noticed the availability of the cheap RS485 controllable DC load modules on Taobao. I had an appropriate instrument case available and had occasional need of DC load for testing batteries. Packaging the modules in a small case with a nice user interface seemed like a good project to learn more about developing with ESP32 while being small enough to be finished.
 
 Considering the availability and cost of real laboratory DC loads, the project is "Completely pointless" from economic perspective.
 
@@ -35,9 +36,9 @@ Other than learning objectives and experimental verification of feasibility of t
 - UDP logging for debugging
 - rough adherence to CE standards (e.g. mains isolation, fusing, earthing, etc.)
 
-Project went trough the following phases:
+Project went through the following phases:
 
-- initial reasearch of the protocol (the documentation was in chinese) with proof of concept python script to control the modules
+- initial research of the protocol (the documentation was in Chinese) with proof-of-concept python script to control the modules
 - design of the main ESP32S3 controller board (in KiCad; designed for JLCPCB assembly)
 - mechanical design & machining of the front and back panels (in Fusion360)
 - development of first version of the firmware (on Arduino platform using ESP32 built-in FreeRTOS)
@@ -50,11 +51,11 @@ As of writing of this report, the project is finished.
 
 ## Mechanical design
 
-Mechanical design is not the primary focus of this report, however here are some details for the interested reader. The blank instrument was acquired in Horjul a long time ago. The layout was designed in Fusion360 and front and back plate were machined on a CNC mill. The layout followed the standard instrument design. There was no thermal planning or modelling, I used heuristic approach of "make the holes as big as possible". All the heavy elements are mounted on a subplate that allows mechanical rigidity and no protruding holes at the bottom of the instrument case.
+Mechanical design is not the primary focus of this report, however, here are some details for the interested reader. The blank instrument was acquired in Horjul a long time ago. The layout was designed in Fusion360 and front and back plate were machined on a CNC mill. The layout followed the standard instrument design. There was no thermal planning or modelling, I used heuristic approach of "make the holes as big as possible". All the heavy elements are mounted on a subplate that allows mechanical rigidity and no protruding holes at the bottom of the instrument case.
 
 ![Mechanical overview](images/image-1.png)
 
-Extra care was made to create a design that allows for easy assembly and mounting of the display unit. Long lines for 40Mhz SPI signals (common source of signal integrity and EMI issues) are avoided by placing the display controller board right behind the display. A special two sided bracked was designed for snap-fit into aluminim front plate, preventing the board touching the (grounded) aluminume and allowing for relatively good touch interface experiece (final evalation revealed that edges still don't register well, but they are good enough).
+Extra care was made to create a design that allows for easy assembly and mounting of the display unit. Long lines for 40Mhz SPI signals (common source of signal integrity and EMI issues) are avoided by placing the display controller board right behind the display. A special two-sided bracket was designed for snap-fit into aluminium front plate, preventing the board touching the (grounded) aluminium and allowing for relatively good touch interface experience (final evaluation revealed that edges still don’t register well, but they are good enough).
 
 ![PCB and display holder with snap-fit](images/image-2.png)
 
@@ -64,17 +65,17 @@ Initial prototype had a 100x160mm universal board to house the off-the-shelf swi
 
 ## Electronics
 
-The main controller board was designed in KiCad specifically using the parts catalogue from JLCPCBA to allow for delivery of assembled board. Through hole components and display were ordered from Digikey and hand-soldered. It features a now almost obsolete ESP32S2 microcontroller, RS485 and CAN transceivers as well as 24V to 3.3V isolated DC-DC converter. The latter one also features input reverse polarity protection - a good practice if you know who'll be assembling the board.
+The main controller board was designed in KiCad specifically using the parts catalogue from JLCPCBA to allow for delivery of assembled board. Through hole components and display were ordered from Digikey and hand soldered. It features a now almost obsolete ESP32S2 microcontroller, RS485 and CAN transceivers as well as 24V to 3.3V isolated DC-DC converter. The latter one also features input reverse polarity protection - a good practice if you know who'll be assembling the board.
 
-The main controller board was actually envisioned to be a general purpose controller for various instruments - that how the extra CAN controller and open collector FETs found their way on the board. Extra breakout pins and PCB jumpers to cut connections to some peripherals were added for the same reason.
+The main controller board was envisioned to be a general purpose controller for various instruments - that's how the extra CAN controller and open collector FETs found their way on the board. Extra breakout pins and PCB jumpers to cut connections to some peripherals were added for the same reason.
 
-LCD is powered by linear regulator, directly from the 24V supply. This was a kind of balancing decision: ESP32S2 needs a lot of power headroom (for wireless engotiation) so the first choice was to have one DC-DC to step down to 5V (and power both). But that would require a one step larger input DC-DC (2W) and another either linear or switching regulator to step down to 3.3V for the ESP32S2. I landed on current configuration without much more analysis.
+LCD is powered by linear regulator, directly from the 24V supply. This was a kind of balancing decision: ESP32S2 needs a lot of power headroom (for wireless negotiation) so the first choice was to have one DC-DC to step down to 5V (and power both). But that would require a one step larger input DC-DC (2W) and another either linear or switching regulator to step down to 3.3V for the ESP32S2. I landed on current configuration without much more analysis.
 
 ![Main board PCB](images/image.png)
 
 Reducing the number of actually unneeded features would allow me to design the board with a little less cheesy ground plane.
 
-After a mixed experience with initializing and usage different Aliexpres displays, I decided to use 4LCD display availible from Digikey (PN: 4DLCD-24320240 with IL9341 controller and
+After a mixed experience with initializing and usage different Aliexpres displays, I decided to use 4LCD display available from Digikey (PN: 4DLCD-24320240 with IL9341 controller and
 FT6236V touch). It's a bit on the small side, but capacitive touch is a significant improvement over resistive touch - and was a major factor in the decision to use this display.
 
 ![Final schematics for main board](images/image-3.png)
@@ -83,13 +84,13 @@ FT6236V touch). It's a bit on the small side, but capacitive touch is a signific
 
 ## Sousim interface protocol
 
-The DC load modules (SOUSIM) use Modbus RTU protocol over RS485. This is an old, slow industrial protocol, but it is simple and well supported. It's a packet based protocol: you send a command to one of the slave devices (address) and the slave responds with the requested data.
+The DC load modules (SOUSIM) use Modbus RTU protocol over RS485. This is an old, slow industrial protocol, but it is simple and well supported. It's a packet-based protocol: you send a command to one of the slave devices (address) and the slave responds with the requested data.
 
 The data is organized in registers, which are 16-bit values. The registers can be read or written to, depending on the command. The most common ones are reading and writing holding registers and while technically you can request access to multiple registers at once, usually you just read or write one register at a time.
 
 ### Example RTU request
 
-The interaction with registers is abstracted away with the library in ESP-IDF. However when nothing comes back from the library and you bring out the oscilloscope, it's helpful to know what the actual bytes on the wire look like. The following is an example of a request to read 13 registers starting from 0x0000 (Modbus address 40001) from slave device with address 1:
+The interaction with registers is abstracted away with the library in ESP-IDF. However, when nothing comes back from the library and you bring out the oscilloscope, it's helpful to know what the actual bytes on the wire look like. The following is an example of a request to read 13 registers starting from 0x0000 (Modbus address 40001) from slave device with address 1:
 
 ```
 01 03 00 00 00 0D 84 0F
@@ -98,7 +99,7 @@ The interaction with registers is abstracted away with the library in ESP-IDF. H
 - 01 - slave address
 - 03 - read holding registers (to write a single hold register, use 0x06)
 - 00 00 - The address of the first register (40108-40108 = 0x0000 )
-- 00 0D - number of requrired registers (13)
+- 00 0D - number of required registers (13)
 - 84 0F - CRC checksum
 
 ### Holding registers
@@ -272,13 +273,13 @@ curl -X POST http://192.168.88.117/api/scpi -d "SOUR1:CURR 0.5"
 
 ## Software architecture
 
-There were a few core architecural decisions made during the development of the firmware:
+There were a few core architectural decisions made during the development of the firmware:
 
-The first one was to switch from Arduino platform to **native ESP-IDF**. Compared to Arduino and its incosistent mix of C and C++, poor control over build process, error-prone tooling and strange FreeRTOS integration, the ESP-IDF is a much more powerfull tool, allowing full control, consistent naming practices and enjoable development.
+The first one was to switch from Arduino platform to **native ESP-IDF**. Compared to Arduino and its inconsistent mix of C and C++, poor control over build process, error-prone tooling and strange FreeRTOS integration, the ESP-IDF is a much more powerful tool, allowing full control, consistent naming practices and enjoyable development.
 
-The second was to absolutely require the possibility to simulate the user interface in a desktop environment - no matter which library you use for grahical user interface, without **GUI simulator**, the turnaround for each little change to the position of a button is way too long. Previously I used LVGL library with Edgeline UI editor but combining simulator with LLM generated user interface code is much more efficient in time, flexibility and the quality.
+The second was to absolutely require the possibility to simulate the user interface in a desktop environment - no matter which library you use for graphical user interface, without **GUI simulator**, the turnaround for each little change to the position of a button is way too long. Previously I used LVGL library with Edgeline UI editor but combining simulator with LLM generated user interface code is much more efficient in time, flexibility and the quality.
 
-The most imporant architecural decision was to use **FreeRTOS queues** to communicate between the (many) different parts of the software. Data structures based on SCPI commands and responses are passed between the tasks, which allows for a very clean separation of concerns and makes it easy to add new features without breaking existing ones. It also allows for easy testing, little to no dependecies betwen modules, very clean and readable code and small context requirements for LLMs.
+The most important architectural decision was to use **FreeRTOS queues** to communicate between the (many) different parts of the software. Data structures based on SCPI commands and responses are passed between the tasks, which allows for a very clean separation of concerns and makes it easy to add new features without breaking existing ones. It also allows for easy testing, little to no dependencies between modules, very clean and readable code and small context requirements for LLMs.
 
 So here are all the modules:
 
@@ -292,7 +293,7 @@ So here are all the modules:
 
 ### Hardware controller
 
-- `esp/main/dc_load_controller.c` — The Modbus RTU master that communicates with the physical SOUSIM DC load modules over RS485. Runs as a FreeRTOS task that periodically polls all input registers (voltage, current, temperature, capacity) from both load channels, and writes setpoint changes (mode, enable, voltage, current, power, resistance) back. It subscribes to the app_bus and responds to all control commands by writing the appropriate Modbus holding registers. It also implements low-voltage cutoff protection for battery discharge mode (the only feature that's not availible on the SOUSIM modules), and marks measurements as "stale" if Modbus communication fails for more than 1 second.
+- `esp/main/dc_load_controller.c` — The Modbus RTU master that communicates with the physical SOUSIM DC load modules over RS485. Runs as a FreeRTOS task that periodically polls all input registers (voltage, current, temperature, capacity) from both load channels, and writes setpoint changes (mode, enable, voltage, current, power, resistance) back. It subscribes to the app_bus and responds to all control commands by writing the appropriate Modbus holding registers. It also implements low-voltage cutoff protection for battery discharge mode (the only feature that's not available on the SOUSIM modules), and marks measurements as "stale" if Modbus communication fails for more than 1 second.
 
 ### Communication interfaces
 
@@ -308,7 +309,7 @@ So here are all the modules:
 
 ### Display
 
-- `esp/main/display.c` — Initializes the 2.8" SPI display with LVGL's display driver interface. Configures the SPI bus, DMA, and backlight control (the latter one was a source of some frustration during development - lots of work went into investigating numbers other causes, but ultimately in order to see thing on the display, you need to turn on the backlight). The SPI bus sadly works reliably only up to 40MHz, which limits the maximum refresh rate of the display and makes full-screen animations choppy. I'm using ESP-IDF built-in LCD driver, but I left a big chunk of commented-out code that was used to manually initilize the display during development debuging.
+- `esp/main/display.c` — Initializes the 2.8" SPI display with LVGL's display driver interface. Configures the SPI bus, DMA, and backlight control (the latter one was a source of some frustration during development - lots of work went into investigating numbers of other causes, but ultimately in order to see thing on the display, you need to turn on the backlight). The SPI bus sadly works reliably only up to 40MHz, which limits the maximum refresh rate of the display and makes full-screen animations choppy. I'm using ESP-IDF built-in LCD driver, but I left a big chunk of commented-out code that was used to manually initialize the display during development debugging.
 - `esp/main/touch.c` — Initializes the capacitive touch controller and provides adjusted coordinates to LVGL's input device interface. Using ESP-IDF built-in FT6206 driver.
 
 ### OTA updates
@@ -362,9 +363,9 @@ All modules communicate exclusively through the **app_bus** — there are no dir
 
 The project was a great learning experience. I learned a lot about ESP-IDF and especially about its network stack. The final product is not perfect by any means, but it works and has all the features I set out to implement. And almost most importantly: it's complete - as opposed to many that remain in the shoebox.
 
-Development of hardware, electronics, initial software and, suprisingly, OTA was pretty much straightforward. Although I tried to avoid debugging display initialization, it appears that this is a _sine qua non_ for any project involving a display.
+Development of hardware, electronics, initial software and, surprisingly, OTA was pretty much straightforward. Although I tried to avoid debugging display initialization, it appears that this is a _sine qua non_ for any project involving a display.
 
-The main challenge happened to be memory managment. ESP32S2 has 320kB of RAM, but the display buffer initially took most of it (then I used a partial buffer as offered by LVGL). It turns out that adding each screen takes memory, especially if you want to play it save and have averything statically allocated (to prevent fragmentation). Then on top of that, the web server, the telnet server, the web socket server, the RRD logger. The crashes were common occurance. Mitigating the memory problem was done by a combination of careful adding a features one by one, testing each and rolling back if problems occured. LLM proved invaluable in detecting root causes of the crashes and suggesting solutions - I know in theory how to use the crash dumps trace the memory to the source of the problem, but it was always easier to poke around the usual suspects. With LLM, you can just paste the crush dump and it will systematically compare the dump with the code, calculate the required memory for each variable and compare that with data from the dump.
+The main challenge happened to be memory management. ESP32S2 has 320kB of RAM, but the display buffer initially took most of it (then I used a partial buffer as offered by LVGL). It turns out that adding each screen takes memory, especially if you want to play it safe and have everything statically allocated (to prevent fragmentation). Then on top of that, the web server, the telnet server, the web socket server, the RRD logger. The crashes were common occurrence. Mitigating the memory problem was done by a combination of careful adding a feature one by one, testing each and rolling back if problems occurred. LLM proved invaluable in detecting root causes of the crashes and suggesting solutions - I know in theory how to use the crash dumps trace the memory to the source of the problem, but it was always easier to poke around the usual suspects. With LLM, you can just paste the crush dump, and it will systematically compare the dump with the code, calculate the required memory for each variable and compare that with data from the dump.
 
 And here's my key takeaways:
 
@@ -375,6 +376,6 @@ And here's my key takeaways:
 
 # LLM disclaimer
 
-Hardware and first few versions of software were created the old fashined way. It worked, but only the exact features that I needed at the time. With the help of LLM, the code was rewritten to use ESP-IDF (compared to original Arduino FreeRTOSnstein) directly and implement basicly all of the features that one might expect from a DC load instrument. LLM was used heavily especially in the UI, http/ws/socket server code and test writing.
+Hardware and first few versions of software were created the old fashioned way. It worked, but only the exact features that I needed at the time. With the help of LLM, the code was rewritten to use ESP-IDF (compared to original Arduino FreeRTOSnstein) directly and implement basically all the features that one might expect from a DC load instrument. LLM was used heavily especially in the UI, http/ws/socket server code and test writing.
 
-Allegedley the Github Copilot Terms and Condition contain a line "Copilot Is For Entertainment Purposes Only". Well, I was entertained.
+Allegedly the Github Copilot Terms and Condition contain a line “Copilot Is For Entertainment Purposes Only”. Well, I was entertained.

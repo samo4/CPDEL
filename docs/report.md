@@ -19,14 +19,12 @@ header-includes:
 
 A while ago I noticed the availability of the cheap RS485 controllable DC load modules on Taobao. I had an appropriate instrument case available and had occasional need of DC load for testing batteries. Packaging the modules in a small case with a nice user interface seemed like a good project to learn more about developing with ESP32 while being small enough to be finished.
 
-Considering the availability and cost of real laboratory DC loads, the project is "Completely pointless" from economic perspective.
-
 Other than learning objectives and experimental verification of feasibility of touchscreen-only instrument interface, the list of requirements as they evolved during development is:
 
 - 2 channels DC electronic load: 200V, 10A
 - 4 modes (CC, CV, CR, CP) + battery discharge mode
 - interface:
-  - 2.8" SPI display with capacitive touch
+  - 2.4" SPI display with capacitive touch
   - telnet SCPI interface (port 5025)
   - REST SCPI interface (port 80)
   - responsive web interface (with sockets)
@@ -35,6 +33,10 @@ Other than learning objectives and experimental verification of feasibility of t
 - reasonable level of test coverage
 - UDP logging for debugging
 - rough adherence to CE standards (e.g. mains isolation, fusing, earthing, etc.)
+
+![Final assembled view - front](images/front.jpg)
+
+Considering the availability and cost of real laboratory DC loads, the project is "Completely pointless" from economic perspective.
 
 Project went through the following phases:
 
@@ -309,7 +311,7 @@ So here are all the modules:
 
 ### Display
 
-- `esp/main/display.c` — Initializes the 2.8" SPI display with LVGL's display driver interface. Configures the SPI bus, DMA, and backlight control (the latter one was a source of some frustration during development - lots of work went into investigating numbers of other causes, but ultimately in order to see thing on the display, you need to turn on the backlight). The SPI bus sadly works reliably only up to 40MHz, which limits the maximum refresh rate of the display and makes full-screen animations choppy. I'm using ESP-IDF built-in LCD driver, but I left a big chunk of commented-out code that was used to manually initialize the display during development debugging.
+- `esp/main/display.c` — Initializes the 2.4" SPI display with LVGL's display driver interface. Configures the SPI bus, DMA, and backlight control (the latter one was a source of some frustration during development - lots of work went into investigating numbers of other causes, but ultimately in order to see thing on the display, you need to turn on the backlight). The SPI bus sadly works reliably only up to 40MHz, which limits the maximum refresh rate of the display and makes full-screen animations choppy. I'm using ESP-IDF built-in LCD driver, but I left a big chunk of commented-out code that was used to manually initialize the display during development debugging.
 - `esp/main/touch.c` — Initializes the capacitive touch controller and provides adjusted coordinates to LVGL's input device interface. Using ESP-IDF built-in FT6206 driver.
 
 ### OTA updates
@@ -357,7 +359,85 @@ On the real hardware (`esp/main/main.c`):
 11. Start SCPI telnet server
 12. Create LVGL timer task (calls `lv_timer_handler()` every 5 ms)
 
-All modules communicate exclusively through the **app_bus** — there are no direct inter-module function calls, no shared global state beyond the read-only channel data struct used by the UI, and no mutual dependencies between the controller, UI, web interface, and SCPI server. This architecture proved essential for keeping the project manageable, although the specifics of the implementation changed a few times during development. For example a model where "clients" (UI, web, SCPI) would have to subscribe to the measurements was replaced with a simpler model where the controller publishes all measurements to the bus, and clients simply read the latest values from the bus.
+All modules communicate exclusively through the **app_bus** — there are no direct inter-module function calls, no shared global state beyond the read-only channel data struct used by the UI, and no mutual dependencies between the controller, UI, web interface, and SCPI server. This architecture proved essential for keeping the project manageable, although the specifics of the implementation changed a few times during development. For example a model where "clients" (UI, web, SCPI) would have to subscribe to the measurements was replaced with a simpler model where the controller publishes all measurements to the bus, and clients simply read the latest values from the bus (whatever is of interest to particular module).
+
+<!-- prettier-ignore-start -->
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[>=Stealth,
+    bus/.style={
+        rectangle, draw=blue!60, very thick, fill=blue!6, rounded corners=4pt,
+        minimum width=16cm, minimum height=1.6cm, align=center
+    },
+    mod/.style={
+        rectangle, draw=green!50!black!60, thick, fill=green!3, rounded corners=3pt,
+        minimum width=2.4cm, minimum height=1.2cm, align=center
+    },
+    pubarrow/.style={->, thick, blue!50!black},
+    subarrow/.style={->, thick, green!60!black},
+    qlab/.style={font=\tiny\ttfamily, text=black, fill=white, inner sep=1pt},
+    msg/.style={font=\tiny, text=gray!50!black},
+]
+
+% app\_bus (top center)
+\node[bus] (bus) at (0,0) {
+    \textbf{app\_bus} \quad\texttt{s\_subscribers[0..count-1]}\\[2pt]
+    \footnotesize\texttt{app\_bus\_publish() $\rightarrow$ \textbf{foreach:} xQueueSend(sub, msg, 0)}
+};
+
+% Publisher-only modules (above bus)
+\node[mod] (wifi) at (-6.0, 2.6) {Wireless\\Controller};
+\draw[pubarrow] (wifi.south) -- (bus.north -| wifi.south)
+    node[qlab, fill=white, pos=0.3, right] {Wifi status, RSSI};
+
+% Modules (below bus)
+\node[mod] (dc)   at (-6.5, -2.6) {DC Load\\Controller};
+\node[mod] (scpi) at (-3.9, -2.6) {SCPI\\Server};
+\node[mod] (web)  at (-1.3, -2.6) {Web\\Server};
+\node[mod] (gui)  at ( 1.3, -2.6) {GUI\\(LVGL)};
+\node[mod] (rrd)  at ( 3.9, -2.6) {RRD\\Logger};
+\node[mod, dashed] (sim)  at ( 6.5, -2.6) {Sim\\Controller};
+
+% Subscribe arrows: bus to modules — labelled with what each module actually uses
+\draw[subarrow] ([xshift=-1mm]bus.south -| dc.north) -- ([xshift=-1mm]dc.north)
+    node[qlab, fill=white, pos=0.3, left] {set, query};
+\draw[subarrow] ([xshift=-1mm]bus.south -| scpi.north) -- ([xshift=-1mm]scpi.north)
+    node[qlab, fill=white, pos=0.3, left] {meas};
+\draw[subarrow] ([xshift=-1mm]bus.south -| web.north) -- ([xshift=-1mm]web.north)
+    node[qlab, fill=white, pos=0.3, left] {meas};
+\draw[subarrow] ([xshift=-1mm]bus.south -| gui.north) -- ([xshift=-1mm]gui.north)
+    node[qlab, fill=white, pos=0.3, left] {meas \& status};
+\draw[subarrow] ([xshift=-1mm]bus.south -| rrd.north) -- ([xshift=-1mm]rrd.north)
+    node[qlab, fill=white, pos=0.3, left] {meas};
+\draw[subarrow] ([xshift=-1mm]bus.south -| sim.north) -- ([xshift=-1mm]sim.north)
+    node[qlab, fill=white, pos=0.3, left] {set, query};
+
+% Publish arrows (module to bus) — vertical, offset right to not interfere with subscribe arrows
+\draw[pubarrow] ([xshift=1mm]dc.north)  -- ([xshift=1mm]bus.south -| dc.north)
+    node[qlab, fill=white, pos=0.3, right] {meas};
+\draw[pubarrow] ([xshift=1mm]scpi.north) -- ([xshift=1mm]bus.south -| scpi.north)
+    node[qlab, fill=white, pos=0.3, right] {commands};
+\draw[pubarrow] ([xshift=1mm]web.north)  -- ([xshift=1mm]bus.south -| web.north)
+    node[qlab, fill=white, pos=0.3, right] {commands};
+\draw[pubarrow] ([xshift=1mm]gui.north)  -- ([xshift=1mm]bus.south -| gui.north)
+    node[qlab, fill=white, pos=0.3, right] {commands};
+\draw[pubarrow] ([xshift=1mm]sim.north)  -- ([xshift=1mm]bus.south -| sim.north)
+    node[qlab, fill=white, pos=0.3, right] {meas};
+
+% Legend
+\node[draw, dotted, rounded corners=2pt, fill=white, font=\tiny,
+      anchor=north east] at (current bounding box.north east) {
+    \begin{tabular}{@{}ll@{}}
+        \tikz\draw[pubarrow] (0,0) -- (0.4,0); & Publish (\texttt{app\_bus\_publish()}) \\
+        \tikz\draw[subarrow] (0,0) -- (0.4,0); & Subscribe (\texttt{xQueueReceive()})
+    \end{tabular}
+};
+
+\end{tikzpicture}
+\caption{Queue interaction diagram showing all modules, their queues, and the message flow through the app\_bus publish/subscribe mechanism. Wireless Controller publishes only (no incoming queue).}
+\label{fig:queue_diagram}
+\end{figure}
+<!-- prettier-ignore-end -->
 
 # Lessons Learned & Looking Forward
 

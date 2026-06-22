@@ -13,6 +13,7 @@
 #define APP_BUS_IMPLEMENTATION
 #include "app_bus.h"
 
+#define SCPI_IMPLEMENTATION
 #define SIM_CONTROLLER_IMPLEMENTATION
 #include "sim_controller.h"
 
@@ -39,6 +40,30 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
 void vApplicationMallocFailedHook(void) {
     printf("Malloc failed!\n");
     configASSERT(0);
+}
+
+/* Static allocation support for idle and timer tasks (required when
+   configSUPPORT_STATIC_ALLOCATION is 1). */
+static StaticTask_t s_idle_task_tcb;
+static StackType_t s_idle_task_stack[configMINIMAL_STACK_SIZE];
+
+void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
+                                    StackType_t **ppxIdleTaskStackBuffer,
+                                    configSTACK_DEPTH_TYPE *pulIdleTaskStackSize) {
+    *ppxIdleTaskTCBBuffer = &s_idle_task_tcb;
+    *ppxIdleTaskStackBuffer = s_idle_task_stack;
+    *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+}
+
+static StaticTask_t s_timer_task_tcb;
+static StackType_t s_timer_task_stack[configTIMER_TASK_STACK_DEPTH];
+
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
+                                     StackType_t **ppxTimerTaskStackBuffer,
+                                     configSTACK_DEPTH_TYPE *pulTimerTaskStackSize) {
+    *ppxTimerTaskTCBBuffer = &s_timer_task_tcb;
+    *ppxTimerTaskStackBuffer = s_timer_task_stack;
+    *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
 }
 
 /* FreeRTOS scheduler runs in a background Windows thread so the main thread

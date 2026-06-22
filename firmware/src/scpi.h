@@ -3,6 +3,7 @@
 #include <app_bus.h>
 
 int scpi_decode(const char *str, bus_msg_t *out);
+int scpi_encode(const bus_msg_t *msg, char *buf, size_t size);
 
 #ifdef SCPI_IMPLEMENTATION
 
@@ -184,6 +185,76 @@ int scpi_decode(const char *str, bus_msg_t *out) {
     }
 
     return -1;
+}
+
+int scpi_encode(const bus_msg_t *msg, char *buf, size_t size) {
+    switch ((bus_cmd_t)msg->cmd) {
+        case APP_CMD_OUTPUT_STATE:
+            return snprintf(buf, size, "OUTP%u:STAT %s",
+                            (unsigned)msg->payload.scalar.channel + 1u,
+                            msg->payload.scalar.value != 0.0f ? "ON" : "OFF");
+        case APP_CMD_SET_MODE: {
+            const char *mode_str = "UNKNOWN";
+            int m = (int)msg->payload.scalar.value;
+            if (m == 0) mode_str = "VOLT";
+            else if (m == 1) mode_str = "CURR";
+            else if (m == 2) mode_str = "POW";
+            else if (m == 3) mode_str = "RES";
+            return snprintf(buf, size, "SOUR%u:FUNC %s", (unsigned)msg->payload.scalar.channel + 1u, mode_str);
+        }
+        case APP_CMD_SET_VOLTAGE:
+            return snprintf(buf, size, "SOUR%u:VOLT %.4f", (unsigned)msg->payload.scalar.channel + 1u,
+                            (double)msg->payload.scalar.value);
+        case APP_CMD_SET_CURRENT:
+            return snprintf(buf, size, "SOUR%u:CURR %.4f", (unsigned)msg->payload.scalar.channel + 1u,
+                            (double)msg->payload.scalar.value);
+        case APP_CMD_SET_POWER:
+            return snprintf(buf, size, "SOUR%u:POW %.4f", (unsigned)msg->payload.scalar.channel + 1u,
+                            (double)msg->payload.scalar.value);
+        case APP_CMD_SET_RESISTANCE:
+            return snprintf(buf, size, "SOUR%u:RES %.4f", (unsigned)msg->payload.scalar.channel + 1u,
+                            (double)msg->payload.scalar.value);
+        case APP_CMD_SET_LOW_VOLTAGE_PROTECTION:
+            return snprintf(buf, size, "BATT%u:LVP %.4f", (unsigned)msg->payload.scalar.channel + 1u,
+                            (double)msg->payload.scalar.value);
+        case APP_CMD_MEAS_VOLT:
+            return snprintf(buf, size, "MEAS:VOLT? (@%u)", (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_MEAS_CURR:
+            return snprintf(buf, size, "MEAS:CURR? (@%u)", (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_MEAS_VOLT_CONT:
+            return snprintf(buf, size, "MEAS:VOLT:CONT %s (@%u)",
+                            msg->payload.scalar.value != 0.0f ? "ON" : "OFF",
+                            (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_MEAS_CURR_CONT:
+            return snprintf(buf, size, "MEAS:CURR:CONT %s (@%u)",
+                            msg->payload.scalar.value != 0.0f ? "ON" : "OFF",
+                            (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_SOUR_VOLT:
+            return snprintf(buf, size, "SOUR%u:VOLT?", (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_SOUR_CURR:
+            return snprintf(buf, size, "SOUR%u:CURR?", (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_SOUR_POW:
+            return snprintf(buf, size, "SOUR%u:POW?", (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_SOUR_RES:
+            return snprintf(buf, size, "SOUR%u:RES?", (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_SOUR_MODE:
+            return snprintf(buf, size, "SOUR%u:FUNC?", (unsigned)msg->payload.scalar.channel + 1u);
+        case APP_CMD_WIFI_STATUS:
+            return snprintf(buf, size, "WIFI:STAT %d", (int)msg->payload.scalar.value);
+        case APP_CMD_WIFI_RSSI:
+            return snprintf(buf, size, "WIFI:RSSI %d IP %d.%d.%d.%d", msg->payload.wifi.rssi,
+                            (msg->payload.wifi.ip >> 24) & 0xFF, (msg->payload.wifi.ip >> 16) & 0xFF,
+                            (msg->payload.wifi.ip >> 8) & 0xFF, msg->payload.wifi.ip & 0xFF);
+        case APP_CMD_IDN:
+            return snprintf(buf, size, "*IDN?");
+        case APP_CMD_ERROR:
+            return snprintf(buf, size, "SYST:ERR?");
+        case SCPI_MEASUREMENTS:
+            return snprintf(buf, size, "MEAS:U %.4f,I %.4f CH%u", (double)msg->payload.meas.voltage,
+                            (double)msg->payload.meas.current, (unsigned)msg->payload.meas.channel + 1u);
+        default:
+            return snprintf(buf, size, "UNKNOWN CMD %d", msg->cmd);
+    }
 }
 
 #endif /* SCPI_IMPLEMENTATION */

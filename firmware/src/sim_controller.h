@@ -49,7 +49,7 @@ void sim_controller_task(void *param) {
     for (;;) {
         /* Block up to STREAM_TICK_MS so we can service continuous streams on timeout */
         if (xQueueReceive(queue_sim, &msg, pdMS_TO_TICKS(STREAM_TICK_MS)) == pdTRUE) {
-            /* Skip logging continuous measurement streams to avoid terminal flood */
+
             if (msg.cmd != SCPI_MEASUREMENTS) {
                 scpi_encode(&msg, buf, sizeof(buf));
                 printf("[ctrl %s] %s\n", bus_source_to_cstring(msg.source), buf);

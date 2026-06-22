@@ -20,6 +20,12 @@ Features:
 
 ![CPDEL final result](docs/images/front.jpg)
 
+## Development
+
+You need a working installation of Python 3.x, [ESP-IDF v6.x](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/windows-setup.html) and a working C compiler (the Xtensa one and a native for your host system - tested only with Visual studio build system). Use vscode to open the firmware folder, which contains the `.vscode` settings, including the most important: initialization of ESP-IDF terminal.
+
+In ESP-IDF terminal (folder `firmware/esp`) you can then run `./esp.ps1`
+
 ## Key takeaways
 
 - don't use http servers for OTA that you don't fully control, because you have no control over TLS chain.. updates to chain can break your OTA

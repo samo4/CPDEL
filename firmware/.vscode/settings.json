@@ -17,7 +17,7 @@
       "args": [
         "-NoExit",
         "-Command",
-        "$env:IDF_CCACHE_ENABLE=1; & 'C:/Espressif/tools/Microsoft.v6.0.PowerShell_profile.ps1'; if (Test-Path ./esp) { cd ./esp }"
+        "$env:IDF_CCACHE_ENABLE=1; & 'C:/esp/v6.0.1/esp-idf/export.ps1'; if (Test-Path ./esp) { cd ./esp }"
       ]
     }
   }

@@ -26,6 +26,13 @@ else
   fi
 fi
 
+# Optional release notes (2nd argument), embedded in the annotated tag.
+if [ -z "$2" ]; then
+  NOTES="Release v$VERSION"
+else
+  NOTES=$2
+fi
+
 # Check if there are changes to commit
 if git diff-index --quiet HEAD --; then
   echo "No changes to commit."
@@ -36,9 +43,9 @@ fi
 echo "Creating release v$VERSION..."
 git add .
 git commit -m "v$VERSION"
-git tag "v$VERSION"
+git tag -a "v$VERSION" -m "$NOTES"
 git push --tags
 git push
 
 echo "Release v$VERSION created and pushed successfully."
-echo "GitHub Actions will build the PDF automatically."
+echo "GitHub Actions will build the firmware and the report PDF automatically."

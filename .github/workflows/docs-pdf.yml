@@ -1,0 +1,107 @@
+name: Build Report PDF
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the PDF to (empty = build artifact only)"
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-pdf.yml"
+
+permissions:
+  contents: write
+
+env:
+  PANDOC_VERSION: "3.10.2"
+  PANDOC_CROSSREF_VERSION: "0.3.20"
+
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install LaTeX toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-xetex \
+            texlive-latex-base \
+            texlive-latex-recommended \
+            texlive-latex-extra \
+            texlive-pictures \
+            texlive-fonts-recommended \
+            texlive-plain-generic \
+            lmodern \
+            xz-utils
+
+      - name: Install pandoc and pandoc-crossref
+        run: |
+          set -euo pipefail
+
+          curl -fsSL -o /tmp/pandoc.deb \
+            "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+          sudo dpkg -i /tmp/pandoc.deb
+
+          curl -fsSL -o /tmp/pandoc-crossref.tar.xz \
+            "https://github.com/lierdakil/pandoc-crossref/releases/download/v${PANDOC_CROSSREF_VERSION}/pandoc-crossref-Linux-X64.tar.xz"
+          sudo tar -xJf /tmp/pandoc-crossref.tar.xz -C /usr/local/bin
+
+          pandoc --version | head -1
+          pandoc-crossref --version
+
+      - name: Build report PDF
+        working-directory: docs
+        run: |
+          set -euo pipefail
+
+          # Keep this in sync with the `report` recipe in docs/justfile.
+          pandoc report.md -o report.pdf --pdf-engine=xelatex \
+            -V geometry:margin=1in --number-sections \
+            --filter pandoc-crossref --citeproc \
+            -V colorlinks=true -V linkcolor=red -V citecolor=blue -V urlcolor=red
+
+          test -s report.pdf
+          ls -l report.pdf
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-pdf
+          path: docs/report.pdf
+          if-no-files-found: error
+
+      - name: Attach PDF to GitHub release
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          # The release itself is created by the OTA workflow (ota-build.yml),
+          # which starts at the same time; wait for it to appear.
+          for i in $(seq 1 90); do
+            if gh release view "$TAG" --json tagName >/dev/null 2>&1; then
+              echo "Release $TAG exists."
+              break
+            fi
+            if [ "$i" -eq 90 ]; then
+              echo "Error: release $TAG not found after 30 minutes." >&2
+              exit 1
+            fi
+            echo "Waiting for release $TAG to be created... ($i/90)"
+            sleep 20
+          done
+
+          gh release upload "$TAG" docs/report.pdf --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'

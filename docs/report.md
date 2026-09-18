@@ -19,6 +19,8 @@ header-includes:
 
 A while ago I noticed the availability of the cheap RS485 controllable DC load modules on Taobao. I had an appropriate instrument case available and had occasional need of DC load for testing batteries. Packaging the modules in a small case with a nice user interface seemed like a good project to learn more about developing with ESP32 while being small enough to be finished.
 
+All design files for this project - firmware, KiCad hardware files, and the sources of this report - are available in the project repository: <https://github.com/samo4/CPDEL>
+
 Other than learning objectives and experimental verification of feasibility of touchscreen-only instrument interface, the list of requirements as they evolved during development is:
 
 - 2 channels DC electronic load: 200V, 10A
